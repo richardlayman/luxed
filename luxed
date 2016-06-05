@@ -271,7 +271,11 @@ class RenderProps:
 
         # RENDER ENGINE
         self.enginetype = Property('type', 'string', None, None, 'PATHCPU', 'engine type') #"PATHCPU"
+
+        # CPU
+
         self.cputhreads = Property('threads', 'int', 1, 100, 3, 'The number of threads will be used for the rendering')
+
         # PATHCPU
         self.pathmaxdepth = Property('maxdepth', 'int', 1, 16, 5, 'Maximum recursion depth of a path')
         # TODO - the max value can not be more then maxdepth
@@ -280,6 +284,7 @@ class RenderProps:
         self.pathclampingvariancemaxvalue = Property('clamping.variance.maxvalue', 'float', 0.0, 10000.0, 0.0, 'Samples brighter than this value are clamped, helps to reduce fireflies. 0.0 = disabled')
         self.pathclampingpdfvalue = Property('clamping.pdf.value', 'float', 0.0, 1.0, 0.0, '0.0 = disabled')
         self.pathfastpixelfilterenable = Property('fastpixelfilter.enable', 'bool', 0, 1, 1, 'Enable fast pixel filtering, when disabled, PBRT-like pixel filtering will be used')
+
         # BIASPATHCPU
         self.biaspathpathdepthtotal = Property('pathdepth.total', 'int', 0, 16, 10, 'Maximum total recursion depth of a path')
         self.biaspathpathdepthdiffuse = Property('pathdepth.diffuse', 'int', 0, 16, 4, 'Maximum recursion depth of a diffuse path')
@@ -304,6 +309,15 @@ class RenderProps:
         self.tilemultipassconvergencetestthresholdreduction = Property('tile.multipass.convergencetest.threshold.reduction', 'float', 0.0, 1.0, 0.0, 'Multiply noise level with this number when all tiles have met the previous noise level. Set to 0 to disable (so rendering will stop at the noise level)')
         self.tilemultipassconvergencetestwarmupcount = Property('tile.multipass.convergencetest.warmup.count', 'int', 0, 100000000, 32, 'Warm up period for the convergence test expressed in samples per pixel')
 
+        # OPENCL
+
+        self.openclplatformindex = Property('platform.index', 'int', -1000, 1000, -1, 'Select the OpenCL platform to use. All devices available on all platforms will be used with -1')
+        self.openclcpuuse = Property('cpu.use', 'bool', 0, 1, 0, 'If to use all OpenCL CPU devices available')
+        self.openclgpuuse = Property('gpu.use', 'bool', 0, 1, 1, 'If to use all OpenCL GPU devices available')
+        self.openclcpuworkgroupsize = Property('cpu.workgroup.size', 'int', 0, 64, 0, 'Set the OpenCL workgroup size, 0 means to use the driver suggested value')
+        self.openclgpuworkgroupsize = Property('gpu.workgroup.size', 'int', 0, 64, 0, 'Set the OpenCL workgroup size, 0 means to use the driver suggested value')
+        self.opencldevicesselect = Property('devices.select', 'string', None, None, "", 'Select each OpenCL device to use. It is a string of "0" and "1". "1" means use the device, "0" do not')
+
         # SAMPLER
         self.samplertype = Property('type','string',None,None,'SOBOL', 'sampler type')
         # metropolis
@@ -313,6 +327,7 @@ class RenderProps:
 
         # FILTER
         self.filtertype = Property('type','string',None,None,'BLACKMANHARRIS', 'Type of pixel filter')
+
 
     def getPropertyString(self):
         props = ""
@@ -328,6 +343,7 @@ class RenderProps:
             props += "path.clamping.pdf.value = %f\n"%self.pathclampingpdfvalue.value
             props += "path.fastpixelfilter.enable = %d\n"%self.pathfastpixelfilterenable.value
         if(self.enginetype.value == 'BIASPATHCPU'):
+            props += "native.threads.count = %d\n"%self.cputhreads.value
             props += "biaspath.pathdepth.total = %d\n"%self.biaspathpathdepthtotal.value 
             props += "biaspath.pathdepth.diffuse = %d\n"%self.biaspathpathdepthdiffuse.value 
             props += "biaspath.pathdepth.glossy = %d\n"%self.biaspathpathdepthglossy.value 
@@ -337,19 +353,47 @@ class RenderProps:
             props += "biaspath.sampling.glossy.size = %d\n"%self.biaspathsamplingglossysize.value 
             props += "biaspath.sampling.specular.size = %d\n"%self.biaspathsamplingspecularsize.value 
             props += "biaspath.sampling.directlight.size = %d\n"%self.biaspathsamplingdirectlightsize.value 
-            props += "biaspath.lights.lowthreshold = %d\n"%self.biaspathlightslowthreshold.value 
-            props += "biaspath.lights.nearstart = %d\n"%self.biaspathlightsnearstart.value 
+            props += "biaspath.lights.lowthreshold = %f\n"%self.biaspathlightslowthreshold.value 
+            props += "biaspath.lights.nearstart = %f\n"%self.biaspathlightsnearstart.value 
             props += "biaspath.lights.firstvertexsamples = %d\n"%self.biaspathlightsfirstvertexsamples.value 
-            props += "biaspath.clamping.variance.max.value = %d\n"%self.biaspathclampingvariancemaxvalue.value 
-            props += "biaspath.clamping.pdf.value = %d\n"%self.biaspathclampingpdfvalue.value 
+            props += "biaspath.clamping.variance.max.value = %f\n"%self.biaspathclampingvariancemaxvalue.value 
+            props += "biaspath.clamping.pdf.value = %f\n"%self.biaspathclampingpdfvalue.value 
             props += "tile.size = %d\n"%self.tilesize.value 
             props += "tile.size.x = %d\n"%self.tilesizex.value 
             props += "tile.size.y = %d\n"%self.tilesizey.value 
             props += "tile.multipass.enable = %d\n"%self.tilemultipassenable.value 
-            props += "tile.multipass.convergencetest.threshold = %d\n"%self.tilemultipassconvergencetestthreshold.value 
-            props += "tile.multipass.convergencetest.threshold256 = %d\n"%self.tilemultipassconvergencetestthreshold256.value 
-            props += "tile.multipass.convergencetest.threshold.reduction = %d\n"%self.tilemultipassconvergencetestthresholdreduction.value 
+            props += "tile.multipass.convergencetest.threshold = %f\n"%self.tilemultipassconvergencetestthreshold.value 
+            props += "tile.multipass.convergencetest.threshold256 = %f\n"%self.tilemultipassconvergencetestthreshold256.value 
+            props += "tile.multipass.convergencetest.threshold.reduction = %f\n"%self.tilemultipassconvergencetestthresholdreduction.value 
             props += "tile.multipass.convergencetest.warmup.count = %d\n"%self.tilemultipassconvergencetestwarmupcount.value 
+        if(self.enginetype.value == 'PATHOCL'):
+            props += "opencl.platform.index = %d\n"%self.openclplatformindex.value 
+            props += "opencl.cpu.use = %d\n"%self.openclcpuuse.value
+            props += "opencl.gpu.use = %d\n"%self.openclgpuuse.value 
+            props += "opencl.cpu.workgroup.size = %d\n"%self.openclcpuworkgroupsize.value 
+            props += "opencl.gpu.workgroup.size = %d\n"%self.openclgpuworkgroupsize.value
+            props += "opencl.devices.select = \"%s\"\n"%self.opencldevicesselect.value 
+        if(self.enginetype.value == 'RTPATHOCL'):
+            props += "opencl.platform.index = %d\n"%self.openclplatformindex.value 
+            props += "opencl.cpu.use = %d\n"%self.openclcpuuse.value
+            props += "opencl.gpu.use = %d\n"%self.openclgpuuse.value 
+            props += "opencl.cpu.workgroup.size = %d\n"%self.openclcpuworkgroupsize.value 
+            props += "opencl.gpu.workgroup.size = %d\n"%self.openclgpuworkgroupsize.value
+            props += "opencl.devices.select = \"%s\"\n"%self.opencldevicesselect.value 
+        if(self.enginetype.value == 'BIASPATHOCL'):
+            props += "opencl.platform.index = %d\n"%self.openclplatformindex.value 
+            props += "opencl.cpu.use = %d\n"%self.openclcpuuse.value
+            props += "opencl.gpu.use = %d\n"%self.openclgpuuse.value 
+            props += "opencl.cpu.workgroup.size = %d\n"%self.openclcpuworkgroupsize.value 
+            props += "opencl.gpu.workgroup.size = %d\n"%self.openclgpuworkgroupsize.value
+            props += "opencl.devices.select = \"%s\"\n"%self.opencldevicesselect.value 
+        if(self.enginetype.value == 'RTBIASPATHOCL'):
+            props += "opencl.platform.index = %d\n"%self.openclplatformindex.value 
+            props += "opencl.cpu.use = %d\n"%self.openclcpuuse.value
+            props += "opencl.gpu.use = %d\n"%self.openclgpuuse.value 
+            props += "opencl.cpu.workgroup.size = %d\n"%self.openclcpuworkgroupsize.value 
+            props += "opencl.gpu.workgroup.size = %d\n"%self.openclgpuworkgroupsize.value
+            props += "opencl.devices.select = \"%s\"\n"%self.opencldevicesselect.value 
 
         props += "sampler.type = \"%s\"\n"%self.samplertype.value
         if(self.samplertype.value == 'METROPOLIS'):
@@ -1792,6 +1836,9 @@ class RenderEngineBox(QGroupBox):
         self.engineType.hideDisableButton(1)
         self.cpuThreads = IntAttribute(self.props.cputhreads)
         self.cpuThreads.hideDisableButton(1)
+
+        # CPU
+
         # PATHCPU attributes
         # path.maxdepth
         self.pathMaxDepth = IntAttribute(self.props.pathmaxdepth)
@@ -1830,15 +1877,15 @@ class RenderEngineBox(QGroupBox):
         self.biaspathSamplingSpecularSize.hideDisableButton(1)
         self.biaspathSamplingDirectLightSize = IntAttribute(self.props.biaspathsamplingdirectlightsize) 
         self.biaspathSamplingDirectLightSize.hideDisableButton(1)
-        self.biaspathLightsLowThreshold = IntAttribute(self.props.biaspathlightslowthreshold) 
+        self.biaspathLightsLowThreshold = FloatAttribute(self.props.biaspathlightslowthreshold) 
         self.biaspathLightsLowThreshold.hideDisableButton(1)
-        self.biaspathLightsNearStart = IntAttribute(self.props.biaspathlightsnearstart) 
+        self.biaspathLightsNearStart = FloatAttribute(self.props.biaspathlightsnearstart) 
         self.biaspathLightsNearStart.hideDisableButton(1)
         self.biaspathLightsFirstVertexSamples = IntAttribute(self.props.biaspathlightsfirstvertexsamples) 
         self.biaspathLightsFirstVertexSamples.hideDisableButton(1)
-        self.biaspathClampingVarianceMaxValue = IntAttribute(self.props.biaspathclampingvariancemaxvalue) 
+        self.biaspathClampingVarianceMaxValue = FloatAttribute(self.props.biaspathclampingvariancemaxvalue) 
         self.biaspathClampingVarianceMaxValue.hideDisableButton(1)
-        self.biaspathClampingPdfValue = IntAttribute(self.props.biaspathclampingpdfvalue) 
+        self.biaspathClampingPdfValue = FloatAttribute(self.props.biaspathclampingpdfvalue) 
         self.biaspathClampingPdfValue.hideDisableButton(1)
         self.tileSize = IntAttribute(self.props.tilesize) 
         self.tileSize.hideDisableButton(1)
@@ -1848,14 +1895,30 @@ class RenderEngineBox(QGroupBox):
         self.tileSizeY.hideDisableButton(1)
         self.tileMultipassEnable = IntAttribute(self.props.tilemultipassenable) 
         self.tileMultipassEnable.hideDisableButton(1)
-        self.tileMultipassConvergenceTestThreshold = IntAttribute(self.props.tilemultipassconvergencetestthreshold) 
+        self.tileMultipassConvergenceTestThreshold = FloatAttribute(self.props.tilemultipassconvergencetestthreshold) 
         self.tileMultipassConvergenceTestThreshold.hideDisableButton(1)
-        self.tileMultipassConvergenceTestThreshold256 = IntAttribute(self.props.tilemultipassconvergencetestthreshold256) 
+        self.tileMultipassConvergenceTestThreshold256 = FloatAttribute(self.props.tilemultipassconvergencetestthreshold256) 
         self.tileMultipassConvergenceTestThreshold256.hideDisableButton(1)
-        self.tileMultipassConvergenceTestThresholdReduction = IntAttribute(self.props.tilemultipassconvergencetestthresholdreduction) 
+        self.tileMultipassConvergenceTestThresholdReduction = FloatAttribute(self.props.tilemultipassconvergencetestthresholdreduction) 
         self.tileMultipassConvergenceTestThresholdReduction.hideDisableButton(1)
         self.tileMultipassConvergenceTestWarmupCount = IntAttribute(self.props.tilemultipassconvergencetestwarmupcount) 
         self.tileMultipassConvergenceTestWarmupCount.hideDisableButton(1)
+
+        # OPENCL
+
+        # common
+        self.openclPlatformIndex = IntAttribute(self.props.openclplatformindex)
+        self.openclPlatformIndex.hideDisableButton(1)
+        self.openclCpuUse = IntAttribute(self.props.openclcpuuse)
+        self.openclCpuUse.hideDisableButton(1)
+        self.openclGpuUse = IntAttribute(self.props.openclgpuuse)
+        self.openclGpuUse.hideDisableButton(1)
+        self.openclCpuWorkGroupSize = IntAttribute(self.props.openclcpuworkgroupsize)
+        self.openclCpuWorkGroupSize.hideDisableButton(1)
+        self.openclGpuWorkGroupSize = IntAttribute(self.props.openclgpuworkgroupsize)
+        self.openclGpuWorkGroupSize.hideDisableButton(1)
+        self.openclDevicesSelect = StringAttribute(self.props.opencldevicesselect)
+        self.openclDevicesSelect.hideDisableButton(1)
 
 
         vbox = QVBoxLayout()
@@ -1891,6 +1954,16 @@ class RenderEngineBox(QGroupBox):
         vbox.addWidget(self.tileMultipassConvergenceTestThreshold256)
         vbox.addWidget(self.tileMultipassConvergenceTestThresholdReduction)
         vbox.addWidget(self.tileMultipassConvergenceTestWarmupCount)
+    
+        # OPENCL
+    
+        # common
+        vbox.addWidget(self.openclPlatformIndex)
+        vbox.addWidget(self.openclCpuUse)
+        vbox.addWidget(self.openclGpuUse)
+        vbox.addWidget(self.openclCpuWorkGroupSize)
+        vbox.addWidget(self.openclGpuWorkGroupSize)
+        vbox.addWidget(self.openclDevicesSelect)
 
         vbox.setContentsMargins(0,0,0,0)
         vbox.setSpacing(0)
@@ -1929,6 +2002,16 @@ class RenderEngineBox(QGroupBox):
         self.tileMultipassConvergenceTestThresholdReduction.valueChanged.connect(self.updateSettings)
         self.tileMultipassConvergenceTestWarmupCount.valueChanged.connect(self.updateSettings)
 
+        # OPENCL
+
+        # common
+        self.openclPlatformIndex.valueChanged.connect(self.updateSettings)
+        self.openclCpuUse.valueChanged.connect(self.updateSettings)
+        self.openclGpuUse.valueChanged.connect(self.updateSettings)
+        self.openclCpuWorkGroupSize.valueChanged.connect(self.updateSettings)
+        self.openclGpuWorkGroupSize.valueChanged.connect(self.updateSettings)
+        self.openclDevicesSelect.valueChanged.connect(self.updateSettings)
+
         self.hideAll()
         self.updateSettings()
 
@@ -1964,6 +2047,17 @@ class RenderEngineBox(QGroupBox):
         self.tileMultipassConvergenceTestThreshold256.hide()
         self.tileMultipassConvergenceTestThresholdReduction.hide()
         self.tileMultipassConvergenceTestWarmupCount.hide()
+
+        # OPENCL
+
+        # common
+        #self.openclPlatformIndex.hide()
+        #self.openclCpuUse.hide()
+        #self.openclGpuUse.hide()
+        #self.openclCpuWorkGroupSize.hide()
+        #self.openclGpuWorkGroupSize.hide()
+        #self.openclDevicesSelect.hide()
+
 
 
     def updateSettings(self):
@@ -2035,6 +2129,65 @@ class RenderEngineBox(QGroupBox):
             self.tileMultipassConvergenceTestThresholdReduction.show()
             self.tileMultipassConvergenceTestWarmupCount.show()
 
+        if(self.engineType.getValue() == 'PATHOCL'):
+            # common
+            self.props.openclplatformindex.setValue(self.openclPlatformIndex.getValue())
+            self.props.openclcpuuse.setValue(self.openclCpuUse.getValue())
+            self.props.openclgpuuse.setValue(self.openclGpuUse.getValue())
+            self.props.openclcpuworkgroupsize.setValue(self.openclCpuWorkGroupSize.getValue())
+            self.props.openclgpuworkgroupsize.setValue(self.openclGpuWorkGroupSize.getValue())
+            self.props.opencldevicesselect.setValue(self.openclDevicesSelect.getValue())
+            self.openclPlatformIndex.show()
+            self.openclCpuUse.show()
+            self.openclGpuUse.show()
+            self.openclCpuWorkGroupSize.show()
+            self.openclGpuWorkGroupSize.show()
+            self.openclDevicesSelect.show()
+
+        if(self.engineType.getValue() == 'RTPATHOCL'):
+            # common
+            self.props.openclplatformindex.setValue(self.openclPlatformIndex.getValue())
+            self.props.openclcpuuse.setValue(self.openclCpuUse.getValue())
+            self.props.openclgpuuse.setValue(self.openclGpuUse.getValue())
+            self.props.openclcpuworkgroupsize.setValue(self.openclCpuWorkGroupSize.getValue())
+            self.props.openclgpuworkgroupsize.setValue(self.openclGpuWorkGroupSize.getValue())
+            self.props.opencldevicesselect.setValue(self.openclDevicesSelect.getValue())
+            self.openclPlatformIndex.show()
+            self.openclCpuUse.show()
+            self.openclGpuUse.show()
+            self.openclCpuWorkGroupSize.show()
+            self.openclGpuWorkGroupSize.show()
+            self.openclDevicesSelect.show()
+
+        if(self.engineType.getValue() == 'BIASPATHOCL'):
+            # common
+            self.props.openclplatformindex.setValue(self.openclPlatformIndex.getValue())
+            self.props.openclcpuuse.setValue(self.openclCpuUse.getValue())
+            self.props.openclgpuuse.setValue(self.openclGpuUse.getValue())
+            self.props.openclcpuworkgroupsize.setValue(self.openclCpuWorkGroupSize.getValue())
+            self.props.openclgpuworkgroupsize.setValue(self.openclGpuWorkGroupSize.getValue())
+            self.props.opencldevicesselect.setValue(self.openclDevicesSelect.getValue())
+            self.openclPlatformIndex.show()
+            self.openclCpuUse.show()
+            self.openclGpuUse.show()
+            self.openclCpuWorkGroupSize.show()
+            self.openclGpuWorkGroupSize.show()
+            self.openclDevicesSelect.show()
+
+        if(self.engineType.getValue() == 'RTBIASPATHOCL'):
+            # common
+            self.props.openclplatformindex.setValue(self.openclPlatformIndex.getValue())
+            self.props.openclcpuuse.setValue(self.openclCpuUse.getValue())
+            self.props.openclgpuuse.setValue(self.openclGpuUse.getValue())
+            self.props.openclcpuworkgroupsize.setValue(self.openclCpuWorkGroupSize.getValue())
+            self.props.openclgpuworkgroupsize.setValue(self.openclGpuWorkGroupSize.getValue())
+            self.props.opencldevicesselect.setValue(self.openclDevicesSelect.getValue())
+            self.openclPlatformIndex.show()
+            self.openclCpuUse.show()
+            self.openclGpuUse.show()
+            self.openclCpuWorkGroupSize.show()
+            self.openclGpuWorkGroupSize.show()
+            self.openclDevicesSelect.show()
 
         self.valueChanged.emit() 
 
