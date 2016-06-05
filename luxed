@@ -40,7 +40,7 @@ MaterialType = ["matte","glossy","glass","metal2"]
 
 class Property:
     
-    def __init__(self, name, ptype, vmin, vmax, vdefault):
+    def __init__(self, name, ptype, vmin, vmax, vdefault, desc=""):
         self.type = ptype # bool, int, u_int, float, double, u_longlong, string, texture, uv, vector, normal, point, matrix4x4, spectrum
         self.name = name 
         self.value = vdefault 
@@ -48,7 +48,8 @@ class Property:
         self.min = vmin 
         self.max = vmax 
         self.enabled = 1
-    
+        self.desc = desc
+ 
     def setType(self, ptype):
         self.type = ptype
 
@@ -269,27 +270,27 @@ class RenderProps:
         self.height = Property('height', 'u_int', 100, 100000, 305)
 
         # RENDER ENGINE
-        self.enginetype = Property('type', 'string', None, None, 'PATHCPU') #"PATHCPU"
-        self.cputhreads = Property('threads', 'int', 1, 100, 3)
+        self.enginetype = Property('type', 'string', None, None, 'PATHCPU', 'engine type') #"PATHCPU"
+        self.cputhreads = Property('threads', 'int', 1, 100, 3, 'The number of threads will be used for the rendering')
         # PATHCPU
-        self.pathmaxdepth = Property('maxdepth', 'int', 1, 16, 5)
+        self.pathmaxdepth = Property('maxdepth', 'int', 1, 16, 5, 'Maximum recursion depth of a path')
         # TODO - the max value can not be more then maxdepth
-        self.pathrussianroulettedepth = Property('russianroulette.depth', 'int', 1, 16, 3)
-        self.pathrussianroulettecap = Property('russianroulette.cap', 'float', 0.0, 1.0, 0.5)
-        self.pathclampingvariancemaxvalue = Property('clamping.variance.maxvalue', 'float', 0.0, 10000.0, 0.0)
-        self.pathclampingpdfvalue = Property('clamping.pdf.value', 'float', 0.0, 1.0, 0.0)
-        self.pathfastpixelfilterenable = Property('fastpixelfilter.enable', 'bool', 0, 1, 1)
+        self.pathrussianroulettedepth = Property('russianroulette.depth', 'int', 1, 16, 3, 'The path depth where Russian Roulette stars to be used')
+        self.pathrussianroulettecap = Property('russianroulette.cap', 'float', 0.0, 1.0, 0.5, 'The threshold over which Russian Roulette is used')
+        self.pathclampingvariancemaxvalue = Property('clamping.variance.maxvalue', 'float', 0.0, 10000.0, 0.0, 'Samples brighter than this value are clamped, helps to reduce fireflies. 0.0 = disabled')
+        self.pathclampingpdfvalue = Property('clamping.pdf.value', 'float', 0.0, 1.0, 0.0, '0.0 = disabled')
+        self.pathfastpixelfilterenable = Property('fastpixelfilter.enable', 'bool', 0, 1, 1, 'Enable fast pixel filtering, when disabled, PBRT-like pixel filtering will be used')
  
 
         # SAMPLER
-        self.samplertype = Property('type','string',None,None,'SOBOL')
+        self.samplertype = Property('type','string',None,None,'SOBOL', 'sampler type')
         # metropolis
-        self.metropolislargesteprate = Property('metropolis.largesteprate','float',0.0,1.0,0.4)
-        self.metropolismaxconsecutivereject = Property('metropolis.maxconsecutivereject','int',0,32768,512)
-        self.metropolisimagemutationrate = Property('metropolis.imagemutationrate','float',0.0,1.0,0.1)
+        self.metropolislargesteprate = Property('metropolis.largesteprate','float',0.0,1.0,0.4, 'Probability of generating a large sample mutation')
+        self.metropolismaxconsecutivereject = Property('metropolis.maxconsecutivereject','int',0,32768,512, 'Number of consecutive rejects before a next mutation is forced. Low values can cause bias')
+        self.metropolisimagemutationrate = Property('metropolis.imagemutationrate','float',0.0,1.0,0.1, 'Maximum distance over the image plane for a small mutation')
 
         # FILTER
-        self.filtertype = Property('type','string',None,None,'BLACKMANHARRIS')
+        self.filtertype = Property('type','string',None,None,'BLACKMANHARRIS', 'Type of pixel filter')
 
     def getPropertyString(self):
         props = ""
@@ -672,6 +673,8 @@ class TextureAttribute(QWidget):
         self.valueTypeBtn.setFixedWidth(30)
         self.link = LinkDialog(self.lux,'textures')
         self.link.hide()
+        
+        self.setToolTip(self.prop.desc)
  
         hbox = QHBoxLayout()        
         hbox.addStretch()
@@ -775,6 +778,8 @@ class OptionAttribute(QWidget):
         self.disableBtn = QPushButton("X")
         self.disableBtn.setFixedWidth(30)
 
+        self.setToolTip(self.prop.desc)
+ 
         for item in options:
             self.value.addItem(item)
  
@@ -851,6 +856,7 @@ class IntAttribute(QWidget):
         self.disableBtn = QPushButton("X")
         self.disableBtn.setFixedWidth(30)
 
+        self.setToolTip(self.prop.desc)
        
         hbox = QHBoxLayout()        
         hbox.addStretch()
@@ -924,6 +930,7 @@ class FloatAttribute(QWidget):
         self.disableBtn = QPushButton("X")
         self.disableBtn.setFixedWidth(30)
 
+        self.setToolTip(self.prop.desc)
        
         hbox = QHBoxLayout()        
         hbox.addStretch()
@@ -997,6 +1004,7 @@ class StringAttribute(QWidget):
         self.disableBtn = QPushButton("X")
         self.disableBtn.setFixedWidth(30)
 
+        self.setToolTip(self.prop.desc)
        
         hbox = QHBoxLayout()        
         hbox.addStretch()
@@ -1063,7 +1071,9 @@ class FileAttribute(QWidget):
         self.value = QPushButton("browse")
         self.value.setFixedWidth(150)
         self.value.setText(self.prop.value)
-        
+ 
+        self.setToolTip(self.prop.desc)
+              
         hbox = QHBoxLayout()        
         hbox.addStretch()
         hbox.addWidget(label)
