@@ -1,0 +1,2078 @@
+#!/bin/python
+
+###########################################################################
+# Filename: luxed 
+#
+# Description: Editor for LuxRender.
+#
+# Copyright (C) 2016 Richard Layman, rlayman2000@yahoo.com 
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+###########################################################################
+
+import time
+import sys
+from array import *
+sys.path.append("./lib")
+
+import pyluxcore
+
+from PyQt5.QtCore import pyqtSignal, Qt, QRect, QThread, QTimer
+from PyQt5.QtWidgets import QMainWindow, QSlider, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
+from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, QIntValidator, QDoubleValidator
+
+
+# PROPERTIES CONTAINERS
+
+MaterialType = ["matte","glossy","glass","metal2"]
+
+class Property:
+    
+    def __init__(self, name, ptype, vmin, vmax, vdefault):
+        self.type = ptype # bool, int, u_int, float, double, u_longlong, string, texture, uv, vector, normal, point, matrix4x4, spectrum
+        self.name = name 
+        self.value = vdefault 
+        self.default = vdefault 
+        self.min = vmin 
+        self.max = vmax 
+        self.enabled = 1
+    
+    def setType(self, ptype):
+        self.type = ptype
+
+    def getType(self):
+        return self.type
+    
+    def setName(self, name):
+        self.name = name
+    
+    def getName(self):
+        return self.name
+
+    def setValue(self, val):
+        self.value = val
+
+    def getValue(self):
+        return self.value
+
+    def getPropertyString(self):
+        out=""
+        if self.type is 'string':
+            out = "%s = \"%s\"" % (self.name, self.value)
+        if self.type is 'bool' or self.type is'int' or self.type is'u_int':
+            out = "%s = %d" % (self.name, int(self.value))
+        if self.type is 'float' or self.type is 'double' or self.type is 'u_longlong' or self.type is 'spectrum':
+            out = "%s = %f" % (self.name, float(self.value))
+        if self.type is 'uv':
+            out = "%s = %f %f" % (self.name, float(self.value[0]), float(self.value[1]))
+        if self.type is 'texture':
+            out = "%s = %f %f %f" % (self.name, float(self.value[0]), float(self.value[1]), float(self.value[2]))
+        return out
+
+# COMMON PROPERTIES
+class CommonProps:
+
+    def __init__(self):
+        self.id = Property('id', 'u_int', 0, None, 0)
+        self.type = Property('type', 'string', None, None, "")
+ 
+ 
+# MATERIALS
+
+class MatCommonProps:
+
+    def __init__(self):
+        self.bumptex = Property('bumptex', 'texture', None, None, "")
+        self.normaltex = Property('normaltex', 'texture', None, None, "")
+ 
+# MATERIAL LIGHT PROPERTIES
+class MaterialEmissionProps():
+
+    def __init__(self):
+        super().__init__()
+        self.emission = Property('emission', 'texture', None, None, [0.0,0.0,0.0])
+        self.emissiongain = Property('emission.gain', 'texture', None, None, [0.0,0.0,0.0])
+        self.emissionpower = Property('emission.power', 'spectrum', None, None, 0.0)
+        self.emissionefficency = Property('emission.efficency', 'float', None, None, 0.0)
+
+    def getPropertyString(self,name):
+        props = ""
+        if(self.emission.enabled):
+            props += "scene.materials." + name + "." + self.emission.getPropertyString() + "\n"
+        if(self.emissiongain.enabled):
+            props += "scene.materials." + name + "." + self.emissiongain.getPropertyString() + "\n"
+        if(self.emissionpower.enabled):
+            props += "scene.materials." + name + "." + self.emissionpower.getPropertyString() + "\n"
+        if(self.emissionefficency.enabled):
+            props += "scene.materials." + name + "." + self.emissionefficency.getPropertyString() + "\n"
+        return props 
+
+
+# MATTE PROPERTIES
+class MatteProps():
+
+    def __init__(self):
+        self.kd = Property('kd', 'texture', None, None, [1.0,1.0,1.0])
+
+    def getPropertyString(self,name):
+        props = ""
+        if(self.kd.enabled):
+            props += "scene.materials." + name + "." + self.kd.getPropertyString() + "\n"
+        return props 
+
+
+# CARPAINT PROPERTIES
+class CarPaintProps():
+
+    def __init__(self):
+        self.preset = Property('preset', 'string', None, None, "ford f8")
+        self.ka = Property('ka', 'texture', None, None, [0.0,0.0,0.0])
+        self.d = Property('d', 'texture', None, None, [0.0,0.0,0.0])
+        self.kd = Property('kd', 'texture', None, None, [0.0,0.0,0.0])
+        self.ks1 = Property('ks1', 'texture', None, None, [0.0,0.0,0.0])
+        self.ks2 = Property('ks2', 'texture', None, None, [0.0,0.0,0.0])
+        self.ks3 = Property('ks3', 'texture', None, None, [0.0,0.0,0.0])
+        self.r1 = Property('r1', 'texture', None, None, [0.0,0.0,0.0])
+        self.r2 = Property('r2', 'texture', None, None, [0.0,0.0,0.0])
+        self.r3 = Property('r3', 'texture', None, None, [0.0,0.0,0.0])
+        self.m1 = Property('m1', 'texture', None, None, [0.0,0.0,0.0])
+        self.m2 = Property('m2', 'texture', None, None, [0.0,0.0,0.0])
+        self.m3 = Property('m3', 'texture', None, None, [0.0,0.0,0.0])
+
+
+    def getPropertyString(self,name):
+        props = ""
+        if(self.preset.enabled):
+            props += "scene.materials." + name + "." + self.preset.getPropertyString() + "\n"
+        if(self.ka.enabled):
+            props += "scene.materials." + name + "." + self.ka.getPropertyString() + "\n"
+        if(self.d.enabled):
+            props += "scene.materials." + name + "." + self.d.getPropertyString() + "\n"
+        if(self.kd.enabled):
+            props += "scene.materials." + name + "." + self.kd.getPropertyString() + "\n"
+        if(self.ks1.enabled):
+            props += "scene.materials." + name + "." + self.ks1.getPropertyString() + "\n"
+        if(self.ks2.enabled):
+            props += "scene.materials." + name + "." + self.ks2.getPropertyString() + "\n"
+        if(self.ks3.enabled):
+            props += "scene.materials." + name + "." + self.ks3.getPropertyString() + "\n"
+        if(self.r1.enabled):
+            props += "scene.materials." + name + "." + self.r1.getPropertyString() + "\n"
+        if(self.r2.enabled):
+            props += "scene.materials." + name + "." + self.r2.getPropertyString() + "\n"
+        if(self.r3.enabled):
+            props += "scene.materials." + name + "." + self.r3.getPropertyString() + "\n"
+        if(self.m1.enabled):
+            props += "scene.materials." + name + "." + self.m1.getPropertyString() + "\n"
+        if(self.m2.enabled):
+            props += "scene.materials." + name + "." + self.m2.getPropertyString() + "\n"
+        if(self.m3.enabled):
+            props += "scene.materials." + name + "." + self.m3.getPropertyString() + "\n"
+
+        return props 
+
+
+# GLASS PROPERTIES
+class GlassProps():
+
+    def __init__(self):
+        self.kr = Property('kr', 'texture', None, None, [1.0,1.0,1.0])
+        self.kt = Property('kt', 'texture', None, None, [1.0,1.0,1.0])
+        self.interior = Property('interior', 'texture', None, None, [1.0,1.0,1.0])
+        self.exterior = Property('exterior', 'texture', None, None, [1.0,1.0,1.0])
+
+
+    def getPropertyString(self,name):
+        props = ""
+        if(self.kr.enabled):
+            props += "scene.materials." + name + "." + self.kr.getPropertyString() + "\n"
+        if(self.kt.enabled):
+            props += "scene.materials." + name + "." + self.kt.getPropertyString() + "\n"
+        if(self.interior.enabled):
+            props += "scene.materials." + name + "." + self.interior.getPropertyString() + "\n"
+        if(self.exterior.enabled):
+            props += "scene.materials." + name + "." + self.exterior.getPropertyString() + "\n"
+        return props 
+
+
+# GLOSSY2 PROPERTIES
+class Glossy2Props():
+
+    def __init__(self):
+        self.kd = Property('kd', 'texture', None, None, [0.5,0.5,0.5])
+        self.ks = Property('ks', 'texture', None, None, [0.5,0.5,0.5])
+        self.uroughness = Property('uroughness', 'texture', None, None, [0.1,0.1,0.1])
+        self.vroughness = Property('vroughness', 'texture', None, None, [0.1,0.1,0.1])
+
+
+    def getPropertyString(self,name):
+        props = ""
+        if(self.kd.enabled):
+            props += "scene.materials." + name + "." + self.kd.getPropertyString() + "\n"
+        if(self.ks.enabled):
+            props += "scene.materials." + name + "." + self.ks.getPropertyString() + "\n"
+        if(self.uroughness.enabled):
+            props += "scene.materials." + name + "." + self.uroughness.getPropertyString() + "\n"
+        if(self.vroughness.enabled):
+            props += "scene.materials." + name + "." + self.vroughness.getPropertyString() + "\n"
+        return props 
+
+
+# TEXTURE PROPERTIES
+
+class UVMapping2DProps(CommonProps):
+
+    def __init__(self):
+        super().__init__()
+        self.type.value = "uvmapping2d"
+        self.file = Property('mapping.uvscale', 'uv', None, None, [1.0,1.0])
+        self.file = Property('mapping.uvdelta', 'uv', None, None, [0.0,0.0])
+ 
+         
+# IMAGEMAP
+class ImageMapProps(CommonProps):
+
+    def __init__(self):
+        super().__init__()
+        self.type.value = "imagemap"
+        self.file = Property('file', 'string', None, None, "")
+        self.gamma = Property('gamma', 'float', 0.0, None, 2.2)
+        self.gain = Property('gain', 'float', 0.0, None, 1.0)
+        self.mapping = Property('mapping.type', 'string', 0, None, "image.png")
+ 
+    def getPropertyString(self,name):
+        props = "scene.textures." + name + ".type = \"imagemap\"\n"
+        props += "scene.textures." + name + "." + self.file.getPropertyString() + "\n"
+        props += "scene.textures." + name + "." + self.gamma.getPropertyString() + "\n"
+        props += "scene.textures." + name + "." + self.gain.getPropertyString() + "\n"
+        return props 
+
+
+# RENDER PROPERTIES
+
+class RenderProps:
+    
+    def __init__(self):
+        self.width = Property('width', 'u_int', 100, 100000, 720)
+        self.height = Property('height', 'u_int', 100, 100000, 305)
+        self.type = Property('type', 'string', None, None, 'PATHCPU') #"PATHCPU"
+        # SAMPLER
+        self.samplertype = Property('type','string',None,None,'SOBOL')
+        # metropolis
+        self.metropolislargesteprate = Property('metropolis.largesteprate','float',0.0,1.0,0.4)
+        self.metropolismaxconsecutivereject = Property('metropolis.maxconsecutivereject','int',0,32768,512)
+        self.metropolisimagemutationrate = Property('metropolis.imagemutationrate','float',0.0,1.0,0.1)
+        # FILTER
+        self.filtertype = Property('type','string',None,None,'BLACKMANHARRIS')
+
+    def getPropertyString(self):
+        props = ""
+        props += "film.width = %d\n"%self.width.value
+        props += "film.height = %d\n"%self.height.value
+        props += "renderengine.type = \"%s\"\n"%self.type.value
+        props += "sampler.type = \"%s\"\n"%self.samplertype.value
+        if(self.samplertype.value == 'METROPOLIS'):
+            props += "sampler.metropolis.largesteprate = %f\n"%self.metropolislargesteprate.value
+            props += "sampler.metropolis.maxconsecutivereject = %d\n"%self.metropolismaxconsecutivereject.value
+            props += "sampler.metropolis.imagemutationrate = %f\n"%self.metropolisimagemutationrate.value
+        props += "filter.type = \"%s\"\n"%self.filtertype.value
+
+        return props
+
+ 
+# LUX SCENE
+class Lux(QThread):
+
+    def __init__(self):
+        super().__init__()
+        pyluxcore.Init()
+
+        # Load the configuration from files
+        self.props = pyluxcore.Properties("render.cfg")
+        self.scene = pyluxcore.Scene("scene.scn")
+        self.scnprops = pyluxcore.Properties("scene.scn")
+        self.config = pyluxcore.RenderConfig(self.props, self.scene)
+        self.session = pyluxcore.RenderSession(self.config)
+
+        # PROPERTIES
+        self.fov = 65
+
+        # Property containers
+        self.lights= []
+        self.textures= []
+        self.materials = []
+        self.objects = []
+     
+        self.load()
+
+    def load(self):
+        val = 0
+        print("Object Count:%d"%(self.scene.GetObjectCount()))
+        print("Light Count:%d"%(self.scene.GetObjectCount()))
+
+        self.textures = self.scnprops.GetAllUniqueSubNames("scene.textures")
+        self.materials = self.scnprops.GetAllUniqueSubNames("scene.materials")
+        self.lights = self.scnprops.GetAllUniqueSubNames("scene.lights")
+        self.objects = self.scnprops.GetAllUniqueSubNames("scene.objects")
+        print("Loaded... Lights:%d, Textures%d, Materials%d, Objects%d"%(len(self.lights), len(self.textures), len(self.materials), len(self.objects))) 
+
+    def startRendering(self):
+        self.session.Start() 
+
+    def writeImage(self):
+        self.session.UpdateStats()
+        self.session.GetFilm().Save()
+
+    def stopRendering(self):
+        self.session.GetFilm().Save()
+        self.session.Stop()
+
+    def getTime(self):
+        stats = self.session.GetStats();
+        return stats.Get("stats.renderengine.time").GetFloat()
+
+    def getPass(self):
+        stats = self.session.GetStats();
+        return stats.Get("stats.renderengine.pass").GetInt()
+
+    def getSpp(self):
+        stats = self.session.GetStats();
+        return stats.Get("stats.renderengine.total.samplesec").GetFloat()
+
+    def getTriCount(self):
+        stats = self.session.GetStats();
+        return stats.Get("stats.dataset.trianglecount").GetFloat()
+
+    def getMaterialType(self,name):
+        mtype = ""
+        mtype=self.scnprops.Get("scene.materials.%s.type"%name).Get() 
+        print("mtype = %s"%mtype)
+        return mtype 
+
+    def getTextureType(self,name):
+        return self.scnprops.Get("scene.textures.%s.type"%name).Get() 
+
+
+    # This is needed since luxcore will crash if you try to set a property that was not set in the file.
+    # To fix this we will call this method before we try to set any properties.
+    # When the AE is first loaded it will load the properties for lux and then this method will get called
+    # for each property.
+    # It will ask lux if the property exists and add it if it doesn't.   
+    def verifyProperty(self,name,prop):
+        if self.scnprops.IsDefined(name) is False:
+            print(name + " is missing. Adding it")
+            if prop.type is 'string':
+                self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
+            if prop.type is 'bool' or prop.type is'int' or prop.type is'u_int':
+                self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
+            if prop.type is 'float' or prop.type is 'double' or prop.type is 'u_longlong' or prop.type is 'spectrum':
+                self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
+            if prop.type is 'uv':
+                self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]]))
+            if prop.type is 'texture':
+                self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
+
+    def changeSize(self,width,height):
+        print("CHANGE SIZE")
+        self.setFixedWidth(width)
+        self.setFixedHeight(height)
+
+        # Stop the rendering
+        self.session.Stop()
+        self.session = None
+
+        # Set the new size
+        self.scene.Parse(pyluxcore.Properties().
+            Set(pyluxcore.Property("film.width", [width])).
+            Set(pyluxcore.Property("film.height", [height])))
+
+        # Re-start the rendering
+        self.session = pyluxcore.RenderSession(self.config)
+        self.session.Start()
+
+
+    def setProperty(self,propname,propval):
+        self.session.BeginSceneEdit()
+        self.scene.Parse(pyluxcore.Properties().Set(pyluxcore.Property(propname, [propval])).
+            Set(pyluxcore.Property("scene.camera.lookat.orig", [-5.35,7.7,-4.35])).
+            Set(pyluxcore.Property("scene.camera.lookat.target", [10,5.69,-9.98])).
+            Set(pyluxcore.Property("scene.camera.up", [0,1,0]))
+        )
+        self.session.EndSceneEdit()
+        self.writeImage()
+
+    def setProperties(self,propstring):
+        print(propstring)
+        self.session.BeginSceneEdit()
+        self.scene.Parse(pyluxcore.Properties().SetFromString(propstring))
+        self.session.EndSceneEdit()
+        self.writeImage()
+
+    def getMaterialProperties(self,mtype,name):
+        if mtype is "materialemission":
+            props = MaterialEmissionProps()
+            props.emission.setValue(self.scnprops.Get("scene.materials.%s.emission"%name).Get())
+            props.emissiongain.setValue(self.scnprops.Get("scene.materials.%s.emission.gain"%name).Get())
+            props.emissionpower.setValue(self.scnprops.Get("scene.materials.%s.emission.power"%name).Get())
+            props.emissionefficency.setValue(self.scnprops.Get("scene.materials.%s.emission.efficency"%name).Get())
+        
+        if mtype is "matte":
+            props = MatteProps()
+            props.kd.setValue(self.scnprops.Get("scene.materials.%s.kd"%name).Get())
+
+        if mtype is "carpaint":
+            props = CarPaintProps()
+            props.preset.setValue(self.scnprops.Get("scene.materials.%s.preset"%name).Get())
+            props.ka.setValue(self.scnprops.Get("scene.materials.%s.ka"%name).Get())
+            props.d.setValue(self.scnprops.Get("scene.materials.%s.d"%name).Get())
+            props.kd.setValue(self.scnprops.Get("scene.materials.%s.kd"%name).Get())
+            props.ks1.setValue(self.scnprops.Get("scene.materials.%s.ks1"%name).Get())
+            props.ks2.setValue(self.scnprops.Get("scene.materials.%s.ks2"%name).Get())
+            props.ks3.setValue(self.scnprops.Get("scene.materials.%s.ks3"%name).Get())
+            props.r1.setValue(self.scnprops.Get("scene.materials.%s.r1"%name).Get())
+            props.r2.setValue(self.scnprops.Get("scene.materials.%s.r2"%name).Get())
+            props.r3.setValue(self.scnprops.Get("scene.materials.%s.r3"%name).Get())
+            props.m1.setValue(self.scnprops.Get("scene.materials.%s.m1"%name).Get())
+            props.m2.setValue(self.scnprops.Get("scene.materials.%s.m2"%name).Get())
+            props.m3.setValue(self.scnprops.Get("scene.materials.%s.m3"%name).Get())
+
+        if mtype is "glass":
+            props = GlassProps()
+            props.kr.setValue(self.scnprops.Get("scene.materials.%s.kr"%name).Get())
+            props.kt.setValue(self.scnprops.Get("scene.materials.%s.kt"%name).Get())
+            props.interior.setValue(self.scnprops.Get("scene.materials.%s.interior"%name).Get())
+            props.exterior.setValue(self.scnprops.Get("scene.materials.%s.exterior"%name).Get())
+
+        if mtype is "glossy2":
+            props = Glossy2Props()
+            props.kd.setValue(self.scnprops.Get("scene.materials.%s.kd"%name).Get())
+            props.ks.setValue(self.scnprops.Get("scene.materials.%s.ks"%name).Get())
+            props.uroughness.setValue(self.scnprops.Get("scene.materials.%s.uroughness"%name).Get())
+            props.vroughness.setValue(self.scnprops.Get("scene.materials.%s.vroughness"%name).Get())
+
+        return props 
+ 
+    def getTextureProperties(self,mtype,name):
+        props = None
+        if mtype is "imagemap":
+            props = ImageMapProps()
+            props.file.setValue(self.scnprops.Get("scene.textures.%s.file"%name).Get())
+            props.gamma.setValue(self.scnprops.Get("scene.textures.%s.gamma"%name).Get())
+            props.gain.setValue(self.scnprops.Get("scene.textures.%s.gain"%name).Get())
+        return props 
+     
+    
+    def setRenderSettings(self,props,propstring):
+        # Stop the rendering
+        self.session.Stop()
+        self.session = None
+
+        print("NEW RENDER SETTINGS")
+        print(propstring)
+        self.config.Parse(pyluxcore.Properties().SetFromString(propstring))
+
+        # Re-start the rendering
+        self.session = pyluxcore.RenderSession(self.config)
+        self.session.Start()
+
+    def getRenderSettings(self):
+        self.session.UpdateStats()
+        props = RenderProps()
+        props.width.value = self.session.GetFilm().GetWidth()
+        props.height.value = self.session.GetFilm().GetHeight()
+        return props
+
+
+    def getWidth(self):
+        self.session.UpdateStats()
+        return self.session.GetFilm().GetWidth()
+
+    def getHeight(self):
+        self.session.UpdateStats()
+        return self.session.GetFilm().GetHeight()
+
+
+class LuxWidget(QWidget):
+
+    def __init__(self,width,height):
+        super().__init__()
+        self.lux = Lux()
+        self.lux.start()
+        self.fov = 65
+        self.setFixedWidth(self.lux.getWidth())
+        self.setFixedHeight(self.lux.getHeight())
+ 
+
+    def core(self):
+        return self.lux
+
+    def paintEvent(self,e):
+        qp = QPainter()
+        qp.begin(self)
+        self.drawWidget(qp)
+        qp.end()
+
+    def drawWidget(self,qp):
+        rect = QRect(0,0,self.width(),self.height())
+        image = QImage("image.png")
+        qp.drawImage(rect,image)
+
+    def changeSize(self,width,height):
+        self.setFixedWidth(width)
+        self.setFixedHeight(height)
+        self.lux.changeSize(width,height)
+
+    def startRendering(self):
+        self.lux.startRendering() 
+
+    def writeImage(self):
+        self.lux.writeImage()
+
+    def stopRendering(self):
+        self.lux.stopRendering()
+
+    def getTime(self):
+        return self.lux.getTime()
+
+    def getPass(self):
+        return self.lux.getPass() 
+
+    def getSpp(self):
+        return self.lux.getSpp()
+
+    def getTriCount(self):
+        return self.lux.getTriCount()
+
+    def setRenderSettings(self,props,propstring):
+        self.lux.setRenderSettings(props,propstring)
+        self.setFixedWidth(props.width.value)
+        self.setFixedHeight(props.height.value)
+
+
+    def wheelEvent(self,e):
+        self.fov = self.fov + (e.angleDelta().y() * 0.1)
+        if self.fov > 1000.0:
+            self.fov = 1000.0
+        if self.fov < 5.0:
+            self.fov = 5.0
+        print("fov = %.1f, x = %d" % (self.fov,e.angleDelta().y()))
+        self.lux.setProperty("scene.camera.fieldofview",self.fov)
+        self.repaint()
+
+
+# EDITOR WIDGETS
+
+
+# Color Widget 
+class ColorWidget(QFrame):
+    colorChanged = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.colorValue = QFrame()
+        self.setFixedWidth(32)
+        self.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
+        self.setAutoFillBackground(1)
+        self.palette = QPalette()
+        self.palette.setColor(QPalette.Window,QColor(255,255,255))
+        self.setPalette(self.palette)
+
+    def mousePressEvent(self,e):
+        color = QColorDialog(self.palette.color(QPalette.Window)).getColor()
+        self.palette.setColor(QPalette.Window,color)
+        self.setPalette(self.palette)
+        self.colorChanged.emit()
+
+    def getColor(self):
+        return self.palette.color(QPalette.Window)
+ 
+    def setColor(self,color):
+        self.palette.setColor(QPalette.Window,color)
+        self.setPalette(self.palette)
+
+
+# Link Dialog
+class LinkDialog(QDialog):
+    linkSelected = pyqtSignal(['QString'])
+
+    def __init__(self,lux,ltype):
+        super().__init__()
+        self.list = QListWidget() 
+        self.link = ""
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.list)
+        self.setLayout(vbox)
+
+        if(ltype == 'textures'):
+            self.list.clear()
+            for t in lux.core().textures:
+                self.list.addItem(t[15:])
+
+        self.show()
+        self.list.itemClicked.connect(self.setCurrentLink)
+
+    def setCurrentLink(self,item):
+        self.link = item.text()
+        self.linkSelected.emit(self.link)
+        self.hide()
+ 
+ 
+# Texture Attribute
+class TextureAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,prop,lux):
+        super().__init__()
+        self.lux = lux
+        self.prop = prop
+        self.label = QLabel(self.prop.name)
+        self.colorValue = ColorWidget()
+        self.colorValue.setColor(QColor(255.0*prop.value[0],255.0*prop.value[1],255.0*prop.value[2]))
+        self.disableBtn = QPushButton("X")
+        self.disableBtn.setFixedWidth(30)
+        self.linkValue = QPushButton("select")
+        self.linkEnabled = 0 # use a color value or a texture link
+        self.valueTypeBtn = QPushButton("T")
+        self.valueTypeBtn.setFixedWidth(30)
+        self.link = LinkDialog(self.lux,'textures')
+        self.link.hide()
+ 
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.colorValue)
+        hbox.addWidget(self.linkValue)
+        hbox.addWidget(self.valueTypeBtn)
+        hbox.addWidget(self.disableBtn)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        self.setValueWidget()
+     
+        self.colorValue.colorChanged.connect(self.changed) 
+        self.disableBtn.clicked.connect(self.toggleEnabled)
+        self.valueTypeBtn.clicked.connect(self.toggleValueType)
+        self.linkValue.clicked.connect(self.showLinkDialog)
+        self.link.linkSelected.connect(self.setLink)
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+    def toggleValueType(self):
+        if(self.linkEnabled):
+            self.linkEnabled = 0 
+        else:
+            self.linkEnabled = 1 
+        self.setValueWidget()
+
+    def setValueWidget(self):
+        if(self.linkEnabled):
+            self.colorValue.setVisible(0)
+            self.linkValue.setVisible(1)
+        else:
+            self.colorValue.setVisible(1)
+            self.linkValue.setVisible(0)
+
+    def showLinkDialog(self):
+        self.link.show()
+
+    def setLink(self,link):
+        self.linkValue.setText(link)
+        self.changed()
+
+    def hideDisableButton(self,hide):
+        if(hide):
+            self.disableBtn.setVisible(0)
+        else:
+            self.disableBtn.setVisible(1)
+    
+    def toggleEnabled(self):
+        if(self.label.isEnabled()):
+            self.prop.enabled = 0
+            self.label.setEnabled(0)
+            self.colorValue.setEnabled(0)
+            self.disableBtn.setFlat(1)
+            self.disableBtn.setText("O")
+        else:
+            self.prop.enabled = 1
+            self.label.setEnabled(1)
+            self.colorValue.setEnabled(1)
+            self.disableBtn.setFlat(0)
+            self.disableBtn.setText("X")
+ 
+    def changed(self):
+        self.valueChanged.emit()
+
+    def changeColorValue(self,e):
+        pass
+
+    def getColorValue(self):
+        if(self.linkEnabled):
+            self.prop.type = 'string'
+            self.prop.value = self.linkValue.text()
+        else:
+            color = self.colorValue.getColor()
+            self.prop.type = 'texture'
+            self.prop.value = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
+        return self.prop.value
+
+    def setProperty(self,prop):
+        self.prop = prop
+        if(len(prop.value) == 1):
+            self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[0])))
+        else:
+            self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
+
+
+
+# Option Attribute
+class OptionAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,prop,options):
+        super().__init__()
+        self.prop = prop
+        self.label = QLabel(self.prop.name)
+        self.value = QComboBox()
+        self.disableBtn = QPushButton("X")
+        self.disableBtn.setFixedWidth(30)
+
+        for item in options:
+            self.value.addItem(item)
+ 
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.value)
+        hbox.addWidget(self.disableBtn)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        self.value.setCurrentText(self.prop.value)        
+        self.value.currentIndexChanged.connect(self.changed)
+        self.disableBtn.clicked.connect(self.toggleEnabled)
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+    def hideDisableButton(self,hide):
+        if(hide):
+            self.disableBtn.setVisible(0)
+        else:
+            self.disableBtn.setVisible(1)
+
+    def toggleEnabled(self):
+        if(self.label.isEnabled()):
+            self.prop.enabled = 0
+            self.label.setEnabled(0)
+            self.value.setEnabled(0)
+            self.disableBtn.setFlat(1)
+            self.disableBtn.setText("O")
+        else:
+            self.prop.enabled = 1
+            self.label.setEnabled(1)
+            self.value.setEnabled(1)
+            self.disableBtn.setFlat(0)
+            self.disableBtn.setText("X")
+ 
+    def changed(self,index):
+        self.prop.setValue(self.value.currentText())
+        self.valueChanged.emit()
+
+    def getValue(self):
+        return self.value.currentText()
+
+    def setValue(self,val):
+        self.prop.setValue(val)
+        return self.value.setCurrentText(val)
+
+    def getIndex(self):
+        return self.value.currentIndex()       
+
+    def setProperty(self,prop):
+        self.prop = prop
+        self.value.setCurrentText(self.prop.value[0])
+
+# Int Attribute
+class IntAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+
+    def __init__(self,prop):
+        super().__init__()
+        self.prop = prop
+        self.label = QLabel(self.prop.name)
+        self.value = QLineEdit()
+        self.value.setFixedWidth(80)
+        if self.prop.min is not None and self.prop.max is not None:
+            self.validator = QIntValidator(self.prop.min,self.prop.max)
+            self.value.setValidator(self.validator)
+        self.value.setText("%d"%self.prop.value)
+        self.disableBtn = QPushButton("X")
+        self.disableBtn.setFixedWidth(30)
+
+       
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.value)
+        hbox.addWidget(self.disableBtn)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        # connections
+        self.value.editingFinished.connect(self.changed)
+        self.disableBtn.clicked.connect(self.toggleEnabled)
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+
+    def hideDisableButton(self,hide):
+        if(hide):
+            self.disableBtn.setVisible(0)
+        else:
+            self.disableBtn.setVisible(1)
+
+    def toggleEnabled(self):
+        if(self.label.isEnabled()):
+            self.prop.enabled = 0
+            self.label.setEnabled(0)
+            self.value.setEnabled(0)
+            self.disableBtn.setFlat(1)
+            self.disableBtn.setText("O")
+        else:
+            self.prop.enabled = 1
+            self.label.setEnabled(1)
+            self.value.setEnabled(1)
+            self.disableBtn.setFlat(0)
+            self.disableBtn.setText("X")
+ 
+    def changed(self):
+        self.prop.value = int(self.value.text())
+        self.valueChanged.emit()
+
+    def getValue(self):
+        return int(self.prop.value)
+
+    def setValue(self,val):
+        self.prop.value = val
+        self.value.setText("%d"%val)
+
+    def setProperty(self,prop):
+        self.prop = prop
+        self.value.setText(self.prop.value[0])
+
+
+# Float Attribute
+class FloatAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+
+    def __init__(self,prop):
+        super().__init__()
+        self.prop = prop
+        self.label = QLabel(self.prop.name)
+        self.value = QLineEdit()
+        self.value.setFixedWidth(80)
+        if self.prop.min is not None and self.prop.max is not None:
+            self.validator = QDoubleValidator(self.prop.min,self.prop.max,self.prop.value)
+            self.value.setValidator(self.validator)
+        self.value.setText("%f"%self.prop.value)
+        self.disableBtn = QPushButton("X")
+        self.disableBtn.setFixedWidth(30)
+
+       
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.value)
+        hbox.addWidget(self.disableBtn)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        # connections
+        self.value.editingFinished.connect(self.changed)
+        self.disableBtn.clicked.connect(self.toggleEnabled)
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+
+    def hideDisableButton(self,hide):
+        if(hide):
+            self.disableBtn.setVisible(0)
+        else:
+            self.disableBtn.setVisible(1)
+
+    def toggleEnabled(self):
+        if(self.label.isEnabled()):
+            self.prop.enabled = 0
+            self.label.setEnabled(0)
+            self.value.setEnabled(0)
+            self.disableBtn.setFlat(1)
+            self.disableBtn.setText("O")
+        else:
+            self.prop.enabled = 1
+            self.label.setEnabled(1)
+            self.value.setEnabled(1)
+            self.disableBtn.setFlat(0)
+            self.disableBtn.setText("X")
+ 
+    def changed(self):
+        self.prop.value = float(self.value.text())
+        self.valueChanged.emit()
+
+    def getValue(self):
+        return float(self.prop.value)
+
+    def setValue(self,val):
+        self.prop.value = val
+        self.value.setText("%f"%val)
+
+    def loadProperty(self):
+        self.value.setText(self.prop.value[0])
+
+    def setProperty(self,prop):
+        self.prop = prop
+        self.value.setText(self.prop.value[0])
+
+
+# String Attribute
+class StringAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+
+    def __init__(self,prop):
+        super().__init__()
+        self.prop = prop
+        self.label = QLabel(self.prop.name)
+        self.value = QLineEdit()
+        self.value.setFixedWidth(80)
+        self.value.setText(self.prop.value)
+        self.disableBtn = QPushButton("X")
+        self.disableBtn.setFixedWidth(30)
+
+       
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.value)
+        hbox.addWidget(self.disableBtn)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        # connections
+        self.value.editingFinished.connect(self.changed)
+        self.disableBtn.clicked.connect(self.toggleEnabled)
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+
+    def hideDisableButton(self,hide):
+        if(hide):
+            self.disableBtn.setVisible(0)
+        else:
+            self.disableBtn.setVisible(1)
+
+    def toggleEnabled(self):
+        if(self.label.isEnabled()):
+            self.prop.enabled = 0
+            self.label.setEnabled(0)
+            self.value.setEnabled(0)
+            self.disableBtn.setFlat(1)
+            self.disableBtn.setText("O")
+        else:
+            self.prop.enabled = 1
+            self.label.setEnabled(1)
+            self.value.setEnabled(1)
+            self.disableBtn.setFlat(0)
+            self.disableBtn.setText("X")
+ 
+    def changed(self):
+        self.prop.value = self.value.text()
+        self.valueChanged.emit()
+
+    def getValue(self):
+        return self.prop.value
+
+    def setValue(self,val):
+        self.prop.value = val
+        self.value.setText(val)
+
+    def setProperty(self,prop):
+        self.prop = prop
+        self.value.setText(self.prop.value[0])
+
+
+# File Attribute
+class FileAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,prop):
+        super().__init__()
+        self.prop = prop
+        label = QLabel(self.prop.name)
+        self.value = QPushButton("browse")
+        self.value.setFixedWidth(150)
+        self.value.setText(self.prop.value)
+        
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(label)
+        hbox.addWidget(self.value)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        # connections
+        self.value.clicked.connect(self.getFile)
+
+    def getFile(self):
+        filename = QFileDialog.getOpenFileName(self,"Open Image",".","Image Files (*.jpg *.png *.bmp)")
+        self.value.setText(filename[0])
+        self.prop.value = self.value.text()
+        self.valueChanged.emit()
+
+    def getValue(self):
+        return self.prop.value
+
+    def setValue(self,val):
+        self.prop.value = val
+        self.value.setText(val)
+
+    def setProperty(self,prop):
+        self.prop = prop
+        self.value.setText(self.prop.value[0])
+
+
+# EDITOR ATTRIBUTES
+
+# MATERIAL EDITORS
+
+# material emission
+class MaterialEmissionEditor(QWidget):
+    valuesChanged = pyqtSignal()
+
+    def __init__(self,name,mtype,lux):
+        super().__init__()
+        self.name = name
+        self.mtype = mtype
+        self.lux = lux
+        self.props = MaterialEmissionProps()
+        self.emission = TextureAttribute(self.props.emission,self.lux) 
+        self.emissiongain = TextureAttribute(self.props.emissiongain,self.lux) 
+        self.emissionpower = IntAttribute(self.props.emissionpower) 
+        self.emissionefficency = IntAttribute(self.props.emissionefficency) 
+
+        gbox = QGroupBox("emission")
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.emission)
+        vbox.addWidget(self.emissiongain)
+        vbox.addWidget(self.emissionpower)
+        vbox.addWidget(self.emissionefficency)
+        vbox.addStretch()
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        gbox = QGroupBox("emission")
+        gbox.setLayout(vbox)
+        gvbox = QVBoxLayout(self)
+        gvbox.addWidget(gbox)
+        gvbox.addStretch()
+        gvbox.setContentsMargins(0,0,0,0)
+        gvbox.setSpacing(0)
+
+        self.emission.valueChanged.connect(self.valueChanged)
+        self.emissiongain.valueChanged.connect(self.valueChanged)
+        self.emissionpower.valueChanged.connect(self.valueChanged)
+        self.emissionefficency.valueChanged.connect(self.valueChanged)
+
+    def valueChanged(self):
+        self.props.emission.setValue(self.emission.getColorValue())
+        self.props.emissiongain.setValue(self.emissiongain.getColorValue())
+        self.props.emissionpower.setValue(self.emissionpower.getValue())
+        self.props.emissionefficency.setValue(self.emissionefficency.getValue())
+        self.valuesChanged.emit() 
+
+    def loadProps(self):
+        self.props = self.lux.core().getMaterialProperties("materialemission",self.name)
+        self.emission.setProperty(self.props.emission)
+        self.emissiongain.setProperty(self.props.emissiongain)
+        self.emissionpower.setProperty(self.props.emissionpower)
+        self.emissionefficency.setProperty(self.props.emissionefficency)
+
+    def verify(self):
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".emission", self.props.emission)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".emission.gain", self.props.emissiongain)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".emission.power", self.props.emissionpower)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".emission.efficency", self.props.emissionefficency)
+
+
+# matte
+class MatteEditor(QWidget):
+
+    def __init__(self,name,lux):
+        super().__init__()
+        self.name = name
+        self.lux = lux
+        self.props = MatteProps()
+        self.kd = TextureAttribute(self.props.kd,self.lux)
+        self.emission = MaterialEmissionEditor(self.name,"matte",self.lux)
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.kd)
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        gbox = QGroupBox("matte")
+        gbox.setLayout(vbox)
+    
+        mvbox = QVBoxLayout(self)
+        mvbox.addWidget(gbox)
+        mvbox.addWidget(self.emission)
+        mvbox.addStretch()
+        mvbox.setContentsMargins(0,0,0,0)
+        mvbox.setSpacing(0)
+
+        self.kd.valueChanged.connect(self.valueChanged)
+        self.emission.valuesChanged.connect(self.valueChanged)
+
+    def setName(self,name):
+        self.name = name
+        self.emission.name = name
+
+    def valueChanged(self):
+        self.props.kd.setValue(self.kd.getColorValue())
+        props = "scene.materials." + self.name + ".type = \"matte\"\n"
+        props += self.props.getPropertyString(self.name)
+        props += self.emission.props.getPropertyString(self.name)
+        self.lux.core().setProperties(props)
+
+    def loadProps(self):
+        self.verify()
+        self.props = self.lux.core().getMaterialProperties("matte",self.name)
+        self.kd.setProperty(self.props.kd)
+
+    def verify(self):
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".kd", self.props.kd)
+        self.emission.verify()
+
+# carpaint 
+class CarPaintEditor(QWidget):
+
+    def __init__(self,name,lux):
+        super().__init__()
+        self.name = name
+        self.lux = lux
+        self.props = CarPaintProps()
+        self.preset = OptionAttribute(self.props.preset,["ford f8","polaris sliber","opei titan","bmw339","2k acrylack","white","blue","blue matte"])
+        self.ka = TextureAttribute(self.props.ka,self.lux)
+        self.d = TextureAttribute(self.props.d,self.lux)
+        self.kd = TextureAttribute(self.props.kd,self.lux)
+        self.ks1 = TextureAttribute(self.props.ks1,self.lux)
+        self.ks2 = TextureAttribute(self.props.ks2,self.lux)
+        self.ks3 = TextureAttribute(self.props.ks3,self.lux)
+        self.r1 = TextureAttribute(self.props.r1,self.lux)
+        self.r2 = TextureAttribute(self.props.r2,self.lux)
+        self.r3 = TextureAttribute(self.props.r3,self.lux)
+        self.m1 = TextureAttribute(self.props.m1,self.lux)
+        self.m2 = TextureAttribute(self.props.m2,self.lux)
+        self.m3 = TextureAttribute(self.props.m3,self.lux)
+
+        self.emission = MaterialEmissionEditor(self.name,"carpaint",self.lux) 
+
+        self.ka.toggleEnabled()
+        self.d.toggleEnabled()
+        self.kd.toggleEnabled()
+        self.ks1.toggleEnabled()
+        self.ks2.toggleEnabled()
+        self.ks3.toggleEnabled()
+        self.r1.toggleEnabled()
+        self.r2.toggleEnabled()
+        self.r3.toggleEnabled()
+        self.m1.toggleEnabled()
+        self.m2.toggleEnabled()
+        self.m3.toggleEnabled()
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.preset)
+        vbox.addWidget(self.ka)
+        vbox.addWidget(self.d)
+        vbox.addWidget(self.kd)
+        vbox.addWidget(self.ks1)
+        vbox.addWidget(self.ks2)
+        vbox.addWidget(self.ks3)
+        vbox.addWidget(self.r1)
+        vbox.addWidget(self.r2)
+        vbox.addWidget(self.r3)
+        vbox.addWidget(self.m1)
+        vbox.addWidget(self.m2)
+        vbox.addWidget(self.m3)
+
+        vbox.addStretch()
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        gbox = QGroupBox("matte")
+        gbox.setLayout(vbox)
+    
+        mvbox = QVBoxLayout(self)
+        mvbox.addWidget(gbox)
+        mvbox.addWidget(self.emission)
+        mvbox.addStretch()
+        mvbox.setContentsMargins(0,0,0,0)
+        mvbox.setSpacing(0)
+
+        self.preset.valueChanged.connect(self.valueChanged)
+        self.ka.valueChanged.connect(self.valueChanged)
+        self.d.valueChanged.connect(self.valueChanged)
+        self.kd.valueChanged.connect(self.valueChanged)
+        self.ks1.valueChanged.connect(self.valueChanged)
+        self.ks2.valueChanged.connect(self.valueChanged)
+        self.ks3.valueChanged.connect(self.valueChanged)
+        self.r1.valueChanged.connect(self.valueChanged)
+        self.r2.valueChanged.connect(self.valueChanged)
+        self.r3.valueChanged.connect(self.valueChanged)
+        self.m1.valueChanged.connect(self.valueChanged)
+        self.m2.valueChanged.connect(self.valueChanged)
+        self.m3.valueChanged.connect(self.valueChanged)
+        self.emission.valuesChanged.connect(self.valueChanged)
+
+    def setName(self,name):
+        self.name = name
+        self.emission.name = name
+
+    def valueChanged(self):
+        self.props.preset.setValue(self.preset.getValue())
+        self.props.ka.setValue(self.ka.getColorValue())
+        self.props.d.setValue(self.d.getColorValue())
+        self.props.kd.setValue(self.kd.getColorValue())
+        self.props.ks1.setValue(self.ks1.getColorValue())
+        self.props.ks2.setValue(self.ks2.getColorValue())
+        self.props.ks3.setValue(self.ks3.getColorValue())
+        self.props.r1.setValue(self.r1.getColorValue())
+        self.props.r2.setValue(self.r2.getColorValue())
+        self.props.r3.setValue(self.r3.getColorValue())
+        self.props.m1.setValue(self.m1.getColorValue())
+        self.props.m2.setValue(self.m2.getColorValue())
+        self.props.m3.setValue(self.m3.getColorValue())
+
+        props = "scene.materials." + self.name + ".type = \"carpaint\"\n"
+        props += self.props.getPropertyString(self.name)
+        props += self.emission.props.getPropertyString(self.name)
+        self.lux.core().setProperties(props)
+
+    def loadProps(self):
+        self.verify()
+        self.props = self.lux.core().getMaterialProperties("carpaint",self.name)
+        self.ka.setProperty(self.props.ka)
+        self.d.setProperty(self.props.d)
+        self.kd.setProperty(self.props.kd)
+        self.ks1.setProperty(self.props.ks1)
+        self.ks2.setProperty(self.props.ks2)
+        self.ks3.setProperty(self.props.ks3)
+        self.r1.setProperty(self.props.r1)
+        self.r2.setProperty(self.props.r2)
+        self.r3.setProperty(self.props.r3)
+        self.m1.setProperty(self.props.m1)
+        self.m2.setProperty(self.props.m2)
+        self.m3.setProperty(self.props.m3)
+
+    def verify(self):
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".preset", self.props.preset)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".ka", self.props.ka)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".d", self.props.d)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".kd", self.props.kd)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".ks1", self.props.ks1)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".ks2", self.props.ks2)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".ks3", self.props.ks3)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".r1", self.props.r1)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".r2", self.props.r2)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".r3", self.props.r3)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".m1", self.props.m1)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".m2", self.props.m2)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".m3", self.props.m3)
+        self.emission.verify()
+ 
+
+# glass
+class GlassEditor(QWidget):
+
+    def __init__(self,name,lux):
+        super().__init__()
+        self.name = name
+        self.lux = lux
+        self.props = GlassProps()
+        self.kr = TextureAttribute(self.props.kr,self.lux)
+        self.kt = TextureAttribute(self.props.kt,self.lux)
+        self.interior = TextureAttribute(self.props.interior,self.lux)
+        self.exterior = TextureAttribute(self.props.exterior,self.lux)
+        self.emission = MaterialEmissionEditor(self.name,"glass",self.lux) 
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.kr)
+        vbox.addWidget(self.kt)
+        vbox.addWidget(self.interior)
+        vbox.addWidget(self.exterior)
+        vbox.addStretch()
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        gbox = QGroupBox("matte")
+        gbox.setLayout(vbox)
+    
+        mvbox = QVBoxLayout(self)
+        mvbox.addWidget(gbox)
+        mvbox.addWidget(self.emission)
+        mvbox.addStretch()
+        mvbox.setContentsMargins(0,0,0,0)
+        mvbox.setSpacing(0)
+
+        self.kr.valueChanged.connect(self.valueChanged)
+        self.kt.valueChanged.connect(self.valueChanged)
+        self.interior.valueChanged.connect(self.valueChanged)
+        self.exterior.valueChanged.connect(self.valueChanged)
+        self.emission.valuesChanged.connect(self.valueChanged)
+
+    def setName(self,name):
+        self.name = name
+        self.emission.name = name
+
+    def valueChanged(self):
+        self.props.kr.setValue(self.kr.getColorValue())
+        self.props.kt.setValue(self.kt.getColorValue())
+        self.props.interior.setValue(self.interior.getColorValue())
+        self.props.exterior.setValue(self.exterior.getColorValue())
+        props = "scene.materials." + self.name + ".type = \"glass\"\n"
+        props += self.props.getPropertyString(self.name)
+        props += self.emission.props.getPropertyString(self.name)
+        self.lux.core().setProperties(props)
+
+    def loadProps(self):
+        self.verify()
+        self.props = self.lux.core().getMaterialProperties("glass",self.name)
+        self.kr.setProperty(self.props.kr)
+        self.kt.setProperty(self.props.kt)
+        self.interior.setProperty(self.props.interior)
+        self.exterior.setProperty(self.props.exterior)
+ 
+    def verify(self):
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".kr", self.props.kr)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".kt", self.props.kt)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".interior", self.props.interior)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".exterior", self.props.exterior)
+        self.emission.verify()
+
+# glossy2 
+class Glossy2Editor(QWidget):
+
+    def __init__(self,name,lux):
+        super().__init__()
+        self.name = name
+        self.lux = lux
+        self.props = Glossy2Props()
+        self.kd = TextureAttribute(self.props.kd,self.lux)
+        self.ks = TextureAttribute(self.props.ks,self.lux)
+        self.uroughness = TextureAttribute(self.props.uroughness,self.lux)
+        self.vroughness = TextureAttribute(self.props.vroughness,self.lux)
+        self.emission = MaterialEmissionEditor(self.name,"glossy2",self.lux) 
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.kd)
+        vbox.addWidget(self.ks)
+        vbox.addWidget(self.uroughness)
+        vbox.addWidget(self.vroughness)
+        vbox.addStretch()
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        gbox = QGroupBox("matte")
+        gbox.setLayout(vbox)
+    
+        mvbox = QVBoxLayout(self)
+        mvbox.addWidget(gbox)
+        mvbox.addWidget(self.emission)
+        mvbox.addStretch()
+        mvbox.setContentsMargins(0,0,0,0)
+        mvbox.setSpacing(0)
+
+        self.kd.valueChanged.connect(self.valueChanged)
+        self.ks.valueChanged.connect(self.valueChanged)
+        self.uroughness.valueChanged.connect(self.valueChanged)
+        self.vroughness.valueChanged.connect(self.valueChanged)
+        self.emission.valuesChanged.connect(self.valueChanged)
+
+    def setName(self,name):
+        self.name = name
+        self.emission.name = name
+
+    def valueChanged(self):
+        self.props.kd.setValue(self.kd.getColorValue())
+        self.props.ks.setValue(self.ks.getColorValue())
+        self.props.uroughness.setValue(self.uroughness.getColorValue())
+        self.props.vroughness.setValue(self.vroughness.getColorValue())
+        props = "scene.materials." + self.name + ".type = \"glossy2\"\n"
+        props += self.props.getPropertyString(self.name)
+        props += self.emission.props.getPropertyString(self.name)
+        self.lux.core().setProperties(props)
+
+    def loadProps(self):
+        self.verify()
+        self.props = self.lux.core().getMaterialProperties("glossy2",self.name)
+        self.kd.setProperty(self.props.kd)
+        self.ks.setProperty(self.props.ks)
+        self.uroughness.setProperty(self.props.uroughness)
+        self.vroughness.setProperty(self.props.vroughness)
+
+    def verify(self):
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".kd", self.props.kd)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".ks", self.props.ks)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".uroughness", self.props.uroughness)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".vroughness", self.props.vroughness)
+        self.emission.verify()
+
+# TEXTURE EDITORS 
+
+class ImageMapEditor(QWidget):
+
+    def __init__(self,name,lux):
+        super().__init__()
+        self.name = name
+        self.lux = lux
+        self.props = ImageMapProps()
+        self.setFixedWidth(250)
+        self.file = FileAttribute(self.props.file)
+        self.gamma = FloatAttribute(self.props.gamma) 
+        self.gain = FloatAttribute(self.props.gain) 
+
+        vbox = QVBoxLayout(self)
+        vbox.addWidget(self.file)
+        vbox.addWidget(self.gamma)
+        vbox.addWidget(self.gain)
+        vbox.addStretch()
+
+        self.file.valueChanged.connect(self.valueChanged)
+        self.gamma.valueChanged.connect(self.valueChanged)
+        self.gain.valueChanged.connect(self.valueChanged)
+
+
+    def setName(self,name):
+        self.name = name
+
+    def valueChanged(self):
+        self.props.file.setValue(self.file.getValue())
+        self.props.gamma.setValue(self.gamma.getValue())
+        self.props.gain.setValue(self.gain.getValue())
+        self.lux.core().setProperties(self.props.getPropertyString(self.name))
+
+
+    def loadProps(self):
+        self.verify()
+        self.props = self.lux.core().getTextureProperties("imagemap",self.name)
+        self.file.setProperty(self.props.file)
+        self.gamma.setProperty(self.props.gamma)
+        self.gain.setProperty(self.props.gain)
+
+    def verify(self):
+        self.lux.core().verifyProperty("scene.textures." + self.name + ".file", self.props.file)
+        self.lux.core().verifyProperty("scene.textures." + self.name + ".gamma", self.props.gamma)
+        self.lux.core().verifyProperty("scene.textures." + self.name + ".gain", self.props.gain)
+
+
+class MaterialEditor(QWidget):
+
+    def __init__(self,mtype,lux):
+        super().__init__()
+        self.lux = lux
+        self.name = ""
+        self.mtype = Property('type', 'string', None, None, "matte")
+        self.materialtype = OptionAttribute(self.mtype,["matte","carpaint","glass","glossy2"])
+        self.materialtype.hideDisableButton(1)
+
+        self.stack = QStackedWidget()
+        self.stack.addWidget(QFrame()) # base
+        # Materials
+        self.stack.addWidget(MatteEditor("",self.lux))
+        self.stack.addWidget(CarPaintEditor("",self.lux))
+        self.stack.addWidget(GlassEditor("",self.lux))
+        self.stack.addWidget(Glossy2Editor("",self.lux))
+
+        self.vbox = QVBoxLayout(self)
+        self.vbox.addWidget(self.materialtype)
+        self.vbox.addWidget(self.stack)
+        self.vbox.addStretch()
+        self.vbox.setContentsMargins(0,0,0,0)
+        self.vbox.setSpacing(0)
+
+        self.materialtype.valueChanged.connect(self.materialChanged)
+
+    def materialChanged(self):
+        call = "scene.materials.%s.type = \"%s\"\n"%(self.name,self.materialtype.getValue())
+        print("CALL = " + call)
+        self.lux.core().setProperties(call)
+        self.setEditor(self.name,self.materialtype.getValue())
+
+    def setEditor(self,name,luxtype):
+        self.name = name
+        self.stack.setCurrentIndex(0)
+
+        # Materials
+        if luxtype == 'matte':
+            self.stack.widget(1).setName(name)
+            self.stack.widget(1).loadProps()
+            self.stack.setCurrentIndex(1)
+            self.stack.widget(1).valueChanged()
+            self.materialtype.setValue('matte')
+        if luxtype == 'carpaint':
+            self.stack.widget(2).setName(name)
+            self.stack.widget(2).loadProps()
+            self.stack.setCurrentIndex(2)
+            self.stack.widget(2).valueChanged()
+            self.materialtype.setValue('carpaint')
+        if luxtype == 'glass':
+            self.stack.widget(3).setName(name)
+            self.stack.widget(3).loadProps()
+            self.stack.setCurrentIndex(3)
+            self.stack.widget(3).valueChanged()
+            self.materialtype.setValue('glass')
+        if luxtype == 'glossy2':
+            self.stack.widget(4).setName(name)
+            self.stack.widget(4).loadProps()
+            self.stack.setCurrentIndex(4)
+            self.stack.widget(4).valueChanged()
+            self.materialtype.setValue('glossy2')
+ 
+# DOCKS
+
+# ATTRIBUTE EDITOR DOCK
+
+class AttributeEditor(QDockWidget):
+
+    def __init__(self,lux):
+        super().__init__()
+        self.lux = lux
+        self.setWindowTitle("Attribute Editor")
+        self.label = QLabel("----")
+        self.label.setFont(QFont("Sans",12))
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setFrameStyle(QFrame.Panel | QFrame.Raised)
+        palette = QPalette()
+        palette.setColor(QPalette.Base,QColor(1,0,0))
+        self.label.setPalette(palette)
+
+        frame = QFrame()
+
+        self.stack = QStackedWidget()
+        self.stack.addWidget(QFrame()) # base
+        # Materials
+        self.stack.addWidget(MaterialEditor("",self.lux)) # matte material
+        # ...
+        # Textures
+        self.stack.addWidget(ImageMapEditor("",self.lux)) # imagemap texture
+        # ...
+
+        self.vbox = QVBoxLayout()
+        self.vbox.addWidget(self.label)
+        self.vbox.addWidget(self.stack)
+        self.vbox.addStretch()
+        self.vbox.setContentsMargins(0,0,0,0)
+        self.vbox.setSpacing(0)
+
+        frame.setLayout(self.vbox)
+        self.setWidget(frame)
+
+    def setEditor(self,luxtype,subtype,name):
+        self.label.setText(name)
+        self.stack.setCurrentIndex(0)
+
+        # Materials
+        if luxtype == 'material':
+            self.stack.widget(1).setEditor(name,self.lux.core().getMaterialType(name)[0])
+            self.stack.setCurrentIndex(1)
+
+        # Textures
+        if luxtype == 'texture':
+            self.stack.widget(2).setName(name)
+            self.stack.setCurrentIndex(2)
+
+
+# SCENE LAYOUT DOCK
+
+class SceneLayout(QDockWidget):
+    objectSelected = pyqtSignal(['QString'])
+    materialSelected = pyqtSignal(['QString'])
+    textureSelected = pyqtSignal(['QString'])
+    lightSelected = pyqtSignal(['QString'])
+
+    def __init__(self,lux):
+        super().__init__()
+        self.lux = lux
+        self.setWindowTitle("Scene Layout")
+        frame = QFrame(self)
+        tabs = QTabWidget()
+        self.objects = QListWidget()
+        self.materials = QListWidget()
+        self.textures = QListWidget()
+        self.lights = QListWidget()
+        self.addBtn = QPushButton("+")
+        self.removeBtn = QPushButton("-")
+        self.renameBtn = QPushButton("rename")
+
+        tabs.addTab(self.objects,"Obj")
+        tabs.addTab(self.materials,"Mat")
+        tabs.addTab(self.textures, "Tex")
+        tabs.addTab(self.lights, "Lights")
+        tabs.setTabPosition(QTabWidget.North)
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.renameBtn)
+        hbox.addWidget(self.addBtn)
+        hbox.addWidget(self.removeBtn)
+
+        vbox = QVBoxLayout(self) 
+        frame.setLayout(vbox)
+        vbox.addWidget(tabs)
+        vbox.addLayout(hbox)
+
+        self.setWidget(frame)
+
+        self.objects.itemClicked.connect(self.objectChanged)
+        self.materials.itemClicked.connect(self.materialChanged)
+        self.textures.itemClicked.connect(self.textureChanged)
+        self.lights.itemClicked.connect(self.lightChanged)
+ 
+    def updateTabs(self, lux):
+        # Objects
+        self.objects.clear()
+        for o in lux.objects:
+            self.objects.addItem(o[14:])
+
+        # Materials
+        self.materials.clear()
+        for m in lux.materials:
+            self.materials.addItem(m[16:])
+
+        # Materials
+        self.textures.clear()
+        for t in lux.textures:
+            self.textures.addItem(t[15:])
+
+        # Materials
+        self.lights.clear()
+        for l in lux.lights:
+            self.lights.addItem(l[13:])
+
+    def objectChanged(self,item):
+        self.objectSelected.emit(item.text())
+
+    def materialChanged(self,item):
+        self.materialSelected.emit(item.text())
+
+    def textureChanged(self,item):
+        self.textureSelected.emit(item.text())
+
+    def lightChanged(self,item):
+        self.lightSelected.emit(item.text())
+
+
+# RENDER SETTINGS
+
+# SAMPLER BOX 
+class SamplerBox(QGroupBox):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,props):
+        super().__init__("sampler")
+        self.props = props
+
+        self.samplerType = OptionAttribute(self.props.samplertype,["SOBOL","METROPOLIS","RANDOM"])
+        self.samplerType.hideDisableButton(1)
+        self.metropolisLargestEpRate = FloatAttribute(self.props.metropolislargesteprate)
+        self.metropolisMaxConsecutiveReject = IntAttribute(self.props.metropolismaxconsecutivereject)
+        self.metropolisImageMutationRate = FloatAttribute(self.props.metropolisimagemutationrate)
+ 
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.samplerType)
+        vbox.addWidget(self.metropolisLargestEpRate)
+        vbox.addWidget(self.metropolisMaxConsecutiveReject)
+        vbox.addWidget(self.metropolisImageMutationRate)
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        self.setLayout(vbox)
+
+        self.samplerType.valueChanged.connect(self.updateSettings)
+        self.samplerType.setValue(self.props.samplertype.value)
+        self.metropolisLargestEpRate.valueChanged.connect(self.updateSettings)
+        self.metropolisMaxConsecutiveReject.valueChanged.connect(self.updateSettings)
+        self.metropolisImageMutationRate.valueChanged.connect(self.updateSettings)
+ 
+    def updateSettings(self):
+        self.props.samplertype.setValue(self.samplerType.getValue())
+        self.props.metropolislargesteprate.setValue(self.metropolisLargestEpRate.getValue())
+        self.props.metropolismaxconsecutivereject.setValue(self.metropolisMaxConsecutiveReject.getValue())
+        self.props.metropolisimagemutationrate.setValue(self.metropolisImageMutationRate.getValue())
+
+        if(self.samplerType.getValue() == 'METROPOLIS'):
+            self.metropolisLargestEpRate.show()
+            self.metropolisMaxConsecutiveReject.show()
+            self.metropolisImageMutationRate.show()
+        else:
+            self.metropolisLargestEpRate.hide()
+            self.metropolisMaxConsecutiveReject.hide()
+            self.metropolisImageMutationRate.hide()
+
+        self.valueChanged.emit() 
+
+
+# FILTER BOX 
+class FilterBox(QGroupBox):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,props):
+        super().__init__("filter")
+        self.props = props
+
+        self.filterType = OptionAttribute(self.props.samplertype,["NONE","BOX","GAUSSIAN","MITCHELL","MITCHELL_SS","BLACKMANHARRIS"])
+        self.filterType.hideDisableButton(1) 
+ 
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.filterType)
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        self.setLayout(vbox)
+
+        self.filterType.valueChanged.connect(self.updateSettings)
+        self.filterType.setValue(self.props.filtertype.value)
+
+    def updateSettings(self):
+        self.props.filtertype.setValue(self.filterType.getValue())
+        self.valueChanged.emit() 
+
+
+class RenderSettings(QDockWidget):
+    objectSelected = pyqtSignal(['QString'])
+
+    def __init__(self,lux):
+        super().__init__()
+        self.lux = lux
+        self.setWindowTitle("Render Settings")
+
+        self.props = self.lux.core().getRenderSettings()
+
+        self.preset = QComboBox()
+        self.preset.addItem("custom")
+        self.preset.addItem("4:3 low res")
+        self.preset.addItem("1:79 low res")
+        self.preset.addItem("2.39 low res")
+        self.preset.addItem("4:3 med res")
+        self.preset.addItem("1:79 med res")
+        self.preset.addItem("2.39 med res")
+        self.preset.addItem("4:3 hd")
+        self.preset.addItem("1:79 hd")
+        self.preset.addItem("2.39 hd")
+        self.preset.addItem("4:3 4k")
+        self.preset.addItem("1:79 4k")
+        self.preset.addItem("2.39 4k")
+
+        frame = QFrame()
+        self.renderWidth = IntAttribute(self.props.width)
+        self.renderWidth.hideDisableButton(1)
+        self.renderHeight = IntAttribute(self.props.height)
+        self.renderHeight.hideDisableButton(1)
+        self.renderType = OptionAttribute(self.props.type,["PATHCPU","BIASPATHCPU","BIDIRCPU","PATHOCL","RTPATHOCL","BIASPATHOCL","RTBIASPATHOCL"])
+        self.renderType.hideDisableButton(1)
+        self.sampler = SamplerBox(self.props)
+        self.filter = FilterBox(self.props)
+ 
+        vbox = QVBoxLayout()
+        vbox.addWidget(QLabel("Presets"))
+        vbox.addWidget(self.preset)
+        vbox.addWidget(self.renderWidth)
+        vbox.addWidget(self.renderHeight)
+        vbox.addWidget(self.renderType)
+        vbox.addWidget(self.sampler)
+        vbox.addWidget(self.filter)
+        vbox.addStretch()
+        vbox.setSpacing(0)
+
+        frame.setLayout(vbox)
+        self.setWidget(frame)
+
+        self.sampler.updateSettings()
+        self.filter.updateSettings()
+
+        self.renderWidth.valueChanged.connect(self.updateSettings)
+        self.renderHeight.valueChanged.connect(self.updateSettings)
+        self.renderType.valueChanged.connect(self.updateSettings)
+        self.sampler.valueChanged.connect(self.updateSettings)
+        self.filter.valueChanged.connect(self.updateSettings)
+
+    def updateSettings(self):
+        print("Updating Render Settings")
+        self.props.width.setValue(self.renderWidth.getValue())
+        self.props.height.setValue(self.renderHeight.getValue())
+        self.props.type.setValue(self.renderType.getValue())
+
+        propstring = self.props.getPropertyString()
+        self.lux.setRenderSettings(self.props,propstring)
+
+
+class TimeEditor(QWidget):
+    frameChanged = pyqtSignal(['int'])
+
+    def __init__(self,lux):
+        super().__init__()
+        self.sframe = QLineEdit()
+        self.eframe = QLineEdit()
+        self.cframe = QLabel()
+        self.slider = QSlider(Qt.Horizontal)
+
+        self.sframe.setFixedWidth(50)
+        self.eframe.setFixedWidth(50)
+
+        self.framevalidator = QIntValidator(-10000,10000)
+        self.sframe.setValidator(self.framevalidator)
+        self.eframe.setValidator(self.framevalidator)
+ 
+        self.sframe.setText('1')
+        self.eframe.setText('24')
+        self.cframe.setText('1')
+
+        self.cframe.setFont(QFont("Sans",12))
+        self.cframe.setAlignment(Qt.AlignCenter)
+        self.cframe.setFrameStyle(QFrame.Panel | QFrame.Raised)
+ 
+        vbox = QVBoxLayout(self)
+        vbox.addWidget(self.cframe)
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.sframe)
+        hbox.addWidget(self.slider)
+        hbox.addWidget(self.eframe)
+        vbox.addLayout(hbox) 
+
+        self.slider.setMinimum(int(self.sframe.text()))
+        self.slider.setMaximum(int(self.eframe.text()))
+        self.slider.valueChanged.connect(self.setCurrentFrame)
+
+    def setCurrentFrame(self,val):
+        self.cframe.setText("%d"%val)
+        self.frameChanged.emit(val)
+
+
+# MAIN MENU
+
+# FILE ACTIONS
+class FileNewAction(QAction):
+
+    def __init__(self,parent):
+        super().__init__("New",parent)
+        self.triggered.connect(self.doit)
+
+    def doit(self):
+        print("New")
+
+
+class FileSaveAction(QAction):
+
+    def __init__(self,parent):
+        super().__init__("Save",parent)
+        self.triggered.connect(self.doit)
+
+    def doit(self):
+        print("Save")
+
+class FileExitAction(QAction):
+
+    def __init__(self,parent):
+        super().__init__("Exit",parent)
+        self.triggered.connect(self.doit)
+
+    def doit(self):
+        print("Exit")
+
+ 
+class ImportMenu(QMenu):
+
+    def __init__(self,parent):
+        super().__init__("Import",parent)
+        self.addAction(ImportPlyAction(self))
+
+class ExportMenu(QMenu):
+
+    def __init__(self,parent):
+        super().__init__("Export",parent)
+        self.addAction(ExportSceneAction(self))
+
+# IMPORT ACTIONS
+class ImportPlyAction(QAction):
+
+    def __init__(self,parent):
+        super().__init__("Ply",parent)
+        self.triggered.connect(self.doit)
+
+    def doit(self):
+        print("Ply")
+
+
+# EXPORT ACTIONS 
+class ExportSceneAction(QAction):
+
+    def __init__(self,parent):
+        super().__init__("Scene",parent)
+        self.triggered.connect(self.doit)
+
+    def doit(self):
+        print("Scene")
+
+ 
+class FileMenu(QMenu):
+
+    def __init__(self,name):
+        super().__init__(name)
+        self.addAction(FileNewAction(self))
+        self.addAction(FileSaveAction(self))
+        self.addSeparator()
+        self.addMenu(ImportMenu(self))
+        self.addMenu(ExportMenu(self))
+        self.addSeparator()
+        self.addAction(FileExitAction(self))
+ 
+
+class MainMenu(QMenuBar):
+
+    def __init__(self):
+        super().__init__()
+        self.fileMenu = FileMenu("File")
+
+        self.addMenu(self.fileMenu)
+
+ 
+# MAIN WINDOW
+ 
+class Example(QMainWindow):
+    
+    def __init__(self):
+        super().__init__()
+        self.thread = QThread()
+        self.lux = LuxWidget(1200,800)        
+
+        # Create UI widgets 
+        self.sceneLayout = SceneLayout(self.lux)
+        self.attributeEditor = AttributeEditor(self.lux)
+        self.renderSettings = RenderSettings(self.lux)
+        self.status = QStatusBar()
+        frame = QFrame()
+        luxframe = QFrame()
+        luxframe.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
+        luxvbox = QHBoxLayout()
+        timeeditor = TimeEditor(self.lux)
+
+        luxframe.setLayout(luxvbox)
+        luxframe.setAutoFillBackground(1)
+        palette = QPalette()
+        palette.setColor(QPalette.Background,QColor(0,0,0))
+        luxframe.setPalette(palette)
+
+        luxvbox.addWidget(self.lux,Qt.AlignCenter)
+
+        self.menu = MainMenu()
+        self.setMenuBar(self.menu)
+
+        # Layout UI widgets
+        vbox = QVBoxLayout()
+        vbox.addWidget(luxframe,Qt.AlignCenter)
+        vbox.addWidget(timeeditor)
+        self.setCentralWidget(frame)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.sceneLayout);
+        self.addDockWidget(Qt.RightDockWidgetArea, self.attributeEditor);
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.renderSettings);
+        self.setStatusBar(self.status)
+
+        # Setup UI widgets
+        self.status.showMessage("Starting...")
+        frame.setLayout(vbox)
+        self.setWindowTitle('LuxEd')
+
+
+        # Connections setup
+        self.sceneLayout.objectSelected.connect(self.objectSelected)
+        self.sceneLayout.materialSelected.connect(self.materialSelected)
+        self.sceneLayout.textureSelected.connect(self.textureSelected)
+        self.sceneLayout.lightSelected.connect(self.lightSelected)
+     
+        self.show()
+
+        self.sceneLayout.updateTabs(self.lux.lux)
+
+        t = QTimer(self)
+        t.timeout.connect(self.updateLux)
+        t.start(1000)
+
+        # Start the render
+        self.lux.startRendering()
+
+    def updateLux(self):
+        self.lux.writeImage()
+        self.lux.repaint()
+        self.status.clearMessage()
+        self.status.showMessage(("[Elapsed time: %3d/5sec][Samples %4d][Avg. samples/sec %3.2fM on %.1fK tris]" % (
+                self.lux.getTime(),
+                self.lux.getPass(),
+                (self.lux.getSpp() / 1000000.0),
+                (self.lux.getTriCount() / 1000.0))))
+
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Escape:
+            self.lux.stopRendering()
+            self.close()
+
+    def objectSelected(self,item):
+        print("Object Selected %s"%item)
+        #self.attributeEditor.setEditor("object","",item)
+
+    def materialSelected(self,item):
+        print("Material Selected %s"%item)
+        self.attributeEditor.setEditor("material",self.lux.core().getMaterialType(item),item)
+
+    def textureSelected(self,item):
+        print("Texture Selected %s"%item)
+        self.attributeEditor.setEditor("texture",self.lux.core().getTextureType(item),item)
+
+    def lightSelected(self,item):
+        print("Light Selected %s"%item)
+        #self.attributeEditor.setEditor("object","",item)
+
+if __name__ == '__main__':
+    
+    app = QApplication(sys.argv)
+    ex = Example()
+    sys.exit(app.exec_())

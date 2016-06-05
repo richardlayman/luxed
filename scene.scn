@@ -1,0 +1,172 @@
+# CAMERA
+scene.camera.cliphither = 0.00100000005
+scene.camera.clipyon = 1.00000002e+30
+scene.camera.lensradius = 0
+scene.camera.focaldistance = 1.00000002e+30
+scene.camera.shutteropen = 0
+scene.camera.shutterclose = 0.0416666679
+scene.camera.autofocus.enable = 0
+scene.camera.lookat.orig = 0.649246990680694580078125 0.279195994138717651367188 0.148695006966590881347656
+scene.camera.lookat.target =0.107509911060333251953125 1.0487911701202392578125 -0.189305052161216735839844
+scene.camera.up = 0 0 1
+scene.camera.cliphither = 0.0010000000474974513053894
+scene.camera.clipyon = 1.00000001504746621987669e+30
+scene.camera.lensradius = 0.00218750000931322574615479
+scene.camera.focaldistance = 0.28457677364349365234375
+scene.camera.fieldofview = 49.13433837890625
+scene.camera.horizontalstereo.enable = 0
+scene.camera.horizontalstereo.oculusrift.barrelpostpro.enable = 0
+scene.camera.autofocus.enable = 1
+
+# LIGHTS
+scene.lights.ext_light.gain = 0 0 0
+scene.lights.ext_light.gain.transformation = 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1
+scene.lights.ext_light.gain.samples = -1
+scene.lights.ext_light.gain.visibility.indirect.diffuse.enable = 1
+scene.lights.ext_light.gain.visibility.indirect.glossy.enable = 1
+scene.lights.ext_light.gain.visibility.indirect.specular.enable = 1
+scene.lights.ext_light.gain.dir = -0.518450022 -3.38985002 0.761069417
+scene.lights.ext_light.gain.turbidity = 2.20000005
+scene.lights.ext_light.gain.relsize = 1
+
+# TEXTURES
+
+# SET 
+# floor
+scene.textures.floor_tex.type = "imagemap"
+scene.textures.floor_tex.file = "tex/grid.png"
+scene.textures.floor_tex.gamma = 1.0
+scene.textures.floor_tex.gain = 1
+scene.textures.floor_tex.mapping.type = "uvmapping2d"
+scene.textures.floor_tex.mapping.uvscale = 1 -1
+scene.textures.floor_tex.mapping.uvdelta = 0 1
+
+# MATERIALS
+
+# floor
+scene.materials.floor_mat.type = "matte"
+scene.materials.floor_mat.kd = "floor_tex"
+scene.materials.floor_mat.emission.gain = 1 1 1
+scene.materials.floor_mat.emission.power = 0
+scene.materials.floor_mat.emission.efficency = 0
+scene.materials.floor_mat.emission.samples = -1
+scene.materials.floor_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.floor_mat.visibility.indirect.glossy.enable = 1
+scene.materials.floor_mat.visibility.indirect.specular.enable = 1
+
+# room 
+scene.materials.room_mat.type = "matte"
+scene.materials.room_mat.kd = 1 1 1 
+scene.materials.room_mat.emission.gain = 1 1 1
+scene.materials.room_mat.emission.power = 0
+scene.materials.room_mat.emission.efficency = 0
+scene.materials.room_mat.emission.samples = -1
+scene.materials.room_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.room_mat.visibility.indirect.glossy.enable = 1
+scene.materials.room_mat.visibility.indirect.specular.enable = 1
+
+# inner_ball 
+scene.materials.inner_ball_mat.type = "matte"
+scene.materials.inner_ball_mat.kd = 1 1 1 
+scene.materials.inner_ball_mat.emission = 1 1 1
+scene.materials.inner_ball_mat.emission.gain = 1 1 1
+scene.materials.inner_ball_mat.emission.power = 0
+scene.materials.inner_ball_mat.emission.efficency = 0
+scene.materials.inner_ball_mat.emission.samples = -1 
+scene.materials.inner_ball_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.inner_ball_mat.visibility.indirect.glossy.enable = 1
+scene.materials.inner_ball_mat.visibility.indirect.specular.enable = 1
+
+# logo 
+scene.materials.logo_mat.type = "glossy2"
+scene.materials.logo_mat.kd = 0.5 0.5 0.5
+scene.materials.logo_mat.ks = 0.5 0.5 0.5
+scene.materials.logo_mat.emission = 1 1 1
+scene.materials.logo_mat.emission.gain = 1 1 1
+scene.materials.logo_mat.emission.power = 0
+scene.materials.logo_mat.emission.efficency = 0
+scene.materials.logo_mat.emission.samples = -1
+scene.materials.logo_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.logo_mat.visibility.indirect.glossy.enable = 1
+scene.materials.logo_mat.visibility.indirect.specular.enable = 1
+
+# outer_ball
+scene.materials.outer_ball_mat.type = "glossy2"
+scene.materials.outer_ball_mat.kd = 1 0 0
+scene.materials.outer_ball_mat.ks = 0 1 0
+scene.materials.outer_ball_mat.id = 104
+scene.materials.outer_ball_mat.emission.gain = 1 1 1
+scene.materials.outer_ball_mat.emission.power = 0
+scene.materials.outer_ball_mat.emission.efficency = 0
+scene.materials.outer_ball_mat.emission.samples = -1
+scene.materials.outer_ball_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.outer_ball_mat.visibility.indirect.glossy.enable = 1
+scene.materials.outer_ball_mat.visibility.indirect.specular.enable = 1
+scene.materials.outer_ball_mat.uroughness = 0.1
+scene.materials.outer_ball_mat.vroughness = 0.1
+
+# light_left 
+scene.materials.light_left_mat.type = "matte"
+scene.materials.light_left_mat.kd = 1 1 1 
+scene.materials.light_left_mat.emission = 1 1 1
+scene.materials.light_left_mat.emission.gain = 1 1 1
+scene.materials.light_left_mat.emission.power = 1000
+scene.materials.light_left_mat.emission.efficency = 1
+scene.materials.light_left_mat.emission.samples = -1
+scene.materials.light_left_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.light_left_mat.visibility.indirect.glossy.enable = 1
+scene.materials.light_left_mat.visibility.indirect.specular.enable = 1
+
+# light_back 
+scene.materials.light_back_mat.type = "matte"
+scene.materials.light_back_mat.kd = 1 1 1 
+scene.materials.light_back_mat.emission = 1 1 1
+scene.materials.light_back_mat.emission.gain = 1 1 1
+scene.materials.light_back_mat.emission.power = 1000
+scene.materials.light_back_mat.emission.efficency = 1
+scene.materials.light_back_mat.emission.samples = -1
+scene.materials.light_back_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.light_back_mat.visibility.indirect.glossy.enable = 1
+scene.materials.light_back_mat.visibility.indirect.specular.enable = 1
+
+# light_right 
+scene.materials.light_right_mat.type = "matte"
+scene.materials.light_right_mat.kd = 1 1 1 
+scene.materials.light_right_mat.emission = 1 1 1
+scene.materials.light_right_mat.emission.gain = 1 1 1
+scene.materials.light_right_mat.emission.power = 1000
+scene.materials.light_right_mat.emission.efficency = 1
+scene.materials.light_right_mat.emission.samples = -1
+scene.materials.light_right_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.light_right_mat.visibility.indirect.glossy.enable = 1
+scene.materials.light_right_mat.visibility.indirect.specular.enable = 1
+
+# OBJECTS
+
+# room 
+scene.objects.floor_obj.material = "floor_mat"
+scene.objects.floor_obj.ply = "mesh/floor.ply"
+scene.objects.room_obj.material = "room_mat"
+scene.objects.room_obj.ply = "mesh/room.ply"
+
+# lights
+scene.objects.light_left_obj.material = "light_left_mat"
+scene.objects.light_left_obj.ply = "mesh/light_left.ply"
+scene.objects.light_back_obj.material = "light_back_mat"
+scene.objects.light_back_obj.ply = "mesh/light_back.ply"
+scene.objects.light_right_obj.material = "light_right_mat"
+scene.objects.light_right_obj.ply = "mesh/light_right.ply"
+
+# ball 
+scene.objects.inner_ball_obj.material = "inner_ball_mat"
+scene.objects.inner_ball_obj.ply = "mesh/inner_ball.ply"
+scene.objects.stand_obj.material = "inner_ball_mat"
+scene.objects.stand_obj.ply = "mesh/stand.ply"
+scene.objects.outer_ball_obj.material = "outer_ball_mat"
+scene.objects.outer_ball_obj.ply = "mesh/outer_ball.ply"
+scene.objects.outer_trim_obj.material = "outer_ball_mat"
+scene.objects.outer_trim_obj.ply = "mesh/outer_trim.ply"
+scene.objects.logo_obj.material = "logo_mat"
+scene.objects.logo_obj.ply = "mesh/luxrender_logo.ply"
+scene.objects.text_obj.material = "logo_mat"
+scene.objects.text_obj.ply = "mesh/luxrender_text.ply"

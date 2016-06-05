@@ -1,0 +1,18 @@
+ply
+format ascii 1.0
+comment Created by Blender 2.74 (sub 0) - www.blender.org, source file: 'luxball6_cloth.blend'
+element vertex 4
+property float x
+property float y
+property float z
+property float nx
+property float ny
+property float nz
+element face 1
+property list uchar uint vertex_indices
+end_header
+0.887251 0.301149 0.322196 -0.684055 0.225384 -0.693737
+0.787566 0.333994 0.431161 -0.684055 0.225384 -0.693737
+0.834910 0.477687 0.431161 -0.684055 0.225384 -0.693737
+0.934595 0.444842 0.322196 -0.684055 0.225384 -0.693737
+4 0 1 2 3
