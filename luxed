@@ -267,13 +267,27 @@ class RenderProps:
     def __init__(self):
         self.width = Property('width', 'u_int', 100, 100000, 720)
         self.height = Property('height', 'u_int', 100, 100000, 305)
-        self.type = Property('type', 'string', None, None, 'PATHCPU') #"PATHCPU"
+
+        # RENDER ENGINE
+        self.enginetype = Property('type', 'string', None, None, 'PATHCPU') #"PATHCPU"
+        self.cputhreads = Property('threads', 'int', 1, 100, 3)
+        # PATHCPU
+        self.pathmaxdepth = Property('maxdepth', 'int', 1, 16, 5)
+        # TODO - the max value can not be more then maxdepth
+        self.pathrussianroulettedepth = Property('russianroulette.depth', 'int', 1, 16, 3)
+        self.pathrussianroulettecap = Property('russianroulette.cap', 'float', 0.0, 1.0, 0.5)
+        self.pathclampingvariancemaxvalue = Property('clamping.variance.maxvalue', 'float', 0.0, 10000.0, 0.0)
+        self.pathclampingpdfvalue = Property('clamping.pdf.value', 'float', 0.0, 1.0, 0.0)
+        self.pathfastpixelfilterenable = Property('fastpixelfilter.enable', 'bool', 0, 1, 1)
+ 
+
         # SAMPLER
         self.samplertype = Property('type','string',None,None,'SOBOL')
         # metropolis
         self.metropolislargesteprate = Property('metropolis.largesteprate','float',0.0,1.0,0.4)
         self.metropolismaxconsecutivereject = Property('metropolis.maxconsecutivereject','int',0,32768,512)
         self.metropolisimagemutationrate = Property('metropolis.imagemutationrate','float',0.0,1.0,0.1)
+
         # FILTER
         self.filtertype = Property('type','string',None,None,'BLACKMANHARRIS')
 
@@ -281,7 +295,16 @@ class RenderProps:
         props = ""
         props += "film.width = %d\n"%self.width.value
         props += "film.height = %d\n"%self.height.value
-        props += "renderengine.type = \"%s\"\n"%self.type.value
+        props += "renderengine.type = \"%s\"\n"%self.enginetype.value
+        if(self.enginetype.value == 'PATHCPU'):
+            props += "native.threads.count = %d\n"%self.cputhreads.value
+            props += "path.maxdepth = %d\n"%self.pathmaxdepth.value
+            props += "path.russianroulette.depth = %d\n"%self.pathrussianroulettedepth.value
+            props += "path.russianroulette.cap = %d\n"%self.pathrussianroulettecap.value
+            props += "path.clamping.variance.maxvalue = %f\n"%self.pathclampingvariancemaxvalue.value
+            props += "path.clamping.pdf.value = %f\n"%self.pathclampingpdfvalue.value
+            props += "path.fastpixelfilter.enable = %d\n"%self.pathfastpixelfilterenable.value
+ 
         props += "sampler.type = \"%s\"\n"%self.samplertype.value
         if(self.samplertype.value == 'METROPOLIS'):
             props += "sampler.metropolis.largesteprate = %f\n"%self.metropolislargesteprate.value
@@ -895,7 +918,7 @@ class FloatAttribute(QWidget):
         self.value = QLineEdit()
         self.value.setFixedWidth(80)
         if self.prop.min is not None and self.prop.max is not None:
-            self.validator = QDoubleValidator(self.prop.min,self.prop.max,self.prop.value)
+            self.validator = QDoubleValidator(self.prop.min,self.prop.max,4)
             self.value.setValidator(self.validator)
         self.value.setText("%f"%self.prop.value)
         self.disableBtn = QPushButton("X")
@@ -1703,6 +1726,96 @@ class SceneLayout(QDockWidget):
 
 # RENDER SETTINGS
 
+# RENDER ENGINE BOX 
+class RenderEngineBox(QGroupBox):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,props):
+        super().__init__("render engine")
+        self.props = props
+        self.engineType = OptionAttribute(self.props.enginetype,["PATHCPU","BIASPATHCPU","BIDIRCPU","PATHOCL","RTPATHOCL","BIASPATHOCL","RTBIASPATHOCL"])
+        self.engineType.hideDisableButton(1)
+        self.cpuThreads = IntAttribute(self.props.cputhreads)
+        self.cpuThreads.hideDisableButton(1)
+        # PATHCPU attributes
+        # path.maxdepth
+        self.pathMaxDepth = IntAttribute(self.props.pathmaxdepth)
+        self.pathMaxDepth.hideDisableButton(1)
+        # path.russianroulette.depth
+        self.pathRussianRouletteDepth = IntAttribute(self.props.pathrussianroulettedepth)
+        self.pathRussianRouletteDepth.hideDisableButton(1)
+        # path.russianroulette.cap
+        self.pathRussianRouletteCap = FloatAttribute(self.props.pathrussianroulettecap)
+        self.pathRussianRouletteCap.hideDisableButton(1)
+        # path.clamping.variance.maxvalue
+        self.pathClampingVarianceMaxValue = FloatAttribute(self.props.pathclampingvariancemaxvalue)
+        self.pathClampingVarianceMaxValue.hideDisableButton(1)
+        #path.clamping.pdf.value
+        self.pathClampingPdfValue = FloatAttribute(self.props.pathclampingpdfvalue)
+        self.pathClampingPdfValue.hideDisableButton(1)
+        #path.fastpixelfilter.enable 
+        self.pathFastPixelFilterEnable = IntAttribute(self.props.pathfastpixelfilterenable)
+        self.pathFastPixelFilterEnable.hideDisableButton(1)
+        # BIASPATHCPU
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.engineType)
+        vbox.addWidget(self.cpuThreads)
+        # PATHCPU
+        vbox.addWidget(self.pathMaxDepth)
+        vbox.addWidget(self.pathRussianRouletteDepth)
+        vbox.addWidget(self.pathRussianRouletteCap)
+        vbox.addWidget(self.pathClampingVarianceMaxValue)
+        vbox.addWidget(self.pathClampingPdfValue)
+        vbox.addWidget(self.pathFastPixelFilterEnable)
+        # BIASPATHCPU
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        self.setLayout(vbox)
+
+        self.engineType.valueChanged.connect(self.updateSettings)
+        self.cpuThreads.valueChanged.connect(self.updateSettings)
+        self.pathMaxDepth.valueChanged.connect(self.updateSettings)
+        self.pathRussianRouletteDepth.valueChanged.connect(self.updateSettings)
+        self.pathRussianRouletteCap.valueChanged.connect(self.updateSettings)
+        self.pathClampingVarianceMaxValue.valueChanged.connect(self.updateSettings)
+        self.pathClampingPdfValue.valueChanged.connect(self.updateSettings)
+        self.pathFastPixelFilterEnable.valueChanged.connect(self.updateSettings)
+
+    def hideAll(self):
+        self.cpuThreads.hide()
+        self.pathMaxDepth.hide()
+        self.pathRussianRouletteDepth.hide()
+        self.pathRussianRouletteCap.hide()
+        self.pathClampingVarianceMaxValue.hide()
+        self.pathClampingPdfValue.hide()
+        self.pathFastPixelFilterEnable.hide()
+
+    def updateSettings(self):
+        self.hideAll()
+        self.props.enginetype.setValue(self.engineType.getValue())
+
+        if(self.engineType.getValue() == 'PATHCPU'):
+            self.props.cputhreads.setValue(self.cpuThreads.getValue())
+            self.props.pathmaxdepth.setValue(self.pathMaxDepth.getValue())
+            self.props.pathrussianroulettedepth.setValue(self.pathRussianRouletteDepth.getValue())
+            self.props.pathrussianroulettecap.setValue(self.pathRussianRouletteCap.getValue())
+            self.props.pathclampingvariancemaxvalue.setValue(self.pathClampingVarianceMaxValue.getValue())
+            self.props.pathclampingpdfvalue.setValue(self.pathClampingPdfValue.getValue())
+            self.props.pathfastpixelfilterenable.setValue(self.pathFastPixelFilterEnable.getValue())
+            self.cpuThreads.show()
+            self.pathMaxDepth.show()
+            self.pathRussianRouletteDepth.show()
+            self.pathRussianRouletteCap.show()
+            self.pathClampingVarianceMaxValue.show()
+            self.pathClampingPdfValue.show()
+            self.pathFastPixelFilterEnable.show()
+ 
+        self.valueChanged.emit() 
+
+
+
 # SAMPLER BOX 
 class SamplerBox(QGroupBox):
     valueChanged = pyqtSignal()
@@ -1714,8 +1827,11 @@ class SamplerBox(QGroupBox):
         self.samplerType = OptionAttribute(self.props.samplertype,["SOBOL","METROPOLIS","RANDOM"])
         self.samplerType.hideDisableButton(1)
         self.metropolisLargestEpRate = FloatAttribute(self.props.metropolislargesteprate)
+        self.metropolisLargestEpRate.hideDisableButton(1)
         self.metropolisMaxConsecutiveReject = IntAttribute(self.props.metropolismaxconsecutivereject)
+        self.metropolisMaxConsecutiveReject.hideDisableButton(1)
         self.metropolisImageMutationRate = FloatAttribute(self.props.metropolisimagemutationrate)
+        self.metropolisImageMutationRate.hideDisableButton(1)
  
         vbox = QVBoxLayout()
         vbox.addWidget(self.samplerType)
@@ -1807,8 +1923,7 @@ class RenderSettings(QDockWidget):
         self.renderWidth.hideDisableButton(1)
         self.renderHeight = IntAttribute(self.props.height)
         self.renderHeight.hideDisableButton(1)
-        self.renderType = OptionAttribute(self.props.type,["PATHCPU","BIASPATHCPU","BIDIRCPU","PATHOCL","RTPATHOCL","BIASPATHOCL","RTBIASPATHOCL"])
-        self.renderType.hideDisableButton(1)
+        self.engine = RenderEngineBox(self.props)
         self.sampler = SamplerBox(self.props)
         self.filter = FilterBox(self.props)
  
@@ -1817,7 +1932,7 @@ class RenderSettings(QDockWidget):
         vbox.addWidget(self.preset)
         vbox.addWidget(self.renderWidth)
         vbox.addWidget(self.renderHeight)
-        vbox.addWidget(self.renderType)
+        vbox.addWidget(self.engine)
         vbox.addWidget(self.sampler)
         vbox.addWidget(self.filter)
         vbox.addStretch()
@@ -1831,7 +1946,7 @@ class RenderSettings(QDockWidget):
 
         self.renderWidth.valueChanged.connect(self.updateSettings)
         self.renderHeight.valueChanged.connect(self.updateSettings)
-        self.renderType.valueChanged.connect(self.updateSettings)
+        self.engine.valueChanged.connect(self.updateSettings)
         self.sampler.valueChanged.connect(self.updateSettings)
         self.filter.valueChanged.connect(self.updateSettings)
 
@@ -1839,8 +1954,6 @@ class RenderSettings(QDockWidget):
         print("Updating Render Settings")
         self.props.width.setValue(self.renderWidth.getValue())
         self.props.height.setValue(self.renderHeight.getValue())
-        self.props.type.setValue(self.renderType.getValue())
-
         propstring = self.props.getPropertyString()
         self.lux.setRenderSettings(self.props,propstring)
 
