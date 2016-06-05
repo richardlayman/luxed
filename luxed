@@ -92,17 +92,31 @@ class CommonProps:
  
 # MATERIALS
 
-class MatCommonProps:
+class MaterialCommonProps:
 
     def __init__(self):
-        self.bumptex = Property('bumptex', 'texture', None, None, "")
-        self.normaltex = Property('normaltex', 'texture', None, None, "")
- 
+        self.id = Property('id', 'u_int', None, None, 1)
+        self.id.enabled = 0
+        self.bumptex = Property('bumptex', 'texture', None, None, [0.0,0.0,0.0])
+        self.id.enabled = 0
+        self.normaltex = Property('normaltex', 'texture', None, None, [0.0,0.0,0.0])
+        self.id.enabled = 0
+  
+    def getPropertyString(self,name):
+        props = ""
+        if(self.id.enabled):
+            props += "scene.materials." + name + "." + self.bumptex.getPropertyString() + "\n"
+        if(self.bumptex.enabled):
+            props += "scene.materials." + name + "." + self.bumptex.getPropertyString() + "\n"
+        if(self.normaltex.enabled):
+            props += "scene.materials." + name + "." + self.normaltex.getPropertyString() + "\n"
+        return props 
+
+
 # MATERIAL LIGHT PROPERTIES
 class MaterialEmissionProps():
 
     def __init__(self):
-        super().__init__()
         self.emission = Property('emission', 'texture', None, None, [0.0,0.0,0.0])
         self.emissiongain = Property('emission.gain', 'texture', None, None, [0.0,0.0,0.0])
         self.emissionpower = Property('emission.power', 'spectrum', None, None, 0.0)
@@ -151,6 +165,8 @@ class CarPaintProps():
         self.m1 = Property('m1', 'texture', None, None, [0.0,0.0,0.0])
         self.m2 = Property('m2', 'texture', None, None, [0.0,0.0,0.0])
         self.m3 = Property('m3', 'texture', None, None, [0.0,0.0,0.0])
+        self.emission = MaterialEmissionProps()
+        self.common = MaterialCommonProps()
 
 
     def getPropertyString(self,name):
@@ -182,6 +198,9 @@ class CarPaintProps():
         if(self.m3.enabled):
             props += "scene.materials." + name + "." + self.m3.getPropertyString() + "\n"
 
+        props += self.emission.getPropertyString(name)
+        props += self.common.getPropertyString(name)
+ 
         return props 
 
 
@@ -193,7 +212,8 @@ class GlassProps():
         self.kt = Property('kt', 'texture', None, None, [1.0,1.0,1.0])
         self.interior = Property('interior', 'texture', None, None, [1.0,1.0,1.0])
         self.exterior = Property('exterior', 'texture', None, None, [1.0,1.0,1.0])
-
+        self.emission = MaterialEmissionProps()
+        self.common = MaterialCommonProps()
 
     def getPropertyString(self,name):
         props = ""
@@ -205,6 +225,10 @@ class GlassProps():
             props += "scene.materials." + name + "." + self.interior.getPropertyString() + "\n"
         if(self.exterior.enabled):
             props += "scene.materials." + name + "." + self.exterior.getPropertyString() + "\n"
+
+        props += self.emission.getPropertyString(name)
+        props += self.common.getPropertyString(name)
+
         return props 
 
 
@@ -216,7 +240,8 @@ class Glossy2Props():
         self.ks = Property('ks', 'texture', None, None, [0.5,0.5,0.5])
         self.uroughness = Property('uroughness', 'texture', None, None, [0.1,0.1,0.1])
         self.vroughness = Property('vroughness', 'texture', None, None, [0.1,0.1,0.1])
-
+        self.emission = MaterialEmissionProps()
+        self.common = MaterialCommonProps()
 
     def getPropertyString(self,name):
         props = ""
@@ -228,6 +253,10 @@ class Glossy2Props():
             props += "scene.materials." + name + "." + self.uroughness.getPropertyString() + "\n"
         if(self.vroughness.enabled):
             props += "scene.materials." + name + "." + self.vroughness.getPropertyString() + "\n"
+
+        props += self.emission.getPropertyString(name)
+        props += self.common.getPropertyString(name)
+
         return props 
 
 
@@ -534,6 +563,12 @@ class Lux(QThread):
         self.writeImage()
 
     def getMaterialProperties(self,mtype,name):
+        if mtype is "materialcommmon":
+            props = MaterialCommonProps()
+            props.id.setValue(self.scnprops.Get("scene.materials.%s.id"%name).Get())
+            props.bumptex.setValue(self.scnprops.Get("scene.materials.%s.bumptex"%name).Get())
+            props.normaltex.setValue(self.scnprops.Get("scene.materials.%s.normaltex"%name).Get())
+ 
         if mtype is "materialemission":
             props = MaterialEmissionProps()
             props.emission.setValue(self.scnprops.Get("scene.materials.%s.emission"%name).Get())
@@ -1197,43 +1232,81 @@ class FileAttribute(QWidget):
 
 # MATERIAL EDITORS
 
-# material emission
-class MaterialEmissionEditor(QWidget):
+# MATERIAL COMMON BOX 
+class MaterialCommonBox(QGroupBox):
     valuesChanged = pyqtSignal()
 
-    def __init__(self,name,mtype,lux):
-        super().__init__()
+    def __init__(self,name,lux):
+        super().__init__("common")
         self.name = name
-        self.mtype = mtype
         self.lux = lux
-        self.props = MaterialEmissionProps()
+        self.props = MaterialCommonProps() 
+
+        self.id = IntAttribute(self.props.id) 
+        self.bumpTex = TextureAttribute(self.props.bumptex,self.lux) 
+        self.normalTex = TextureAttribute(self.props.normaltex,self.lux) 
+ 
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.id)
+        vbox.addWidget(self.bumpTex)
+        vbox.addWidget(self.normalTex)
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        self.setLayout(vbox)
+
+        self.id.valueChanged.connect(self.valueChanged)
+        self.bumpTex.valueChanged.connect(self.valueChanged)
+        self.normalTex.valueChanged.connect(self.valueChanged)
+
+    def valueChanged(self):
+        self.props.id.setValue(self.id.getColorValue())
+        self.props.bumptex.setValue(self.bumpTex.getColorValue())
+        self.props.normaltex.setValue(self.normalTex.getColorValue())
+        self.valuesChanged.emit() 
+
+    def loadProps(self):
+        self.props = self.lux.core().getMaterialProperties("materialcommon",self.name)
+        self.id.setProperty(self.props.id)
+        self.bumpTex.setProperty(self.props.bumptex)
+        self.normalTex.setProperty(self.props.normaltex)
+
+    def verify(self):
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".id", self.props.id)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".bumptex", self.props.bumptex)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".normaltex", self.props.normaltex)
+
+
+# MATERIAL EMISSION BOX 
+class MaterialEmissionBox(QGroupBox):
+    valuesChanged = pyqtSignal()
+
+    def __init__(self,name,lux):
+        super().__init__("emission")
+        self.name = name
+        self.lux = lux
+        self.props = MaterialEmissionProps() 
+
         self.emission = TextureAttribute(self.props.emission,self.lux) 
         self.emissiongain = TextureAttribute(self.props.emissiongain,self.lux) 
         self.emissionpower = IntAttribute(self.props.emissionpower) 
         self.emissionefficency = IntAttribute(self.props.emissionefficency) 
-
-        gbox = QGroupBox("emission")
+ 
         vbox = QVBoxLayout()
         vbox.addWidget(self.emission)
         vbox.addWidget(self.emissiongain)
         vbox.addWidget(self.emissionpower)
         vbox.addWidget(self.emissionefficency)
-        vbox.addStretch()
         vbox.setContentsMargins(0,0,0,0)
         vbox.setSpacing(0)
 
-        gbox = QGroupBox("emission")
-        gbox.setLayout(vbox)
-        gvbox = QVBoxLayout(self)
-        gvbox.addWidget(gbox)
-        gvbox.addStretch()
-        gvbox.setContentsMargins(0,0,0,0)
-        gvbox.setSpacing(0)
+        self.setLayout(vbox)
 
         self.emission.valueChanged.connect(self.valueChanged)
         self.emissiongain.valueChanged.connect(self.valueChanged)
         self.emissionpower.valueChanged.connect(self.valueChanged)
         self.emissionefficency.valueChanged.connect(self.valueChanged)
+
 
     def valueChanged(self):
         self.props.emission.setValue(self.emission.getColorValue())
@@ -1265,7 +1338,9 @@ class MatteEditor(QWidget):
         self.lux = lux
         self.props = MatteProps()
         self.kd = TextureAttribute(self.props.kd,self.lux)
-        self.emission = MaterialEmissionEditor(self.name,"matte",self.lux)
+        self.common = MaterialCommonBox(self.name,self.lux)
+        self.emission = MaterialEmissionBox(self.name,self.lux)
+
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.kd)
@@ -1277,16 +1352,19 @@ class MatteEditor(QWidget):
     
         mvbox = QVBoxLayout(self)
         mvbox.addWidget(gbox)
+        mvbox.addWidget(self.common)
         mvbox.addWidget(self.emission)
         mvbox.addStretch()
         mvbox.setContentsMargins(0,0,0,0)
         mvbox.setSpacing(0)
 
         self.kd.valueChanged.connect(self.valueChanged)
+        self.common.valuesChanged.connect(self.valueChanged)
         self.emission.valuesChanged.connect(self.valueChanged)
 
     def setName(self,name):
         self.name = name
+        self.common.name = name
         self.emission.name = name
 
     def valueChanged(self):
@@ -1303,7 +1381,9 @@ class MatteEditor(QWidget):
 
     def verify(self):
         self.lux.core().verifyProperty("scene.materials." + self.name + ".kd", self.props.kd)
+        self.common.verify()
         self.emission.verify()
+
 
 # carpaint 
 class CarPaintEditor(QWidget):
@@ -1327,7 +1407,9 @@ class CarPaintEditor(QWidget):
         self.m2 = TextureAttribute(self.props.m2,self.lux)
         self.m3 = TextureAttribute(self.props.m3,self.lux)
 
-        self.emission = MaterialEmissionEditor(self.name,"carpaint",self.lux) 
+        self.common = MaterialCommonBox(self.name,self.lux)
+        self.emission = MaterialEmissionBox(self.name,self.lux)
+
 
         self.ka.toggleEnabled()
         self.d.toggleEnabled()
@@ -1357,15 +1439,15 @@ class CarPaintEditor(QWidget):
         vbox.addWidget(self.m2)
         vbox.addWidget(self.m3)
 
-        vbox.addStretch()
         vbox.setContentsMargins(0,0,0,0)
         vbox.setSpacing(0)
 
-        gbox = QGroupBox("matte")
+        gbox = QGroupBox("carpaint")
         gbox.setLayout(vbox)
     
         mvbox = QVBoxLayout(self)
         mvbox.addWidget(gbox)
+        mvbox.addWidget(self.common)
         mvbox.addWidget(self.emission)
         mvbox.addStretch()
         mvbox.setContentsMargins(0,0,0,0)
@@ -1384,10 +1466,12 @@ class CarPaintEditor(QWidget):
         self.m1.valueChanged.connect(self.valueChanged)
         self.m2.valueChanged.connect(self.valueChanged)
         self.m3.valueChanged.connect(self.valueChanged)
+        self.common.valuesChanged.connect(self.valueChanged)
         self.emission.valuesChanged.connect(self.valueChanged)
 
     def setName(self,name):
         self.name = name
+        self.common.name = name
         self.emission.name = name
 
     def valueChanged(self):
@@ -1407,6 +1491,7 @@ class CarPaintEditor(QWidget):
 
         props = "scene.materials." + self.name + ".type = \"carpaint\"\n"
         props += self.props.getPropertyString(self.name)
+        props += self.common.props.getPropertyString(self.name)
         props += self.emission.props.getPropertyString(self.name)
         self.lux.core().setProperties(props)
 
@@ -1440,6 +1525,7 @@ class CarPaintEditor(QWidget):
         self.lux.core().verifyProperty("scene.materials." + self.name + ".m1", self.props.m1)
         self.lux.core().verifyProperty("scene.materials." + self.name + ".m2", self.props.m2)
         self.lux.core().verifyProperty("scene.materials." + self.name + ".m3", self.props.m3)
+        self.common.verify()
         self.emission.verify()
  
 
@@ -1455,22 +1541,23 @@ class GlassEditor(QWidget):
         self.kt = TextureAttribute(self.props.kt,self.lux)
         self.interior = TextureAttribute(self.props.interior,self.lux)
         self.exterior = TextureAttribute(self.props.exterior,self.lux)
-        self.emission = MaterialEmissionEditor(self.name,"glass",self.lux) 
+        self.common = MaterialCommonBox(self.name,self.lux)
+        self.emission = MaterialEmissionBox(self.name,self.lux)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.kr)
         vbox.addWidget(self.kt)
         vbox.addWidget(self.interior)
         vbox.addWidget(self.exterior)
-        vbox.addStretch()
         vbox.setContentsMargins(0,0,0,0)
         vbox.setSpacing(0)
 
-        gbox = QGroupBox("matte")
+        gbox = QGroupBox("glass")
         gbox.setLayout(vbox)
     
         mvbox = QVBoxLayout(self)
         mvbox.addWidget(gbox)
+        mvbox.addWidget(self.common)
         mvbox.addWidget(self.emission)
         mvbox.addStretch()
         mvbox.setContentsMargins(0,0,0,0)
@@ -1480,10 +1567,12 @@ class GlassEditor(QWidget):
         self.kt.valueChanged.connect(self.valueChanged)
         self.interior.valueChanged.connect(self.valueChanged)
         self.exterior.valueChanged.connect(self.valueChanged)
+        self.common.valuesChanged.connect(self.valueChanged)
         self.emission.valuesChanged.connect(self.valueChanged)
 
     def setName(self,name):
         self.name = name
+        self.common.name = name
         self.emission.name = name
 
     def valueChanged(self):
@@ -1493,6 +1582,7 @@ class GlassEditor(QWidget):
         self.props.exterior.setValue(self.exterior.getColorValue())
         props = "scene.materials." + self.name + ".type = \"glass\"\n"
         props += self.props.getPropertyString(self.name)
+        props += self.common.props.getPropertyString(self.name)
         props += self.emission.props.getPropertyString(self.name)
         self.lux.core().setProperties(props)
 
@@ -1509,7 +1599,9 @@ class GlassEditor(QWidget):
         self.lux.core().verifyProperty("scene.materials." + self.name + ".kt", self.props.kt)
         self.lux.core().verifyProperty("scene.materials." + self.name + ".interior", self.props.interior)
         self.lux.core().verifyProperty("scene.materials." + self.name + ".exterior", self.props.exterior)
+        self.common.verify()
         self.emission.verify()
+
 
 # glossy2 
 class Glossy2Editor(QWidget):
@@ -1523,22 +1615,23 @@ class Glossy2Editor(QWidget):
         self.ks = TextureAttribute(self.props.ks,self.lux)
         self.uroughness = TextureAttribute(self.props.uroughness,self.lux)
         self.vroughness = TextureAttribute(self.props.vroughness,self.lux)
-        self.emission = MaterialEmissionEditor(self.name,"glossy2",self.lux) 
+        self.common = MaterialCommonBox(self.name,self.lux)
+        self.emission = MaterialEmissionBox(self.name,self.lux)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.kd)
         vbox.addWidget(self.ks)
         vbox.addWidget(self.uroughness)
         vbox.addWidget(self.vroughness)
-        vbox.addStretch()
         vbox.setContentsMargins(0,0,0,0)
         vbox.setSpacing(0)
 
-        gbox = QGroupBox("matte")
+        gbox = QGroupBox("glossy2")
         gbox.setLayout(vbox)
     
         mvbox = QVBoxLayout(self)
         mvbox.addWidget(gbox)
+        mvbox.addWidget(self.common)
         mvbox.addWidget(self.emission)
         mvbox.addStretch()
         mvbox.setContentsMargins(0,0,0,0)
@@ -1548,10 +1641,12 @@ class Glossy2Editor(QWidget):
         self.ks.valueChanged.connect(self.valueChanged)
         self.uroughness.valueChanged.connect(self.valueChanged)
         self.vroughness.valueChanged.connect(self.valueChanged)
+        self.common.valuesChanged.connect(self.valueChanged)
         self.emission.valuesChanged.connect(self.valueChanged)
 
     def setName(self,name):
         self.name = name
+        self.common.name = name
         self.emission.name = name
 
     def valueChanged(self):
@@ -1561,6 +1656,7 @@ class Glossy2Editor(QWidget):
         self.props.vroughness.setValue(self.vroughness.getColorValue())
         props = "scene.materials." + self.name + ".type = \"glossy2\"\n"
         props += self.props.getPropertyString(self.name)
+        props += self.common.props.getPropertyString(self.name)
         props += self.emission.props.getPropertyString(self.name)
         self.lux.core().setProperties(props)
 
@@ -1577,6 +1673,7 @@ class Glossy2Editor(QWidget):
         self.lux.core().verifyProperty("scene.materials." + self.name + ".ks", self.props.ks)
         self.lux.core().verifyProperty("scene.materials." + self.name + ".uroughness", self.props.uroughness)
         self.lux.core().verifyProperty("scene.materials." + self.name + ".vroughness", self.props.vroughness)
+        self.common.verify()
         self.emission.verify()
 
 # TEXTURE EDITORS 
