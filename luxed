@@ -134,6 +134,19 @@ class MaterialEmissionProps():
             props += "scene.materials." + name + "." + self.emissionefficency.getPropertyString() + "\n"
         return props 
 
+'''
+# MATERIAL TEMPLATE PROPERTIES
+class MaterialTemplateProps():
+
+    def __init__(self):
+        #self.kd = Property('kd', 'texture', None, None, [1.0,1.0,1.0])
+
+    def getPropertyString(self,name):
+        props = ""
+        #if(self.kd.enabled):
+        #    props += "scene.materials." + name + "." + self.kd.getPropertyString() + "\n"
+        return props 
+'''
 
 # MATTE PROPERTIES
 class MatteProps():
@@ -257,6 +270,27 @@ class Glossy2Props():
         props += self.emission.getPropertyString(name)
         props += self.common.getPropertyString(name)
 
+        return props 
+
+# MATERIAL MIX PROPERTIES
+class MaterialMixProps():
+
+    def __init__(self):
+        self.material1 = Property('material1', 'string', None, None, "outer2_ball_mat")
+        self.material2 = Property('material2', 'string', None, None, "outer1_ball_mat")
+        self.amount = Property('amount', 'texture', None, None, [0.5,0.5,0.5])
+
+    def getPropertyString(self,name):
+        print("getting mix string")
+        props = ""
+        #if(self.material1.enabled):
+        #props += "scene.materials." + name + "." + self.material1.getPropertyString() + "\n"
+        props += "scene.materials." + name + ".material1 = outer1_ball_mat\n"
+        #if(self.material2.enabled):
+        #props += "scene.materials." + name + "." + self.material2.getPropertyString() + "\n"
+        props += "scene.materials." + name + ".material2 = outer2_ball_mat\n"
+        #if(self.amount.enabled):
+        props += "scene.materials." + name + "." + self.amount.getPropertyString() + "\n"
         return props 
 
 
@@ -442,22 +476,63 @@ class Lux(QThread):
         pyluxcore.Init()
 
         # Load the configuration from files
-        self.props = pyluxcore.Properties("render.cfg")
-        self.scene = pyluxcore.Scene("scene.scn")
-        self.scnprops = pyluxcore.Properties("scene.scn")
+        #self.props = pyluxcore.Properties("render.cfg")
+        #self.scene = pyluxcore.Scene("scene.scn")
+        #self.scnprops = pyluxcore.Properties("scene.scn")
+        #self.config = pyluxcore.RenderConfig(self.props, self.scene)
+        #self.session = pyluxcore.RenderSession(self.config)
+
+        self.props = pyluxcore.Properties()
+        self.props.Set(pyluxcore.Property("renderengine.type", ["PATHCPU"]))
+        self.props.Set(pyluxcore.Property("opencl.platform.index", [-1]))
+        self.props.Set(pyluxcore.Property("opencl.cpu.use", [0]))
+        self.props.Set(pyluxcore.Property("opencl.gpu.use", [1]))
+        self.props.Set(pyluxcore.Property("opencl.gpu.workgroup.size", [64]))
+        self.props.Set(pyluxcore.Property("film.width", [1024]))
+        self.props.Set(pyluxcore.Property("film.height", [576]))
+        # camera
+        self.sceneprops = pyluxcore.Properties()
+        self.sceneprops.Set(pyluxcore.Property("scene.camera.lookat.orig", [0.64, 0.27, 0.14]))
+        self.sceneprops.Set(pyluxcore.Property("scene.camera.lookat.target", [0.10, 1.04, -0.18]))
+        self.sceneprops.Set(pyluxcore.Property("scene.camera.up", [0, 0, 1]))
+        self.sceneprops.Set(pyluxcore.Property("scene.camera.cliphither", [0.001]))
+        self.sceneprops.Set(pyluxcore.Property("scene.camera.clipyon", [1.00]))
+        self.sceneprops.Set(pyluxcore.Property("scene.camera.lensradius", [0.00]))
+        self.sceneprops.Set(pyluxcore.Property("scene.camera.focaldistance", [0.28]))
+        self.sceneprops.Set(pyluxcore.Property("scene.camera.fieldofview", [49]))
+
+        self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain", [0, 0, 0]))
+        self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.transformation", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]))
+        self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.samples", [-1]))
+        self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.visibility.indirect.diffuse.enable", [1]))
+        self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.visibility.indirect.glossy.enable", [1]))
+        self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.visibility.indirect.specular.enable", [1]))
+        self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.dir", [-0.51, -3.38, 0.76]))
+        self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.turbidity", [2.20]))
+        self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.relsize", [1]))
+
+        self.scene = pyluxcore.Scene()
+
+        #self.sceneprops = pyluxcore.Properties()
+        self.scene.Parse(self.sceneprops) 
+       
         self.config = pyluxcore.RenderConfig(self.props, self.scene)
         self.session = pyluxcore.RenderSession(self.config)
-
+      
         # PROPERTIES
         self.fov = 65
 
         # Property containers
-        self.lights= []
-        self.textures= []
-        self.materials = []
-        self.objects = []
+        #self.lights= []
+        #self.textures= []
+        #self.materials = []
+        #self.objects = []
      
-        self.load()
+        #self.load()
+        self.scene.Parse(pyluxcore.Properties().
+            Set(pyluxcore.Property("scene.materials.shell.type", ["mirror"])).
+            Set(pyluxcore.Property("scene.materials.shell.kr", [0.75, 0.75, 0.75])))
+
 
     def load(self):
         val = 0
@@ -605,11 +680,31 @@ class Lux(QThread):
 
         if mtype is "glossy2":
             props = Glossy2Props()
+            #stats = self.session.GetStats();
+            #props.kd.setValue(self.session.Parse(self.scnprops.Get("scene.materials.%s.kd"%name).Get()))
+            #val = None
+            #val = stats.Get("stats.scene.materials.%s.kd"%name).GetString()
+            #self.config.GetProperty(self.scnprops.Get("scene.materials.%s.ks"%name).Get())
+            #self.scene.Parse(self.scnprops.Get("scene.materials.%s.kd"%name).Get())
+            print("GLOSSY NAME")
+            #print(self.scnprops.Get("scene.materials.%s.ks"%name).Get())
             props.kd.setValue(self.scnprops.Get("scene.materials.%s.kd"%name).Get())
             props.ks.setValue(self.scnprops.Get("scene.materials.%s.ks"%name).Get())
+            #print(self.scnprops.Get("scene.materials.%s.ks"%name).Get())
+            #self.config.GetProperty(self.scnprops.Get("scene.materials.%s.ks"%name).GetName())
+            #print(self.scene.ToProperties().Get(self.scnprops.Get("scene.materials.%s.ks"%name)).Get())
+
+
+
             props.uroughness.setValue(self.scnprops.Get("scene.materials.%s.uroughness"%name).Get())
             props.vroughness.setValue(self.scnprops.Get("scene.materials.%s.vroughness"%name).Get())
 
+        if mtype is "mix":
+            props = MaterialMixProps()
+            props.material1.setValue(self.scnprops.Get("scene.materials.%s.material1"%name).Get())
+            props.material2.setValue(self.scnprops.Get("scene.materials.%s.material2"%name).Get())
+            props.amount.setValue(self.scnprops.Get("scene.materials.%s.amount"%name).Get())
+ 
         return props 
  
     def getTextureProperties(self,mtype,name):
@@ -652,20 +747,54 @@ class Lux(QThread):
         return self.session.GetFilm().GetHeight()
 
 
+# SCENEGRAPH
+
+class SceneGraph():
+
+    def __init__(self):
+        self.lux = Lux()
+
+        # Property containers
+        self.render = RenderProps()
+        self.lights= []
+        self.textures= []
+        self.materials = []
+        self.objects = []
+
+        #self.lux.setRenderSettings(self.render.getPropertyString)
+
+    def start(self):
+        self.lux.startRendering() 
+        
+    def stop(self):
+        self.lux.stopRendering()
+
+    def write(self):
+        self.lux.writeImage()
+
+    def loadConfig(self, path):
+        if(path == None):
+            pass            
+
+    def loadScene(self, path):
+        if(path == None):
+            pass
+
+    def getNames(self, ptype):
+        # return a list of names for each object type
+        return []
+
+  
 class LuxWidget(QWidget):
 
     def __init__(self,width,height):
         super().__init__()
-        self.lux = Lux()
-        self.lux.start()
+        self.sg = SceneGraph()
+        #self.sg.start()
         self.fov = 65
-        self.setFixedWidth(self.lux.getWidth())
-        self.setFixedHeight(self.lux.getHeight())
- 
-
-    def core(self):
-        return self.lux
-
+        self.setFixedWidth(self.sg.lux.getWidth())
+        self.setFixedHeight(self.sg.lux.getHeight())
+        
     def paintEvent(self,e):
         qp = QPainter()
         qp.begin(self)
@@ -683,25 +812,25 @@ class LuxWidget(QWidget):
         self.lux.changeSize(width,height)
 
     def startRendering(self):
-        self.lux.startRendering() 
+        self.sg.start() 
 
     def writeImage(self):
-        self.lux.writeImage()
+        self.sg.write()
 
     def stopRendering(self):
-        self.lux.stopRendering()
+        self.sg.stop()
 
     def getTime(self):
-        return self.lux.getTime()
+        return self.sg.lux.getTime()
 
     def getPass(self):
-        return self.lux.getPass() 
+        return self.sg.lux.getPass() 
 
     def getSpp(self):
-        return self.lux.getSpp()
+        return self.sg.lux.getSpp()
 
     def getTriCount(self):
-        return self.lux.getTriCount()
+        return self.sg.lux.getTriCount()
 
     def setRenderSettings(self,props,propstring):
         self.lux.setRenderSettings(props,propstring)
@@ -757,6 +886,7 @@ class LinkDialog(QDialog):
 
     def __init__(self,lux,ltype):
         super().__init__()
+        self.lux = lux
         self.list = QListWidget() 
         self.link = ""
 
@@ -766,8 +896,8 @@ class LinkDialog(QDialog):
 
         if(ltype == 'textures'):
             self.list.clear()
-            for t in lux.core().textures:
-                self.list.addItem(t[15:])
+            for t in self.lux.sg.getNames('textures'):
+                self.list.addItem(t)
 
         self.show()
         self.list.itemClicked.connect(self.setCurrentLink)
@@ -1658,6 +1788,8 @@ class Glossy2Editor(QWidget):
         props += self.props.getPropertyString(self.name)
         props += self.common.props.getPropertyString(self.name)
         props += self.emission.props.getPropertyString(self.name)
+        #print("SETTING GLOSSY2")
+        #print(props)
         self.lux.core().setProperties(props)
 
     def loadProps(self):
@@ -1675,6 +1807,134 @@ class Glossy2Editor(QWidget):
         self.lux.core().verifyProperty("scene.materials." + self.name + ".vroughness", self.props.vroughness)
         self.common.verify()
         self.emission.verify()
+
+
+# Mix 
+class MaterialMixEditor(QWidget):
+
+    def __init__(self,name,lux):
+        super().__init__()
+        self.name = name
+        self.lux = lux
+        self.props = MaterialMixProps()
+        self.material1 = StringAttribute(self.props.material1)
+        self.material2 = StringAttribute(self.props.material2)
+        self.amount = TextureAttribute(self.props.amount,self.lux)
+        #self.common = MaterialCommonBox(self.name,self.lux)
+        #self.emission = MaterialEmissionBox(self.name,self.lux)
+
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.material1)
+        vbox.addWidget(self.material2)
+        vbox.addWidget(self.amount)
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        gbox = QGroupBox("mix")
+        gbox.setLayout(vbox)
+    
+        mvbox = QVBoxLayout(self)
+        mvbox.addWidget(gbox)
+        #mvbox.addWidget(self.common)
+        #mvbox.addWidget(self.emission)
+        mvbox.addStretch()
+        mvbox.setContentsMargins(0,0,0,0)
+        mvbox.setSpacing(0)
+
+        self.material1.valueChanged.connect(self.valueChanged)
+        self.material2.valueChanged.connect(self.valueChanged)
+        self.amount.valueChanged.connect(self.valueChanged)
+        #self.common.valuesChanged.connect(self.valueChanged)
+        #self.emission.valuesChanged.connect(self.valueChanged)
+
+    def setName(self,name):
+        self.name = name
+        #self.common.name = name
+        #self.emission.name = name
+
+    def valueChanged(self):
+        self.props.material1.setValue(self.material1.getValue())
+        self.props.material2.setValue(self.material2.getValue())
+        self.props.amount.setValue(self.amount.getColorValue())
+        props = "scene.materials." + self.name + ".type = \"mix\"\n"
+        props += self.props.getPropertyString(self.name)
+        #props += self.common.props.getPropertyString(self.name)
+        #props += self.emission.props.getPropertyString(self.name)
+        self.lux.core().setProperties(props)
+
+    def loadProps(self):
+        self.verify()
+        self.props = self.lux.core().getMaterialProperties("mix",self.name)
+        self.material1.setProperty(self.props.material1)
+        self.material2.setProperty(self.props.material2)
+        self.amount.setProperty(self.props.amount)
+
+    def verify(self):
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".material1", self.props.material1)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".material2", self.props.material2)
+        self.lux.core().verifyProperty("scene.materials." + self.name + ".amount", self.props.amount)
+        #self.common.verify()
+        #self.emission.verify()
+
+
+'''
+# template 
+class MaterialTemplateEditor(QWidget):
+
+    def __init__(self,name,lux):
+        super().__init__()
+        self.name = name
+        self.lux = lux
+        self.props = MatteProps()
+        #self.kd = TextureAttribute(self.props.kd,self.lux)
+        self.common = MaterialCommonBox(self.name,self.lux)
+        self.emission = MaterialEmissionBox(self.name,self.lux)
+
+
+        vbox = QVBoxLayout()
+        #vbox.addWidget(self.kd)
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        gbox = QGroupBox("template")
+        gbox.setLayout(vbox)
+    
+        mvbox = QVBoxLayout(self)
+        mvbox.addWidget(gbox)
+        mvbox.addWidget(self.common)
+        mvbox.addWidget(self.emission)
+        mvbox.addStretch()
+        mvbox.setContentsMargins(0,0,0,0)
+        mvbox.setSpacing(0)
+
+        #self.kd.valueChanged.connect(self.valueChanged)
+        self.common.valuesChanged.connect(self.valueChanged)
+        self.emission.valuesChanged.connect(self.valueChanged)
+
+    def setName(self,name):
+        self.name = name
+        self.common.name = name
+        self.emission.name = name
+
+    def valueChanged(self):
+        self.props.kd.setValue(self.kd.getColorValue())
+        #props = "scene.materials." + self.name + ".type = \"matte\"\n"
+        props += self.props.getPropertyString(self.name)
+        props += self.emission.props.getPropertyString(self.name)
+        self.lux.core().setProperties(props)
+
+    def loadProps(self):
+        self.verify()
+        #self.props = self.lux.core().getMaterialProperties("matte",self.name)
+        #self.kd.setProperty(self.props.kd)
+
+    def verify(self):
+        #self.lux.core().verifyProperty("scene.materials." + self.name + ".kd", self.props.kd)
+        self.common.verify()
+        self.emission.verify()
+'''
+
 
 # TEXTURE EDITORS 
 
@@ -1731,7 +1991,7 @@ class MaterialEditor(QWidget):
         self.lux = lux
         self.name = ""
         self.mtype = Property('type', 'string', None, None, "matte")
-        self.materialtype = OptionAttribute(self.mtype,["matte","carpaint","glass","glossy2"])
+        self.materialtype = OptionAttribute(self.mtype,["matte","carpaint","glass","glossy2","mix"])
         self.materialtype.hideDisableButton(1)
 
         self.stack = QStackedWidget()
@@ -1741,6 +2001,7 @@ class MaterialEditor(QWidget):
         self.stack.addWidget(CarPaintEditor("",self.lux))
         self.stack.addWidget(GlassEditor("",self.lux))
         self.stack.addWidget(Glossy2Editor("",self.lux))
+        self.stack.addWidget(MaterialMixEditor("",self.lux))
 
         self.vbox = QVBoxLayout(self)
         self.vbox.addWidget(self.materialtype)
@@ -1752,9 +2013,14 @@ class MaterialEditor(QWidget):
         self.materialtype.valueChanged.connect(self.materialChanged)
 
     def materialChanged(self):
-        call = "scene.materials.%s.type = \"%s\"\n"%(self.name,self.materialtype.getValue())
-        print("CALL = " + call)
-        self.lux.core().setProperties(call)
+        #mtype = self.materialtype.getValue()
+        #call = "scene.materials.%s.type = \"%s\"\n"%(self.name,mtype)
+        #if(mtype == 'mix'):
+        #    call += "scene.materials.%s.material1 = \"luxed_default_mat\"\n"%self.name
+        #    call += "scene.materials.%s.material2 = \"luxed_default_mat\"\n"%self.name
+
+        #print("CALL = " + call)
+        #self.lux.core().setProperties(call)
         self.setEditor(self.name,self.materialtype.getValue())
 
     def setEditor(self,name,luxtype):
@@ -1786,6 +2052,12 @@ class MaterialEditor(QWidget):
             self.stack.setCurrentIndex(4)
             self.stack.widget(4).valueChanged()
             self.materialtype.setValue('glossy2')
+        if luxtype == 'mix':
+            self.stack.widget(5).setName(name)
+            self.stack.widget(5).loadProps()
+            self.stack.setCurrentIndex(5)
+            self.stack.widget(5).valueChanged()
+            self.materialtype.setValue('mix')
  
 # DOCKS
 
@@ -1886,26 +2158,26 @@ class SceneLayout(QDockWidget):
         self.textures.itemClicked.connect(self.textureChanged)
         self.lights.itemClicked.connect(self.lightChanged)
  
-    def updateTabs(self, lux):
+    def updateTabs(self):
         # Objects
         self.objects.clear()
-        for o in lux.objects:
-            self.objects.addItem(o[14:])
+        for o in self.lux.sg.getNames('objects'):
+            self.objects.addItem(o)
 
         # Materials
         self.materials.clear()
-        for m in lux.materials:
-            self.materials.addItem(m[16:])
+        for m in self.lux.sg.getNames('materials'):
+            self.materials.addItem(m)
 
         # Materials
         self.textures.clear()
-        for t in lux.textures:
-            self.textures.addItem(t[15:])
+        for t in self.lux.sg.getNames('textures'):
+            self.textures.addItem(t)
 
         # Materials
         self.lights.clear()
-        for l in lux.lights:
-            self.lights.addItem(l[13:])
+        for l in self.lux.sg.getNames('lights'):
+            self.lights.addItem(l)
 
     def objectChanged(self,item):
         self.objectSelected.emit(item.text())
@@ -2375,7 +2647,7 @@ class RenderSettings(QDockWidget):
         self.lux = lux
         self.setWindowTitle("Render Settings")
 
-        self.props = self.lux.core().getRenderSettings()
+        self.props = self.lux.sg.lux.getRenderSettings()
 
         self.preset = QComboBox()
         self.preset.addItem("custom")
@@ -2617,7 +2889,7 @@ class Example(QMainWindow):
      
         self.show()
 
-        self.sceneLayout.updateTabs(self.lux.lux)
+        self.sceneLayout.updateTabs()
 
         t = QTimer(self)
         t.timeout.connect(self.updateLux)
@@ -2626,8 +2898,13 @@ class Example(QMainWindow):
         # Start the render
         self.lux.startRendering()
 
+        # Create a default material
+        matstring = "scene.materials.luxed_default_mat.type = \"matte\"\n"
+        matstring += "scene.materials.luxed_default_mat.kd = 1 1 1\n"
+        self.lux.sg.lux.setProperties(matstring)
+ 
     def updateLux(self):
-        self.lux.writeImage()
+        self.lux.sg.write()
         self.lux.repaint()
         self.status.clearMessage()
         self.status.showMessage(("[Elapsed time: %3d/5sec][Samples %4d][Avg. samples/sec %3.2fM on %.1fK tris]" % (
