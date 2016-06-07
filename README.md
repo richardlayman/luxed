@@ -15,5 +15,4 @@ LuxEd is a single python file that you can run straight from the folder; it does
 
 Status
 ---------------
-LuxEd is still a WIP and not officially released but you can mess with it some. An example file comes with the program and will startup as soon as you run it. There is still a lot of missing features and there will be crashes. If you want to use LuxEd for your own scenes, you'll have to edit your own render.cfg and scene.scn files and put them in the same folder as LuxEd - this will be fixed in the future so you won't have to do this.
-
+CURRENTLY THE PROGRAM IS BROKEN WHILE I ADD A SCENEGRAPH TO HANDLE THE PROPERTIES. This shouldn't take long to fix and get the app back up and running.

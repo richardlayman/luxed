@@ -529,9 +529,9 @@ class Lux(QThread):
         #self.objects = []
      
         #self.load()
-        self.scene.Parse(pyluxcore.Properties().
-            Set(pyluxcore.Property("scene.materials.shell.type", ["mirror"])).
-            Set(pyluxcore.Property("scene.materials.shell.kr", [0.75, 0.75, 0.75])))
+        #self.scene.Parse(pyluxcore.Properties().
+        #    Set(pyluxcore.Property("scene.materials.shell.type", ["mirror"])).
+        #    Set(pyluxcore.Property("scene.materials.shell.kr", [0.75, 0.75, 0.75])))
 
 
     def load(self):
@@ -746,6 +746,50 @@ class Lux(QThread):
         self.session.UpdateStats()
         return self.session.GetFilm().GetHeight()
 
+    def addObject(self):
+        self.session.BeginSceneEdit()
+
+        #self.scene.Parse(pyluxcore.Properties().
+
+        mattekd = pyluxcore.Property("scene.materials.mat.kd", [1,1,1])
+        mattename = mattekd.GetName()
+        print("NEW PROP NAME: " + mattename)
+ 
+        #self.scene.Parse(self.sceneprops.Set(pyluxcore.Property("scene.materials.light_mat.type", ["matte"]))
+ 
+        self.scene.Parse(pyluxcore.Properties().
+            Set(pyluxcore.Property("scene.materials.light_mat.type", ["matte"])).
+            Set(pyluxcore.Property("scene.materials.light_mat.kd", [1, 1, 1])). 
+            Set(pyluxcore.Property("scene.materials.light_mat.emission", [1, 1, 1])).
+            Set(pyluxcore.Property("scene.materials.light_mat.emission.gain", [1, 1, 1])).
+            Set(pyluxcore.Property("scene.materials.light_mat.emission.power", [1000])).
+            Set(pyluxcore.Property("scene.materials.light_mat.emission.efficency", [1])).
+            Set(pyluxcore.Property("scene.materials.mat.type", ["matte"])).
+            Set(mattekd).
+            Set(pyluxcore.Property("scene.objects.ball.material", ["mat"])).
+            Set(pyluxcore.Property("scene.objects.ball.ply", ["mesh/outer_ball.ply"])).
+            Set(pyluxcore.Property("scene.objects.light_obj.material", ["light_mat"])).
+            Set(pyluxcore.Property("scene.objects.light_obj.ply", ["mesh/light_left.ply"]))
+        )
+
+        self.session.EndSceneEdit()
+        self.writeImage()
+        return mattekd
+
+    def getName(self,prop):
+        print("PASSED PROP NAME " + prop.GetName())
+
+        self.session.BeginSceneEdit()
+        self.scene.Parse(pyluxcore.Properties().
+            Set(pyluxcore.Property(prop.GetName(), [1,0,0]))
+        ) 
+        self.session.EndSceneEdit()
+        self.writeImage()
+ 
+        names = self.scene.ToProperties().GetAllUniqueSubNames("scene.materials")
+        for n in names:
+            print(n)
+        return("DONE")
 
 # SCENEGRAPH
 
@@ -784,7 +828,11 @@ class SceneGraph():
         # return a list of names for each object type
         return []
 
-  
+    def addObject(self):
+        prop = self.lux.addObject()
+        print(self.lux.getName(prop))
+
+ 
 class LuxWidget(QWidget):
 
     def __init__(self,width,height):
@@ -2157,6 +2205,18 @@ class SceneLayout(QDockWidget):
         self.materials.itemClicked.connect(self.materialChanged)
         self.textures.itemClicked.connect(self.textureChanged)
         self.lights.itemClicked.connect(self.lightChanged)
+        self.renameBtn.clicked.connect(self.rename)
+        self.addBtn.clicked.connect(self.add)
+        self.removeBtn.clicked.connect(self.remove)
+
+    def add(self):
+        self.lux.sg.addObject()
+
+    def remove(self):
+        pass
+
+    def rename(self):
+        pass
  
     def updateTabs(self):
         # Objects
