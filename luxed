@@ -40,21 +40,24 @@ MaterialType = ["matte","glossy","glass","metal2"]
 
 class Property:
     
-    def __init__(self, name, ptype, vmin, vmax, vdefault, desc=""):
-        self.type = ptype # bool, int, u_int, float, double, u_longlong, string, texture, uv, vector, normal, point, matrix4x4, spectrum
+    def __init__(self, ntype, name, attribute, luxprop, vtype, vmin, vmax, vdefault, desc=""):
+        self.ntype = ntype
         self.name = name 
+        self.attribute = attribute 
+        self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, texture, uv, vector, normal, point, matrix4x4, spectrum
         self.value = vdefault 
         self.default = vdefault 
         self.min = vmin 
         self.max = vmax 
         self.enabled = 1
         self.desc = desc
+        self.luxprop = luxprop
  
-    def setType(self, ptype):
-        self.type = ptype
+    def setType(self, vtype):
+        self.vtype = vtype
 
     def getType(self):
-        return self.type
+        return self.vtype
     
     def setName(self, name):
         self.name = name
@@ -70,18 +73,42 @@ class Property:
 
     def getPropertyString(self):
         out=""
-        if self.type is 'string':
+        if self.vtype is 'string':
             out = "%s = \"%s\"" % (self.name, self.value)
-        if self.type is 'bool' or self.type is'int' or self.type is'u_int':
+        if self.vtype is 'bool' or self.vtype is'int' or self.vtype is'u_int':
             out = "%s = %d" % (self.name, int(self.value))
-        if self.type is 'float' or self.type is 'double' or self.type is 'u_longlong' or self.type is 'spectrum':
+        if self.vtype is 'float' or self.vtype is 'double' or self.vtype is 'u_longlong' or self.vtype is 'spectrum':
             out = "%s = %f" % (self.name, float(self.value))
-        if self.type is 'uv':
+        if self.vtype is 'uv':
             out = "%s = %f %f" % (self.name, float(self.value[0]), float(self.value[1]))
-        if self.type is 'texture':
+        if self.vtype is 'texture':
             out = "%s = %f %f %f" % (self.name, float(self.value[0]), float(self.value[1]), float(self.value[2]))
         return out
 
+    def getCallString(self):
+        if self.name is None or self.attribute is None:
+            return ''
+        if self.ntype is 'objects':
+            return"scene.objects.%s.%s"%(self.name,self.attribute)
+        if self.ntype is 'materials':
+            return"scene.materials.%s.%s"%(self.name,self.attribute)
+        return ''
+
+# NODE
+class Node:
+
+    def __init__(self,name,ntype):
+        self.name = name
+        self.ntype = ntype # 'camera','light','texture','material','object' 
+        self.props = []
+
+    def addProperty(self,prop):
+        self.props.append(prop)
+
+    def getPropertyString(self):
+        return ""
+
+'''
 # COMMON PROPERTIES
 class CommonProps:
 
@@ -135,6 +162,9 @@ class MaterialEmissionProps():
         return props 
 
 '''
+
+'''
+
 # MATERIAL TEMPLATE PROPERTIES
 class MaterialTemplateProps():
 
@@ -146,6 +176,10 @@ class MaterialTemplateProps():
         #if(self.kd.enabled):
         #    props += "scene.materials." + name + "." + self.kd.getPropertyString() + "\n"
         return props 
+
+'''
+
+
 '''
 
 # MATTE PROPERTIES
@@ -466,7 +500,7 @@ class RenderProps:
         props += "filter.type = \"%s\"\n"%self.filtertype.value
 
         return props
-
+'''
  
 # LUX SCENE
 class Lux(QThread):
@@ -539,12 +573,12 @@ class Lux(QThread):
         print("Object Count:%d"%(self.scene.GetObjectCount()))
         print("Light Count:%d"%(self.scene.GetObjectCount()))
 
-        self.textures = self.scnprops.GetAllUniqueSubNames("scene.textures")
-        self.materials = self.scnprops.GetAllUniqueSubNames("scene.materials")
-        self.lights = self.scnprops.GetAllUniqueSubNames("scene.lights")
-        self.objects = self.scnprops.GetAllUniqueSubNames("scene.objects")
-        print("Loaded... Lights:%d, Textures%d, Materials%d, Objects%d"%(len(self.lights), len(self.textures), len(self.materials), len(self.objects))) 
-
+        #self.textures = self.scnprops.GetAllUniqueSubNames("scene.textures")
+        #self.materials = self.scnprops.GetAllUniqueSubNames("scene.materials")
+        #self.lights = self.scnprops.GetAllUniqueSubNames("scene.lights")
+        #self.objects = self.scnprops.GetAllUniqueSubNames("scene.objects")
+        #print("Loaded... Lights:%d, Textures%d, Materials%d, Objects%d"%(len(self.lights), len(self.textures), len(self.materials), len(self.objects))) 
+       
     def startRendering(self):
         self.session.Start() 
 
@@ -580,6 +614,14 @@ class Lux(QThread):
 
     def getTextureType(self,name):
         return self.scnprops.Get("scene.textures.%s.type"%name).Get() 
+
+    def beginEdit(self):
+        self.session.BeginSceneEdit()
+
+    def endEdit(self):
+        self.session.EndSceneEdit()
+        self.writeImage()
+
 
 
     # This is needed since luxcore will crash if you try to set a property that was not set in the file.
@@ -732,10 +774,10 @@ class Lux(QThread):
 
     def getRenderSettings(self):
         self.session.UpdateStats()
-        props = RenderProps()
-        props.width.value = self.session.GetFilm().GetWidth()
-        props.height.value = self.session.GetFilm().GetHeight()
-        return props
+        #props = RenderProps()
+        #props.width.value = self.session.GetFilm().GetWidth()
+        #props.height.value = self.session.GetFilm().GetHeight()
+        #return props
 
 
     def getWidth(self):
@@ -746,6 +788,34 @@ class Lux(QThread):
         self.session.UpdateStats()
         return self.session.GetFilm().GetHeight()
 
+    def getNode(self, node):
+        for prop in node.props:
+            print("PROP NAME")
+            #name = prop.luxprop.GetName() #self.sceneprops.Get(prop.getCallString()).Get()
+            print(prop.luxprop)
+            print(self.sceneprops.GetAllUniqueSubNames(prop.getCallString()))
+
+    # TESTING
+    def setColor(self,prop,val):
+        prop.Set(val)
+        self.scene.Parse(self.sceneprops.Set(prop))
+
+    # TESTING
+    def getColor(self,prop):
+        print(prop.Get())
+
+    def addNode(self,node):
+
+        print("ADD NODE %s"%node.name)
+        for prop in node.props:
+            luxprop = pyluxcore.Property(prop.getCallString(), prop.value)
+            self.sceneprops.Set(luxprop)
+            prop.luxprop = luxprop
+
+        self.scene.Parse(self.sceneprops)
+
+        return node
+ 
     def addObject(self):
         self.session.BeginSceneEdit()
 
@@ -799,11 +869,12 @@ class SceneGraph():
         self.lux = Lux()
 
         # Property containers
-        self.render = RenderProps()
-        self.lights= []
-        self.textures= []
-        self.materials = []
-        self.objects = []
+        #self.render = RenderProps()
+        #self.lights= []
+        #self.textures= []
+        #self.materials = []
+        #self.objects = []
+        self.nodes = []
 
         #self.lux.setRenderSettings(self.render.getPropertyString)
 
@@ -824,13 +895,46 @@ class SceneGraph():
         if(path == None):
             pass
 
-    def getNames(self, ptype):
-        # return a list of names for each object type
-        return []
+    def beginEdit(self):
+        self.lux.beginEdit()
+ 
+    def endEdit(self):
+        self.lux.endEdit()
+ 
+    def getNames(self, ntype):
+        nodelist = []
+
+        for node in self.nodes:
+            if node.ntype is ntype:
+                nodelist.append(node.name)
+
+        return nodelist 
+
+    def getNode(self, node):
+        self.lux.getNode(node)
+
+    def addNode(self, node):
+        #node = Node(name,ntype)
+        #node.addProperty(Property(ntype,name, attribute, luxprop, vtype, vmin, vmax, vdefault, desc=""))
+        #if ntype is 'objects':
+        #    node.addProperty(Property(node.ntype,'mat_test', 'type', None, 'string', None, None, ["matte"], desc="Test"))
+        #    node.addProperty(Property(node.ntype,'mat_test', 'kd', None, 'texture', None, None, [1,0,0], desc="Test"))
+        self.nodes.append(self.lux.addNode(node))
+ 
 
     def addObject(self):
-        prop = self.lux.addObject()
-        print(self.lux.getName(prop))
+        node = Node('mat_test','materials')
+        #node.addProperty(Property(ntype,name, attribute, luxprop, vtype, vmin, vmax, vdefault, desc=""))
+        node.addProperty(Property(node.ntype,'mat_test', 'type', None, 'string', None, None, ["matte"], desc="Test"))
+        node.addProperty(Property(node.ntype,'mat_test', 'kd', None, 'texture', None, None, [1,0,0], desc="Test"))
+
+        node = self.lux.addNode(node)
+        for prop in node.props:
+            print(prop.luxprop)
+            print(prop.getCallString())
+            print(prop.value)
+        #prop = self.lux.addObject()
+        #print(self.lux.getName(prop))
 
  
 class LuxWidget(QWidget):
@@ -899,6 +1003,8 @@ class LuxWidget(QWidget):
 
 # EDITOR WIDGETS
 
+
+'''
 
 # Color Widget 
 class ColorWidget(QFrame):
@@ -1924,6 +2030,7 @@ class MaterialMixEditor(QWidget):
         self.lux.core().verifyProperty("scene.materials." + self.name + ".amount", self.props.amount)
         #self.common.verify()
         #self.emission.verify()
+'''
 
 
 '''
@@ -1983,7 +2090,7 @@ class MaterialTemplateEditor(QWidget):
         self.emission.verify()
 '''
 
-
+'''
 # TEXTURE EDITORS 
 
 class ImageMapEditor(QWidget):
@@ -2106,7 +2213,7 @@ class MaterialEditor(QWidget):
             self.stack.setCurrentIndex(5)
             self.stack.widget(5).valueChanged()
             self.materialtype.setValue('mix')
- 
+''' 
 # DOCKS
 
 # ATTRIBUTE EDITOR DOCK
@@ -2130,10 +2237,10 @@ class AttributeEditor(QDockWidget):
         self.stack = QStackedWidget()
         self.stack.addWidget(QFrame()) # base
         # Materials
-        self.stack.addWidget(MaterialEditor("",self.lux)) # matte material
+        #self.stack.addWidget(MaterialEditor("",self.lux)) # matte material
         # ...
         # Textures
-        self.stack.addWidget(ImageMapEditor("",self.lux)) # imagemap texture
+        #self.stack.addWidget(ImageMapEditor("",self.lux)) # imagemap texture
         # ...
 
         self.vbox = QVBoxLayout()
@@ -2210,7 +2317,48 @@ class SceneLayout(QDockWidget):
         self.removeBtn.clicked.connect(self.remove)
 
     def add(self):
-        self.lux.sg.addObject()
+        #self.lux.sg.addObject()
+        #node = Node(name,ntype)
+        #node.addProperty(Property(ntype,name, attribute, luxprop, vtype, vmin, vmax, vdefault, desc=""))
+        #if ntype is 'objects':
+        #    node.addProperty(Property(node.ntype,'mat_test', 'type', None, 'string', None, None, ["matte"], desc="Test"))
+        #    node.addProperty(Property(node.ntype,'mat_test', 'kd', None, 'texture', None, None, [1,0,0], desc="Test"))
+
+        ballmat = Node('ballmat','materials')
+        ballmat.addProperty(Property(ballmat.ntype, ballmat.name, 'type', None, 'string', None, None, ["matte"], desc="Test"))
+        ballmat.addProperty(Property(ballmat.ntype, ballmat.name, 'kd', None, 'texture', None, None, [1,0,0], desc="Test"))
+        # light
+        lightmat = Node('lightmat','materials') 
+        lightmat.addProperty(Property(lightmat.ntype, lightmat.name, 'type', None, 'string', None, None, ["matte"], desc="Test"))
+        lightmat.addProperty(Property(lightmat.ntype, lightmat.name, 'kd', None, 'texture', None, None, [1,1,1], desc="Test"))
+        lightmat.addProperty(Property(lightmat.ntype, lightmat.name, 'emission', None, 'texture', None, None, [1,1,1], desc="Test"))
+        lightmat.addProperty(Property(lightmat.ntype, lightmat.name, 'emission.gain', None, 'texture', None, None, [1,1,1], desc="Test"))
+        lightmat.addProperty(Property(lightmat.ntype, lightmat.name, 'emission.power', None, 'int', None, None, [1000], desc="Test"))
+        lightmat.addProperty(Property(lightmat.ntype, lightmat.name, 'emission.efficency', None, 'int', None, None, [1], desc="Test"))
+        # ball object
+        ballobj = Node('ballobj','objects') 
+        ballobj.addProperty(Property(ballobj.ntype, ballobj.name, 'material', None, 'string', None, None, [ballmat.name], desc="Test"))
+        ballobj.addProperty(Property(ballobj.ntype, ballobj.name, 'ply', None, 'string', None, None, ["mesh/outer_ball.ply"], desc="Test"))
+        # light object 
+        lightobj = Node('lightobj','objects') 
+        lightobj.addProperty(Property(lightobj.ntype, lightobj.name, 'material', None, 'string', None, None, [lightmat.name], desc="Test"))
+        lightobj.addProperty(Property(lightobj.ntype, lightobj.name, 'ply', None, 'string', None, None, ["mesh/light_left.ply"], desc="Test"))
+
+        self.lux.sg.beginEdit()
+        self.lux.sg.addNode(ballmat)
+        self.lux.sg.addNode(ballobj)
+        self.lux.sg.addNode(lightmat)
+        self.lux.sg.addNode(lightobj)
+        self.lux.sg.endEdit()
+        self.lux.sg.getNode(ballmat)
+
+        # TESTING
+        self.lux.sg.beginEdit()
+        self.lux.sg.lux.setColor(ballmat.props[1].luxprop,[0,1,0])
+        self.lux.sg.endEdit()
+ 
+        self.lux.sg.lux.getColor(ballmat.props[1].luxprop)
+        self.updateTabs() 
 
     def remove(self):
         pass
@@ -2254,6 +2402,7 @@ class SceneLayout(QDockWidget):
 
 # RENDER SETTINGS
 
+'''
 # RENDER ENGINE BOX 
 class RenderEngineBox(QGroupBox):
     valueChanged = pyqtSignal()
@@ -2697,7 +2846,7 @@ class FilterBox(QGroupBox):
     def updateSettings(self):
         self.props.filtertype.setValue(self.filterType.getValue())
         self.valueChanged.emit() 
-
+'''
 
 class RenderSettings(QDockWidget):
     objectSelected = pyqtSignal(['QString'])
@@ -2725,36 +2874,36 @@ class RenderSettings(QDockWidget):
         self.preset.addItem("2.39 4k")
 
         frame = QFrame()
-        self.renderWidth = IntAttribute(self.props.width)
-        self.renderWidth.hideDisableButton(1)
-        self.renderHeight = IntAttribute(self.props.height)
-        self.renderHeight.hideDisableButton(1)
-        self.engine = RenderEngineBox(self.props)
-        self.sampler = SamplerBox(self.props)
-        self.filter = FilterBox(self.props)
+        #self.renderWidth = IntAttribute(self.props.width)
+        #self.renderWidth.hideDisableButton(1)
+        #self.renderHeight = IntAttribute(self.props.height)
+        #self.renderHeight.hideDisableButton(1)
+        #self.engine = RenderEngineBox(self.props)
+        #self.sampler = SamplerBox(self.props)
+        #self.filter = FilterBox(self.props)
  
         vbox = QVBoxLayout()
         vbox.addWidget(QLabel("Presets"))
         vbox.addWidget(self.preset)
-        vbox.addWidget(self.renderWidth)
-        vbox.addWidget(self.renderHeight)
-        vbox.addWidget(self.engine)
-        vbox.addWidget(self.sampler)
-        vbox.addWidget(self.filter)
+        #vbox.addWidget(self.renderWidth)
+        #vbox.addWidget(self.renderHeight)
+        #vbox.addWidget(self.engine)
+        #vbox.addWidget(self.sampler)
+        #vbox.addWidget(self.filter)
         vbox.addStretch()
         vbox.setSpacing(0)
 
         frame.setLayout(vbox)
         self.setWidget(frame)
 
-        self.sampler.updateSettings()
-        self.filter.updateSettings()
+        #self.sampler.updateSettings()
+        #self.filter.updateSettings()
 
-        self.renderWidth.valueChanged.connect(self.updateSettings)
-        self.renderHeight.valueChanged.connect(self.updateSettings)
-        self.engine.valueChanged.connect(self.updateSettings)
-        self.sampler.valueChanged.connect(self.updateSettings)
-        self.filter.valueChanged.connect(self.updateSettings)
+        #self.renderWidth.valueChanged.connect(self.updateSettings)
+        #self.renderHeight.valueChanged.connect(self.updateSettings)
+        #self.engine.valueChanged.connect(self.updateSettings)
+        #self.sampler.valueChanged.connect(self.updateSettings)
+        #self.filter.valueChanged.connect(self.updateSettings)
 
     def updateSettings(self):
         print("Updating Render Settings")
