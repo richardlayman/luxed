@@ -2268,6 +2268,45 @@ class AttributeEditor(QDockWidget):
             self.stack.setCurrentIndex(2)
 
 
+# NODE ATTRIBUTE LOADER
+class NodeAttributeLoader(QWidget):
+
+    def __init__(self,node):
+        super().__init__()
+        vbox = QVBoxLayout()
+        label = QLabel("name:")
+        vbox.addWidget(label)
+        self.setLayout(vbox)
+        self.node = None
+
+    def load(self):
+        
+        pass
+
+
+# ADD DIALOG
+class AddNodeDialog(QDialog):
+    nodeAdded = pyqtSignal()
+
+    def __init__(self,node):
+        super().__init__()
+        self.setFixedWidth(400)
+        self.setFixedHeight(400)
+        self.setWindowTitle("Add Node")
+        self.node = node
+        attributes = NodeAttributeLoader(self.node) 
+        vbox = QVBoxLayout()
+        vbox.addWidget(attributes)
+        self.setLayout(vbox)
+
+        self.hide()
+
+    def setNode(self):
+        #node = Node('ballmat','materials')
+        self.nodeAdded.emit()
+        self.hide()
+ 
+
 # SCENE LAYOUT DOCK
 
 class SceneLayout(QDockWidget):
@@ -2308,6 +2347,8 @@ class SceneLayout(QDockWidget):
 
         self.setWidget(frame)
 
+        self.addNodeDialog = AddNodeDialog(Node('',''))
+
         self.objects.itemClicked.connect(self.objectChanged)
         self.materials.itemClicked.connect(self.materialChanged)
         self.textures.itemClicked.connect(self.textureChanged)
@@ -2324,6 +2365,11 @@ class SceneLayout(QDockWidget):
         #    node.addProperty(Property(node.ntype,'mat_test', 'type', None, 'string', None, None, ["matte"], desc="Test"))
         #    node.addProperty(Property(node.ntype,'mat_test', 'kd', None, 'texture', None, None, [1,0,0], desc="Test"))
 
+        # Open AddDialog
+        self.addNodeDialog.show()
+
+        # THIS WAS ALL TESTING CODE
+        '''
         ballmat = Node('ballmat','materials')
         ballmat.addProperty(Property(ballmat.ntype, ballmat.name, 'type', None, 'string', None, None, ["matte"], desc="Test"))
         ballmat.addProperty(Property(ballmat.ntype, ballmat.name, 'kd', None, 'texture', None, None, [1,0,0], desc="Test"))
@@ -2358,6 +2404,7 @@ class SceneLayout(QDockWidget):
         self.lux.sg.endEdit()
  
         self.lux.sg.lux.getColor(ballmat.props[1].luxprop)
+        '''
         self.updateTabs() 
 
     def remove(self):
