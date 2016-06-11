@@ -40,9 +40,10 @@ MaterialType = ["matte","glossy","glass","metal2"]
 
 class Property:
     
-    def __init__(self, ntype, name, vtype, luxprop, vmin, vmax, vdefault, desc=""):
+    def __init__(self, ntype, nname, vname, vtype, luxprop, vmin, vmax, vdefault, desc=""):
         self.ntype = ntype
-        self.name = name 
+        self.nname = nname
+        self.vname = vname
         self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, texture, uv, vector, normal, point, matrix4x4, spectrum
         self.value = vdefault 
         self.default = vdefault 
@@ -73,24 +74,24 @@ class Property:
     def getPropertyString(self):
         out=""
         if self.vtype is 'string':
-            out = "%s = \"%s\"" % (self.name, self.value)
+            out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
         if self.vtype is 'bool' or self.vtype is'int' or self.vtype is'u_int':
-            out = "%s = %d" % (self.name, int(self.value))
+            out = "%s = %d" % (self.getCallString(), int(self.value))
         if self.vtype is 'float' or self.vtype is 'double' or self.vtype is 'u_longlong' or self.vtype is 'spectrum':
-            out = "%s = %f" % (self.name, float(self.value))
+            out = "%s = %f" % (self.getCallString(), float(self.value))
         if self.vtype is 'uv':
-            out = "%s = %f %f" % (self.name, float(self.value[0]), float(self.value[1]))
+            out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
         if self.vtype is 'texture':
-            out = "%s = %f %f %f" % (self.name, float(self.value[0]), float(self.value[1]), float(self.value[2]))
+            out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
         return out
 
     def getCallString(self):
-        if self.name is None or self.attribute is None:
+        if self.nname is None or self.ntype is None:
             return ''
         if self.ntype is 'objects':
-            return"scene.objects.%s.%s"%(self.name,self.attribute)
+            return"scene.objects.%s.%s"%(self.nname,self.vname)
         if self.ntype is 'materials':
-            return"scene.materials.%s.%s"%(self.name,self.attribute)
+            return"scene.materials.%s.%s"%(self.nname,self.vname)
         return ''
 
 # NODE
@@ -114,7 +115,10 @@ class Node:
     #    self.props.append(Property(ntype,name,vtype,luxprop,vmin,vmax,vdefault,desc))
 
     def getPropertyString(self):
-        return ""
+        out = ""
+        for prop in self.props:
+            out += prop.getPropertyString() + "\n"
+        return out
 
 '''
 # COMMON PROPERTIES
@@ -589,6 +593,12 @@ class Lux(QThread):
        
     def startRendering(self):
         self.session.Start() 
+        
+    def paused(self,state):
+        if(state):
+            self.session.EndSceneEdit()
+        else:
+            self.session.BeginSceneEdit()
 
     def writeImage(self):
         self.session.UpdateStats()
@@ -683,7 +693,10 @@ class Lux(QThread):
     def setProperties(self,propstring):
         print(propstring)
         self.session.BeginSceneEdit()
-        self.scene.Parse(pyluxcore.Properties().SetFromString(propstring))
+        try:
+            self.scene.Parse(pyluxcore.Properties().SetFromString(propstring))
+        except RuntimeError:
+            pass
         self.session.EndSceneEdit()
         self.writeImage()
 
@@ -878,10 +891,6 @@ class SceneGraph():
 
         # Property containers
         #self.render = RenderProps()
-        #self.lights= []
-        #self.textures= []
-        #self.materials = []
-        #self.objects = []
         self.nodes = []
 
         #self.lux.setRenderSettings(self.render.getPropertyString)
@@ -891,6 +900,9 @@ class SceneGraph():
         
     def stop(self):
         self.lux.stopRendering()
+
+    def paused(self,state):
+        self.lux.paused(state)
 
     def write(self):
         self.lux.writeImage()
@@ -929,14 +941,15 @@ class SceneGraph():
     def addNode(self,name,ntype,subtype):
         node = Node(name,ntype,subtype)
         if subtype == 'ply':
-            node.addProperty(Property('objects','material','string',None,None,None,['image.png'],""))
-            node.addProperty(Property('objects','ply','string',None,None,None,[''],""))
+            node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],""))
+            node.addProperty(Property('objects',name,'ply','string',None,None,None,[''],""))
             self.nodes.append(node)
         if subtype == 'matte':
-            node.addProperty(Property('materials','type','string',None,None,None,['matte'],""))
-            node.addProperty(Property('materials','kd','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('materials',name,'type','string',None,None,None,['matte'],""))
+            node.addProperty(Property('materials',name,'kd','texture',None,None,None,[1,1,1],""))
             self.nodes.append(node)
         print("nodes size = %d"%len(self.nodes))
+        self.lux.setProperties(node.getPropertyString())
         return node
 
     def addObject(self):
@@ -3157,6 +3170,23 @@ class MainMenu(QMenuBar):
 
  
 # MAIN WINDOW
+
+class RenderingAction(QAction):
+
+    def __init__(self,lux,parent):
+        super().__init__('Paused',parent)
+        self.lux = lux
+        self.triggered.connect(self.doit)
+        self.lux.sg.stop()
+
+    def doit(self):
+        if self.text() == 'Paused':
+            self.setText('Rendering')
+            self.lux.sg.paused(0)
+        else:
+            self.lux.sg.paused(1)
+            self.setText('Paused')
+
  
 class Example(QMainWindow):
     
@@ -3169,6 +3199,8 @@ class Example(QMainWindow):
         self.sceneLayout = SceneLayout(self.lux)
         self.attributeEditor = AttributeEditor(self.lux)
         self.renderSettings = RenderSettings(self.lux)
+        self.toolbar = self.addToolBar("tools")
+        self.renderAct = RenderingAction(self.lux,self) 
         self.status = QStatusBar()
         frame = QFrame()
         luxframe = QFrame()
@@ -3176,6 +3208,7 @@ class Example(QMainWindow):
         luxvbox = QHBoxLayout()
         timeeditor = TimeEditor(self.lux)
 
+        self.toolbar.addAction(self.renderAct)
         luxframe.setLayout(luxvbox)
         luxframe.setAutoFillBackground(1)
         palette = QPalette()
