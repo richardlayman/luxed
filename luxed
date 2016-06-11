@@ -932,8 +932,13 @@ class SceneGraph():
 
         return nodelist 
 
-    def getNode(self, node):
-        self.lux.getNode(node)
+    #def getNode(self, node):
+    #    self.lux.getNode(node)
+
+    def getNode(self, name):
+        for node in self.nodes:
+            if node.name == name:
+                return node
 
     def addNode(self, node):
         self.nodes.append(self.lux.addNode(node))
@@ -1036,8 +1041,6 @@ class LuxWidget(QWidget):
 # EDITOR WIDGETS
 
 
-'''
-
 # Color Widget 
 class ColorWidget(QFrame):
     colorChanged = pyqtSignal()
@@ -1092,7 +1095,7 @@ class LinkDialog(QDialog):
         self.link = item.text()
         self.linkSelected.emit(self.link)
         self.hide()
- 
+
  
 # Texture Attribute
 class TextureAttribute(QWidget):
@@ -1102,7 +1105,7 @@ class TextureAttribute(QWidget):
         super().__init__()
         self.lux = lux
         self.prop = prop
-        self.label = QLabel(self.prop.name)
+        self.label = QLabel(self.prop.vname)
         self.colorValue = ColorWidget()
         self.colorValue.setColor(QColor(255.0*prop.value[0],255.0*prop.value[1],255.0*prop.value[2]))
         self.disableBtn = QPushButton("X")
@@ -1205,7 +1208,7 @@ class TextureAttribute(QWidget):
             self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
 
 
-
+'''
 # Option Attribute
 class OptionAttribute(QWidget):
     valueChanged = pyqtSignal()
@@ -2303,20 +2306,61 @@ class AttributeEditor(QDockWidget):
 # NODE ATTRIBUTE LOADER
 class NodeAttributeLoader(QWidget):
 
-    def __init__(self,node):
+    def __init__(self,lux,node):
         super().__init__()
-        vbox = QVBoxLayout()
+        self.vbox = QVBoxLayout()
+        self.lux = lux
         label = QLabel("name:")
-        vbox.addWidget(label)
-        self.setLayout(vbox)
+        self.vbox.addWidget(label)
+        self.setLayout(self.vbox)
         self.node = None
 
     def load(self,node):
-        self.node = Node(name,ntype)
+        self.node = node 
         for prop in self.node.props:
             if prop.vtype is 'int':
                 self.vbox.addItem(IntAttribute(prop))        
-        pass
+            if prop.vtype is 'texture':
+                self.vbox.addWidget(TextureAttribute(prop,self.lux))        
+
+
+# NODE EDITOR DOCK
+
+class NodeEditor(QDockWidget):
+
+    def __init__(self,lux):
+        super().__init__()
+        self.lux = lux
+        self.setWindowTitle("Node Editor")
+        self.label = QLabel("----")
+        self.label.setFont(QFont("Sans",12))
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setFrameStyle(QFrame.Panel | QFrame.Raised)
+        palette = QPalette()
+        palette.setColor(QPalette.Base,QColor(1,0,0))
+        self.label.setPalette(palette)
+        self.attributes = NodeAttributeLoader(self.lux,None)
+
+        frame = QFrame()
+
+        self.vbox = QVBoxLayout()
+        self.vbox.addWidget(self.label)
+        self.vbox.addWidget(self.attributes)
+        self.vbox.addStretch()
+        self.vbox.setContentsMargins(0,0,0,0)
+        self.vbox.setSpacing(0)
+
+        frame.setLayout(self.vbox)
+        self.setWidget(frame)
+
+    def load(self):
+        name = self.lux.sg.getNode(name)
+        self.attributes.load(node)
+
+    def setEditor(self,name):
+        self.label.setText(name)
+        node = self.lux.sg.getNode(name)
+        self.attributes.load(node)
 
 
 # ADD DIALOG
@@ -3197,7 +3241,7 @@ class Example(QMainWindow):
 
         # Create UI widgets 
         self.sceneLayout = SceneLayout(self.lux)
-        self.attributeEditor = AttributeEditor(self.lux)
+        self.attributeEditor = NodeEditor(self.lux)
         self.renderSettings = RenderSettings(self.lux)
         self.toolbar = self.addToolBar("tools")
         self.renderAct = RenderingAction(self.lux,self) 
@@ -3280,7 +3324,7 @@ class Example(QMainWindow):
 
     def materialSelected(self,item):
         print("Material Selected %s"%item)
-        self.attributeEditor.setEditor("material",self.lux.core().getMaterialType(item),item)
+        self.attributeEditor.setEditor(item)
 
     def textureSelected(self,item):
         print("Texture Selected %s"%item)
