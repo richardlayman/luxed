@@ -40,7 +40,7 @@ MaterialType = ["matte","glossy","glass","metal2"]
 
 class Property:
     
-    def __init__(self, ntype, name, luxprop, vtype, vmin, vmax, vdefault, desc=""):
+    def __init__(self, ntype, name, vtype, luxprop, vmin, vmax, vdefault, desc=""):
         self.ntype = ntype
         self.name = name 
         self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, texture, uv, vector, normal, point, matrix4x4, spectrum
@@ -96,11 +96,11 @@ class Property:
 # NODE
 class Node:
 
-    def __init__(self,name=None,ntype=None):
+    def __init__(self,name=None,ntype=None,subtype=None):
         self.name = name
         self.ntype = ntype # 'camera','light','texture','material','object' 
         self.props = []
-        self.subnode = None
+        self.subtype = subtype 
 
     def clear(self):
         self.name = None
@@ -110,8 +110,8 @@ class Node:
     def addProperty(self,prop):
         self.props.append(prop)
 
-    def addProperty(self,name,ntype,vtype,attribute,vmin,vmax,vdefault,luxprop,desc):
-        self.props.append(Property(ntype,name,attribute,luxprop,vtype,vmin,vmax,vdefault,desc))
+    #def addProperty(self,ntype,name,vtype,luxprop,vmin,vmax,vdefault,desc):
+    #    self.props.append(Property(ntype,name,vtype,luxprop,vmin,vmax,vdefault,desc))
 
     def getPropertyString(self):
         return ""
@@ -913,7 +913,9 @@ class SceneGraph():
         nodelist = []
 
         for node in self.nodes:
-            if node.ntype is ntype:
+            print("looking at node")
+            if node.ntype == ntype:
+                print("adding node " + node.name)
                 nodelist.append(node.name)
 
         return nodelist 
@@ -924,12 +926,17 @@ class SceneGraph():
     def addNode(self, node):
         self.nodes.append(self.lux.addNode(node))
 
-    def addNode(self,name,ntype):
-        node = Node(name,ntype)
-        if ntype is 'matte':
-            node.addProperty(Property('material','type',None,'string',None,None,['matte']))
-            node.addProperty(Property('material','kd',None,'texture',None,None,[1,1,1]))
+    def addNode(self,name,ntype,subtype):
+        node = Node(name,ntype,subtype)
+        if subtype == 'ply':
+            node.addProperty(Property('objects','material','string',None,None,None,['image.png'],""))
+            node.addProperty(Property('objects','ply','string',None,None,None,[''],""))
             self.nodes.append(node)
+        if subtype == 'matte':
+            node.addProperty(Property('materials','type','string',None,None,None,['matte'],""))
+            node.addProperty(Property('materials','kd','texture',None,None,None,[1,1,1],""))
+            self.nodes.append(node)
+        print("nodes size = %d"%len(self.nodes))
         return node
 
     def addObject(self):
@@ -948,6 +955,8 @@ class SceneGraph():
 
  
 class LuxWidget(QWidget):
+    nodeAdded = pyqtSignal()
+
 
     def __init__(self,width,height):
         super().__init__()
@@ -2299,7 +2308,7 @@ class NodeAttributeLoader(QWidget):
 
 # ADD DIALOG
 class AddNodeDialog(QDialog):
-    nodeAdded = pyqtSignal(['QString','QString'])
+    nodeAdded = pyqtSignal(['QString','QString','QString'])
 
     def __init__(self):
         super().__init__()
@@ -2308,17 +2317,22 @@ class AddNodeDialog(QDialog):
         self.setWindowTitle("Add Node")
         self.name = QLineEdit()
         self.type = QComboBox()
+        self.subtype = QComboBox()
+
         self.addBtn = QPushButton("Add")
         self.cancelBtn = QPushButton("Cancel")
-        self.type.addItem('material')
-        self.type.addItem('texture')
-        self.type.addItem('object')
-        self.type.addItem('light')
+        self.type.addItem('materials')
+        self.type.addItem('textures')
+        self.type.addItem('objects')
+        self.type.addItem('lights')
+        
         gbox = QGridLayout()
         gbox.addWidget(QLabel("name:"),0,0)
         gbox.addWidget(QLabel("type:"),1,0)
+        gbox.addWidget(QLabel("sub type:"),2,0)
         gbox.addWidget(self.name,0,1)
         gbox.addWidget(self.type,1,1)
+        gbox.addWidget(self.subtype,2,1)
         vbox = QVBoxLayout()
         vbox.addLayout(gbox)
         vbox.addWidget(self.addBtn)
@@ -2327,12 +2341,25 @@ class AddNodeDialog(QDialog):
 
         self.addBtn.clicked.connect(self.setNode)
         self.cancelBtn.clicked.connect(self.reject)
+        self.type.currentTextChanged.connect(self.typeChanged)
+        self.hide()
+        self.typeChanged(self.type.currentText())
+ 
+    def setNode(self):
+        self.nodeAdded.emit(self.name.text(),self.type.currentText(),self.subtype.currentText())
         self.hide()
 
-    def setNode(self):
-        self.nodeAdded.emit(self.name.text(),self.type.currentText())
-        self.hide()
- 
+    def typeChanged(self,ntype):
+        self.subtype.clear()
+        if ntype == 'objects':
+            self.subtype.addItem('ply')
+            self.subtype.addItem('stl')
+        if ntype == 'materials':
+            self.subtype.addItem('matte')
+            self.subtype.addItem('glossy2')
+        if ntype == 'textures':
+            self.subtype.addItem('imagemap')
+
 
 # SCENE LAYOUT DOCK
 
@@ -2385,8 +2412,10 @@ class SceneLayout(QDockWidget):
         self.removeBtn.clicked.connect(self.remove)
         self.addNodeDialog.nodeAdded.connect(self.addNode)
 
-    def addNode(self,name,ntype):
-        print("%s, %s node to add"%(name,ntype))
+    def addNode(self,name,ntype,subtype):
+        print("%s, %s, %s node to add"%(name,ntype,subtype))
+        self.lux.sg.addNode(name,ntype,subtype)
+        self.updateTabs()
 
     def add(self):
         #self.lux.sg.addObject()
@@ -2398,6 +2427,7 @@ class SceneLayout(QDockWidget):
 
         # Open AddDialog
         self.addNodeDialog.exec()
+        self.updateTabs()
 
         # THIS WAS ALL TESTING CODE
         '''
@@ -2446,13 +2476,18 @@ class SceneLayout(QDockWidget):
  
     def updateTabs(self):
         # Objects
+        print("updateTabs")
         self.objects.clear()
-        for o in self.lux.sg.getNames('objects'):
+        objects = self.lux.sg.getNames('objects')
+        materials = self.lux.sg.getNames('materials')
+
+
+        for o in objects:
             self.objects.addItem(o)
 
         # Materials
         self.materials.clear()
-        for m in self.lux.sg.getNames('materials'):
+        for m in materials:
             self.materials.addItem(m)
 
         # Materials
