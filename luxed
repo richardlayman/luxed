@@ -98,11 +98,10 @@ class Property:
 # NODE
 class Node:
 
-    def __init__(self,name=None,ntype=None,subtype=None):
+    def __init__(self,name=None,ntype=None):
         self.name = name
         self.ntype = ntype # 'camera','light','texture','material','object' 
         self.props = []
-        self.subtype = subtype 
 
     def clear(self):
         self.name = None
@@ -111,9 +110,6 @@ class Node:
 
     def addProperty(self,prop):
         self.props.append(prop)
-
-    #def addProperty(self,ntype,name,vtype,luxprop,vmin,vmax,vdefault,desc):
-    #    self.props.append(Property(ntype,name,vtype,luxprop,vmin,vmax,vdefault,desc))
 
     def getPropertyString(self):
         out = ""
@@ -645,10 +641,18 @@ class SceneGraph():
 
         # Property containers
         #self.render = RenderProps()
+        self.rendernodes = []
         self.nodes = []
 
+        self.initRenderNodes()
         #self.lux.setRenderSettings(self.render.getPropertyString)
 
+    def initRenderNodes(self):
+        node = Node("",'renderengine')
+
+        #if subtype == 'ply':
+        #    node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
+ 
     def start(self):
         self.lux.startRendering() 
         
@@ -698,7 +702,7 @@ class SceneGraph():
         self.nodes.append(self.lux.addNode(node))
 
     def addNode(self,name,ntype,subtype):
-        node = Node(name,ntype,subtype)
+        node = Node(name,ntype)
         if subtype == 'ply':
             node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
             node.addProperty(Property('objects',name,'ply','string',None,None,None,[''],"mesh path (e.g scenes/luxball/luxball-shell.ply)"))
@@ -2200,55 +2204,50 @@ class NodeEditor(QDockWidget):
 class AddNodeDialog(QDialog):
     nodeAdded = pyqtSignal(['QString','QString','QString'])
 
-    def __init__(self):
+    def __init__(self,ntype):
         super().__init__()
         #self.setFixedWidth(400)
         #self.setFixedHeight(400)
         self.setWindowTitle("Add Node")
         self.name = QLineEdit()
-        self.type = QComboBox()
-        self.subtype = QComboBox()
+        self.vtype = QComboBox()
 
         self.addBtn = QPushButton("Add")
         self.cancelBtn = QPushButton("Cancel")
-        self.type.addItem('materials')
-        self.type.addItem('textures')
-        self.type.addItem('objects')
-        self.type.addItem('lights')
+        self.ntype = ntype
         
         gbox = QGridLayout()
         gbox.addWidget(QLabel("name:"),0,0)
         gbox.addWidget(QLabel("type:"),1,0)
-        gbox.addWidget(QLabel("sub type:"),2,0)
         gbox.addWidget(self.name,0,1)
-        gbox.addWidget(self.type,1,1)
-        gbox.addWidget(self.subtype,2,1)
+        gbox.addWidget(self.vtype,1,1)
         vbox = QVBoxLayout()
         vbox.addLayout(gbox)
         vbox.addWidget(self.addBtn)
         vbox.addWidget(self.cancelBtn)
         self.setLayout(vbox)
 
+        self.setType(self.ntype)
         self.addBtn.clicked.connect(self.setNode)
         self.cancelBtn.clicked.connect(self.reject)
-        self.type.currentTextChanged.connect(self.typeChanged)
-        self.hide()
-        self.typeChanged(self.type.currentText())
- 
-    def setNode(self):
-        self.nodeAdded.emit(self.name.text(),self.type.currentText(),self.subtype.currentText())
         self.hide()
 
-    def typeChanged(self,ntype):
-        self.subtype.clear()
-        if ntype == 'objects':
-            self.subtype.addItem('ply')
-            self.subtype.addItem('stl')
-        if ntype == 'materials':
-            self.subtype.addItem('matte')
-            self.subtype.addItem('glossy2')
-        if ntype == 'textures':
-            self.subtype.addItem('imagemap')
+    def setType(self,ntype):
+        self.ntype = ntype
+        self.vtype.clear() 
+        if self.ntype == 'objects':
+            self.vtype.addItem('ply')
+            self.vtype.addItem('stl')
+        if self.ntype == 'materials':
+            self.vtype.addItem('matte')
+            self.vtype.addItem('glossy2')
+        if self.ntype == 'textures':
+            self.vtype.addItem('imagemap')
+
+
+    def setNode(self):
+        self.nodeAdded.emit(self.name.text(),self.ntype,self.vtype.currentText())
+        self.hide()
 
 
 # SCENE LAYOUT DOCK
@@ -2264,7 +2263,7 @@ class SceneLayout(QDockWidget):
         self.lux = lux
         self.setWindowTitle("Scene Layout")
         frame = QFrame(self)
-        tabs = QTabWidget()
+        self.tabs = QTabWidget()
         self.objects = QListWidget()
         self.materials = QListWidget()
         self.textures = QListWidget()
@@ -2273,11 +2272,11 @@ class SceneLayout(QDockWidget):
         self.removeBtn = QPushButton("-")
         self.renameBtn = QPushButton("rename")
 
-        tabs.addTab(self.objects,"Obj")
-        tabs.addTab(self.materials,"Mat")
-        tabs.addTab(self.textures, "Tex")
-        tabs.addTab(self.lights, "Lights")
-        tabs.setTabPosition(QTabWidget.North)
+        self.tabs.addTab(self.objects,"objects")
+        self.tabs.addTab(self.materials,"materials")
+        self.tabs.addTab(self.textures, "textures")
+        self.tabs.addTab(self.lights, "lights")
+        self.tabs.setTabPosition(QTabWidget.North)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.renameBtn)
@@ -2286,12 +2285,12 @@ class SceneLayout(QDockWidget):
 
         vbox = QVBoxLayout(self) 
         frame.setLayout(vbox)
-        vbox.addWidget(tabs)
+        vbox.addWidget(self.tabs)
         vbox.addLayout(hbox)
 
         self.setWidget(frame)
 
-        self.addNodeDialog = AddNodeDialog()
+        self.addNodeDialog = AddNodeDialog(self.tabs.tabText(self.tabs.currentIndex()))
 
         self.objects.itemClicked.connect(self.objectChanged)
         self.materials.itemClicked.connect(self.materialChanged)
@@ -2302,9 +2301,9 @@ class SceneLayout(QDockWidget):
         self.removeBtn.clicked.connect(self.remove)
         self.addNodeDialog.nodeAdded.connect(self.addNode)
 
-    def addNode(self,name,ntype,subtype):
-        print("%s, %s, %s node to add"%(name,ntype,subtype))
-        self.lux.sg.addNode(name,ntype,subtype)
+    def addNode(self,name,ntype,vtype):
+        print("%s, %s, %s node to add"%(name,ntype,vtype))
+        self.lux.sg.addNode(name,ntype,vtype)
         self.updateTabs()
 
     def add(self):
@@ -2316,6 +2315,7 @@ class SceneLayout(QDockWidget):
         #    node.addProperty(Property(node.ntype,'mat_test', 'kd', None, 'texture', None, None, [1,0,0], desc="Test"))
 
         # Open AddDialog
+        self.addNodeDialog.setType(self.tabs.tabText(self.tabs.currentIndex()))
         self.addNodeDialog.exec()
         self.updateTabs()
 
