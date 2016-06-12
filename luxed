@@ -953,6 +953,11 @@ class SceneGraph():
         if subtype == 'matte':
             node.addProperty(Property('materials',name,'type','string',None,None,None,['matte'],""))
             node.addProperty(Property('materials',name,'kd','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('materials',name,'emission','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('materials',name,'emission.gain','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('materials',name,'emission.power','spectrum',None,None,None,0.0,""))
+            node.addProperty(Property('materials',name,'emission.efficency','float',None,None,None,0.0,""))
+            node.addProperty(Property('materials',name,'emission.samples','int',None,-1,1000,-1,""))
             self.nodes.append(node)
         print("nodes size = %d"%len(self.nodes))
         self.lux.setProperties(node.getPropertyString())
@@ -1297,7 +1302,7 @@ class OptionAttribute(QWidget):
         self.prop = prop
         self.value.setCurrentText(self.prop.value[0])
 
-'''
+
 # Int Attribute
 class IntAttribute(QWidget):
     valueChanged = pyqtSignal()
@@ -1306,7 +1311,7 @@ class IntAttribute(QWidget):
     def __init__(self,prop):
         super().__init__()
         self.prop = prop
-        self.label = QLabel(self.prop.name)
+        self.label = QLabel(self.prop.vname)
         self.value = QLineEdit()
         self.value.setFixedWidth(80)
         if self.prop.min is not None and self.prop.max is not None:
@@ -1380,7 +1385,7 @@ class FloatAttribute(QWidget):
     def __init__(self,prop):
         super().__init__()
         self.prop = prop
-        self.label = QLabel(self.prop.name)
+        self.label = QLabel(self.prop.vname)
         self.value = QLineEdit()
         self.value.setFixedWidth(80)
         if self.prop.min is not None and self.prop.max is not None:
@@ -1457,7 +1462,7 @@ class StringAttribute(QWidget):
     def __init__(self,prop):
         super().__init__()
         self.prop = prop
-        self.label = QLabel(self.prop.name)
+        self.label = QLabel(self.prop.vname)
         self.value = QLineEdit()
         self.value.setFixedWidth(80)
         self.value.setText(self.prop.value)
@@ -1518,7 +1523,6 @@ class StringAttribute(QWidget):
     def setProperty(self,prop):
         self.prop = prop
         self.value.setText(self.prop.value[0])
-'''
 
 # File Attribute
 class FileAttribute(QWidget):
@@ -2346,15 +2350,22 @@ class NodeAttributeLoader(QWidget):
                 # is it a type option?
                 if prop.vname is 'type':
                     self.vbox.addWidget(OptionAttribute(prop))
-                if prop.vname is 'material':
+                elif prop.vname is 'material':
                     matlist = self.lux.sg.getNames('materials')
                     self.vbox.addWidget(OptionAttribute(prop,matlist))
-                if prop.vname is 'ply':
+                elif prop.vname is 'ply':
                     self.vbox.addWidget(FileAttribute(prop))
+                else:
+                    self.vbox.addWidget(StringAttribute(prop))
             if prop.vtype is 'int':
                 self.vbox.addWidget(IntAttribute(prop))        
+            if prop.vtype is 'float':
+                self.vbox.addWidget(FloatAttribute(prop))        
             if prop.vtype is 'texture':
                 self.vbox.addWidget(TextureAttribute(prop,self.lux))        
+            if prop.vtype is 'spectrum':
+                self.vbox.addWidget(FloatAttribute(prop))        
+
 
 
 # NODE EDITOR DOCK
