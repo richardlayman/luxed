@@ -702,7 +702,6 @@ class SceneGraph():
         if subtype == 'ply':
             node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
             node.addProperty(Property('objects',name,'ply','string',None,None,None,[''],"mesh path (e.g scenes/luxball/luxball-shell.ply)"))
-            self.nodes.append(node)
         if subtype == 'matte':
             node.addProperty(Property('materials',name,'type','string',None,None,None,['matte'],"type of material"))
             node.addProperty(Property('materials',name,'kd','texture',None,None,None,[1,1,1],"texture or constant color of the matte material"))
