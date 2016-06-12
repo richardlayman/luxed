@@ -36,7 +36,7 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 # PROPERTIES CONTAINERS
 
-MaterialsType = ["matte","glossy2","glass","metal2"]
+MaterialsType = ["matte","glossy2","glass","metal2","mattetranslucent","mirror","mix","null"]
 TexturesType = ["imagemap"]
 
 class Property:
@@ -630,6 +630,40 @@ class SceneGraph():
             node.addProperty(Property('materials',name,'ka','texture',None,None,None,[0.0,0.0,0.0],"texture or constant value of coefficient of absorption of the coating layer"))
             node.addProperty(Property('materials',name,'d','texture',None,None,None,[0.0,0.0,0.0],"texture or constant value of the depth (thickness) of the coating layer for absorption effects. (0 = disables)"))
             node.addProperty(Property('materials',name,'index','texture',None,None,None,[0.0,0.0,0.0],"IOR of the coating. IOR overrides color Ks if both are specified"))
+
+        if subtype == 'glass':
+            node.addProperty(Property('materials',name,'type','string',None,None,None,['glass'],"type of material"))
+            node.addProperty(Property('materials',name,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
+            node.addProperty(Property('materials',name,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
+            node.addProperty(Property('materials',name,'interiorior','texture',None,None,None,[1,1,1],"inside texture or constant index of refraction (only for volume-less rendering)"))
+            node.addProperty(Property('materials',name,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
+ 
+        if subtype == 'metal2':
+            node.addProperty(Property('materials',name,'type','string',None,None,None,['metal2'],"type of material"))
+            node.addProperty(Property('materials',name,'fresnel','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('materials',name,'uroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along u coordinate of the material"))
+            node.addProperty(Property('materials',name,'vroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along v coordinate of the material"))
+ 
+ 
+        if subtype == 'mattetranslucent':
+            node.addProperty(Property('materials',name,'type','string',None,None,None,['mattetranslucent'],"type of material"))
+            node.addProperty(Property('materials',name,'kr','texture',None,None,None,[0.5,0.5,0.5],"texture or constant reflected color of the material"))
+            node.addProperty(Property('materials',name,'kt','texture',None,None,None,[0.5,0.5,0.5],"texture or constant transmitted color of the material"))
+  
+        if subtype == 'mirror':
+            node.addProperty(Property('materials',name,'type','string',None,None,None,['mirror'],"type of material"))
+            node.addProperty(Property('materials',name,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
+  
+        if subtype == 'mix':
+            node.addProperty(Property('materials',name,'type','string',None,None,None,['mix'],"type of material"))
+            node.addProperty(Property('materials',name,'material1','string',None,None,None,[''],"name of another material"))
+            node.addProperty(Property('materials',name,'material2','string',None,None,None,[''],"name of another material"))
+            node.addProperty(Property('materials',name,'amount','texture',None,None,None,[1,1,1],"texture or constant value used to mix the materials"))
+ 
+        if subtype == 'null':
+            node.addProperty(Property('materials',name,'type','string',None,None,None,['null'],"type of material"))
+
+
         if ntype == 'materials':
             node.addProperty(Property('materials',name,'emission','texture',None,None,None,[0,0,0],"color of the emitted light"))
             node.addProperty(Property('materials',name,'emission.gain','texture',None,None,None,[0,0,0],""))
@@ -1282,6 +1316,12 @@ class AddNodeDialog(QDialog):
         if self.ntype == 'materials':
             self.vtype.addItem('matte')
             self.vtype.addItem('glossy2')
+            self.vtype.addItem('glass')
+            self.vtype.addItem('metal2')
+            self.vtype.addItem('mattetranslucent')
+            self.vtype.addItem('mirror')
+            self.vtype.addItem('mix')
+            self.vtype.addItem('null')
         if self.ntype == 'textures':
             self.vtype.addItem('imagemap')
 
