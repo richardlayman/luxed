@@ -36,7 +36,7 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 # PROPERTIES CONTAINERS
 
-MaterialsType = ["matte","glossy","glass","metal2"]
+MaterialsType = ["matte","glossy2","glass","metal2"]
 TexturesType = ["imagemap"]
 
 class Property:
@@ -639,7 +639,12 @@ class SceneGraph():
         renderengine.addProperty(Property('renderengine','renderengine','type','string',None,None,None,['PATHCPU'],""))
         # PATHCPU
         path = Node('path','path')
+        path.addProperty(Property('path','path','maxdepth','int',None,1,16,5,""))
+        path.addProperty(Property('path','path','russianroulette.depth','int',None,1,16,3,""))
+        path.addProperty(Property('path','path','russianroulette.cap','float',None,0.0,1.0,0.5,""))
         path.addProperty(Property('path','path','clamping.variance.maxvalue','float',None,0.0,None,0.0,""))
+        path.addProperty(Property('path','path','clamping.pdf.value','float',None,0.0,1.0,0.0,""))
+        path.addProperty(Property('path','path','fastpixelfilter.enable','bool',None,0,1,1,""))
  
         # SAMPLERS
 
@@ -710,10 +715,17 @@ class SceneGraph():
     def setRenderSettings(self):
         propstring = ''
 
-        # RENDER ENGINE
+        # ENGINE
+        enginenode = None
         for node in self.rendernodes:
             if node.ntype == 'renderengine':
-                propstring += node.getPropertyString()         
+                enginenode = node
+
+        propstring += enginenode.getPropertyString()         
+
+        for node in self.rendernodes:
+            if node.ntype == 'path' and enginenode.props[0].value[0] == 'PATHCPU':
+                 propstring += node.getPropertyString()
 
         # SAMPLER
         samplernode = None
@@ -2926,6 +2938,16 @@ class RenderSettings(QDockWidget):
         #self.sampler = SamplerBox(self.props)
         #self.filter = FilterBox(self.props)
 
+        # Engine 
+        self.engine = QGroupBox('engine')
+        self.engineType = OptionAttribute(self.lux.sg.getRenderProperty('renderengine','type'),['PATHCPU','BIASPATHCPU','BIDIRCPU','PATHOCL','RTPATHOCL','BIASPATHOCL','RTBIASPATHOCL'])
+        self.engineType.hideDisableButton(1)
+        self.enginevbox = QVBoxLayout()
+        self.enginevbox.addWidget(self.engineType)
+        self.enginevbox.setContentsMargins(0,0,0,0)
+        self.enginevbox.setSpacing(0)
+        self.engine.setLayout(self.enginevbox)
+ 
         # Sampler
         self.sampler = QGroupBox('sampler')
         self.samplerType = OptionAttribute(self.lux.sg.getRenderProperty('sampler','type'),["SOBOL","METROPOLIS","RANDOM"])
@@ -2941,6 +2963,7 @@ class RenderSettings(QDockWidget):
         vbox.addWidget(self.preset)
         vbox.addWidget(self.renderWidth)
         vbox.addWidget(self.renderHeight)
+        vbox.addWidget(self.engine)
         vbox.addWidget(self.sampler)
         vbox.addStretch()
         vbox.setSpacing(0)
@@ -2953,11 +2976,42 @@ class RenderSettings(QDockWidget):
 
         self.renderWidth.valueChanged.connect(self.updateSettings)
         self.renderHeight.valueChanged.connect(self.updateSettings)
-        #self.engine.valueChanged.connect(self.updateSettings)
-        self.samplerType.valueChanged.connect(self.updateWidget)
+        self.engineType.valueChanged.connect(self.updateEngine)
+        self.samplerType.valueChanged.connect(self.updateSampler)
         #self.filter.valueChanged.connect(self.updateSettings)
 
-    def updateWidget(self):
+        self.updateEngine()
+        self.updateSampler()
+
+
+    def updateEngine(self):
+        for i in reversed(range(self.enginevbox.count())):
+            self.enginevbox.itemAt(i).widget().setParent(None)
+        self.enginevbox.addWidget(self.engineType)
+        if self.engineType.getValue() == 'PATHCPU':
+            maxdepth = IntAttribute(self.lux.sg.getRenderProperty('path','maxdepth'))
+            russianroulettedepth = IntAttribute(self.lux.sg.getRenderProperty('path','russianroulette.depth'))
+            russianroulettecap = FloatAttribute(self.lux.sg.getRenderProperty('path','russianroulette.cap'))
+            clampingvariancemaxvalue = FloatAttribute(self.lux.sg.getRenderProperty('path','clamping.variance.maxvalue'))
+            clampingpdfvalue = FloatAttribute(self.lux.sg.getRenderProperty('path','clamping.pdf.value'))
+            fastpixelfilterenable = IntAttribute(self.lux.sg.getRenderProperty('path','fastpixelfilter.enable'))
+
+            maxdepth.valueChanged.connect(self.updateSettings)
+            russianroulettedepth.valueChanged.connect(self.updateSettings)
+            russianroulettecap.valueChanged.connect(self.updateSettings)
+            clampingvariancemaxvalue.valueChanged.connect(self.updateSettings)
+            clampingpdfvalue.valueChanged.connect(self.updateSettings)
+            fastpixelfilterenable.valueChanged.connect(self.updateSettings)
+
+            self.enginevbox.addWidget(maxdepth)
+            self.enginevbox.addWidget(russianroulettedepth)
+            self.enginevbox.addWidget(russianroulettecap)
+            self.enginevbox.addWidget(clampingvariancemaxvalue)
+            self.enginevbox.addWidget(clampingpdfvalue)
+            self.enginevbox.addWidget(fastpixelfilterenable)
+
+ 
+    def updateSampler(self):
         for i in reversed(range(self.samplervbox.count())):
             self.samplervbox.itemAt(i).widget().setParent(None)
         self.samplervbox.addWidget(self.samplerType)
