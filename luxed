@@ -89,11 +89,11 @@ class Property:
     def getCallString(self):
         if self.nname is None or self.ntype is None:
             return ''
-        if self.ntype is 'objects':
-            return"scene.objects.%s.%s"%(self.nname,self.vname)
-        if self.ntype is 'materials':
-            return"scene.materials.%s.%s"%(self.nname,self.vname)
-        return ''
+        elif self.ntype is 'objects':
+            return "scene.objects.%s.%s"%(self.nname,self.vname)
+        elif self.ntype is 'materials':
+            return "scene.materials.%s.%s"%(self.nname,self.vname)
+        return "%s.%s"%(self.nname,self.vname)
 
 # NODE
 class Node:
@@ -308,8 +308,6 @@ class Lux(QThread):
         self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.relsize", [1]))
 
         self.scene = pyluxcore.Scene()
-
-        #self.sceneprops = pyluxcore.Properties()
         self.scene.Parse(self.sceneprops) 
        
         self.config = pyluxcore.RenderConfig(self.props, self.scene)
@@ -317,18 +315,6 @@ class Lux(QThread):
       
         # PROPERTIES
         self.fov = 65
-
-        # Property containers
-        #self.lights= []
-        #self.textures= []
-        #self.materials = []
-        #self.objects = []
-     
-        #self.load()
-        #self.scene.Parse(pyluxcore.Properties().
-        #    Set(pyluxcore.Property("scene.materials.shell.type", ["mirror"])).
-        #    Set(pyluxcore.Property("scene.materials.shell.kr", [0.75, 0.75, 0.75])))
-
 
     def load(self):
         val = 0
@@ -530,7 +516,7 @@ class Lux(QThread):
         return props 
      
     
-    def setRenderSettings(self,props,propstring):
+    def setRenderSettings(self,propstring):
         # Stop the rendering
         self.session.Stop()
         self.session = None
@@ -648,10 +634,33 @@ class SceneGraph():
         #self.lux.setRenderSettings(self.render.getPropertyString)
 
     def initRenderNodes(self):
-        node = Node("",'renderengine')
+        # render engine
+        renderengine = Node('renderengine','renderengine')
+        renderengine.addProperty(Property('renderengine','renderengine','type','string',None,None,None,['PATHCPU'],""))
+        # PATHCPU
+        path = Node('path','path')
+        path.addProperty(Property('path','path','clamping.variance.maxvalue','float',None,0.0,None,0.0,""))
+ 
+        # SAMPLERS
 
-        #if subtype == 'ply':
-        #    node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
+        # METROPOLIS 
+        sampler= Node('sampler','sampler')
+        sampler.addProperty(Property('sampler','sampler','type','string',None,None,None,['SOBOL'],""))
+        samplermetropolis = Node('sampler.metropolis','sampler.metropolis')
+        samplermetropolis.addProperty(Property('sampler.metropolis','sampler.metropolis','largesteprate','float',None,0.0,1.0,0.4,""))
+        samplermetropolis.addProperty(Property('sampler.metropolis','sampler.metropolis','maxconsecutivereject','int',None,0,32768,512,""))
+        samplermetropolis.addProperty(Property('sampler.metropolis','sampler.metropolis','imagemutationrate','float',None,0.0,1.0,0.1,""))
+ 
+        # film 
+        film = Node('film','film')
+        film.addProperty(Property('film','film','width','int',None,10,None,720,""))
+        film.addProperty(Property('film','film','height','int',None,10,None,480,""))
+
+        self.rendernodes.append(renderengine)
+        self.rendernodes.append(sampler)
+        self.rendernodes.append(samplermetropolis)
+        self.rendernodes.append(path)
+        self.rendernodes.append(film)
  
     def start(self):
         self.lux.startRendering() 
@@ -678,10 +687,18 @@ class SceneGraph():
  
     def endEdit(self):
         self.lux.endEdit()
+    
+    def getRenderProperty(self,ntype,pname):
+        for node in self.rendernodes:
+            if node.ntype == ntype:
+                for prop in node.props:
+                    if prop.vname == pname:
+                        return prop 
+        return None 
  
     def getNames(self, ntype):
         nodelist = []
-
+       
         for node in self.nodes:
             print("looking at node")
             if node.ntype == ntype:
@@ -690,8 +707,34 @@ class SceneGraph():
 
         return nodelist 
 
-    #def getNode(self, node):
-    #    self.lux.getNode(node)
+    def setRenderSettings(self):
+        propstring = ''
+
+        # RENDER ENGINE
+        for node in self.rendernodes:
+            if node.ntype == 'renderengine':
+                propstring += node.getPropertyString()         
+
+        # SAMPLER
+        samplernode = None
+        # get sampler type
+        for node in self.rendernodes:
+            if node.ntype == 'sampler':
+                 samplernode = node
+
+        # build sampler string
+        propstring += samplernode.getPropertyString()
+        for node in self.rendernodes:
+            print("sampler type = %s"%samplernode.props[0].value[0])
+            if node.ntype == 'sampler.metropolis' and samplernode.props[0].value[0] == 'METROPOLIS':
+                propstring += node.getPropertyString()
+
+        # FILM
+        for node in self.rendernodes:
+            if node.ntype == 'film':
+                propstring += node.getPropertyString()
+
+        self.lux.setRenderSettings(propstring)
 
     def getNode(self, name):
         for node in self.nodes:
@@ -752,7 +795,6 @@ class LuxWidget(QWidget):
     def __init__(self,width,height):
         super().__init__()
         self.sg = SceneGraph()
-        #self.sg.start()
         self.fov = 65
         self.setFixedWidth(self.sg.lux.getWidth())
         self.setFixedHeight(self.sg.lux.getHeight())
@@ -794,11 +836,10 @@ class LuxWidget(QWidget):
     def getTriCount(self):
         return self.sg.lux.getTriCount()
 
-    def setRenderSettings(self,props,propstring):
-        self.lux.setRenderSettings(props,propstring)
-        self.setFixedWidth(props.width.value)
-        self.setFixedHeight(props.height.value)
-
+    def setRenderSettings(self):
+        self.sg.setRenderSettings()
+        self.setFixedWidth(self.sg.lux.getWidth())
+        self.setFixedHeight(self.sg.lux.getHeight())
 
     def wheelEvent(self,e):
         self.fov = self.fov + (e.angleDelta().y() * 0.1)
@@ -2877,22 +2918,30 @@ class RenderSettings(QDockWidget):
         self.preset.addItem("2.39 4k")
 
         frame = QFrame()
-        #self.renderWidth = IntAttribute(self.props.width)
-        #self.renderWidth.hideDisableButton(1)
-        #self.renderHeight = IntAttribute(self.props.height)
-        #self.renderHeight.hideDisableButton(1)
+        self.renderWidth = IntAttribute(self.lux.sg.getRenderProperty('film','width'))
+        self.renderWidth.hideDisableButton(1)
+        self.renderHeight = IntAttribute(self.lux.sg.getRenderProperty('film','height'))
+        self.renderHeight.hideDisableButton(1)
         #self.engine = RenderEngineBox(self.props)
         #self.sampler = SamplerBox(self.props)
         #self.filter = FilterBox(self.props)
+
+        # Sampler
+        self.sampler = QGroupBox('sampler')
+        self.samplerType = OptionAttribute(self.lux.sg.getRenderProperty('sampler','type'),["SOBOL","METROPOLIS","RANDOM"])
+        self.samplerType.hideDisableButton(1)
+        self.samplervbox = QVBoxLayout()
+        self.samplervbox.addWidget(self.samplerType)
+        self.samplervbox.setContentsMargins(0,0,0,0)
+        self.samplervbox.setSpacing(0)
+        self.sampler.setLayout(self.samplervbox)
  
         vbox = QVBoxLayout()
         vbox.addWidget(QLabel("Presets"))
         vbox.addWidget(self.preset)
-        #vbox.addWidget(self.renderWidth)
-        #vbox.addWidget(self.renderHeight)
-        #vbox.addWidget(self.engine)
-        #vbox.addWidget(self.sampler)
-        #vbox.addWidget(self.filter)
+        vbox.addWidget(self.renderWidth)
+        vbox.addWidget(self.renderHeight)
+        vbox.addWidget(self.sampler)
         vbox.addStretch()
         vbox.setSpacing(0)
 
@@ -2902,19 +2951,33 @@ class RenderSettings(QDockWidget):
         #self.sampler.updateSettings()
         #self.filter.updateSettings()
 
-        #self.renderWidth.valueChanged.connect(self.updateSettings)
-        #self.renderHeight.valueChanged.connect(self.updateSettings)
+        self.renderWidth.valueChanged.connect(self.updateSettings)
+        self.renderHeight.valueChanged.connect(self.updateSettings)
         #self.engine.valueChanged.connect(self.updateSettings)
-        #self.sampler.valueChanged.connect(self.updateSettings)
+        self.samplerType.valueChanged.connect(self.updateWidget)
         #self.filter.valueChanged.connect(self.updateSettings)
 
+    def updateWidget(self):
+        for i in reversed(range(self.samplervbox.count())):
+            self.samplervbox.itemAt(i).widget().setParent(None)
+        self.samplervbox.addWidget(self.samplerType)
+        if self.samplerType.getValue() == 'METROPOLIS':
+            largesteprate = FloatAttribute(self.lux.sg.getRenderProperty('sampler.metropolis','largesteprate'))
+            maxconsecutivereject = IntAttribute(self.lux.sg.getRenderProperty('sampler.metropolis','maxconsecutivereject'))
+            imagemutationrate = FloatAttribute(self.lux.sg.getRenderProperty('sampler.metropolis','largesteprate'))
+ 
+            largesteprate.valueChanged.connect(self.updateSettings)
+            maxconsecutivereject.valueChanged.connect(self.updateSettings)
+            imagemutationrate.valueChanged.connect(self.updateSettings)
+
+            self.samplervbox.addWidget(largesteprate)
+            self.samplervbox.addWidget(maxconsecutivereject)
+            self.samplervbox.addWidget(imagemutationrate)
+ 
+        
     def updateSettings(self):
         print("Updating Render Settings")
-        self.props.width.setValue(self.renderWidth.getValue())
-        self.props.height.setValue(self.renderHeight.getValue())
-        propstring = self.props.getPropertyString()
-        self.lux.setRenderSettings(self.props,propstring)
-
+        self.lux.setRenderSettings()
 
 class TimeEditor(QWidget):
     frameChanged = pyqtSignal(['int'])
