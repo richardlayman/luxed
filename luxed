@@ -953,8 +953,8 @@ class SceneGraph():
         if subtype == 'matte':
             node.addProperty(Property('materials',name,'type','string',None,None,None,['matte'],""))
             node.addProperty(Property('materials',name,'kd','texture',None,None,None,[1,1,1],""))
-            node.addProperty(Property('materials',name,'emission','texture',None,None,None,[1,1,1],""))
-            node.addProperty(Property('materials',name,'emission.gain','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('materials',name,'emission','texture',None,None,None,[0,0,0],""))
+            node.addProperty(Property('materials',name,'emission.gain','texture',None,None,None,[0,0,0],""))
             node.addProperty(Property('materials',name,'emission.power','spectrum',None,None,None,0.0,""))
             node.addProperty(Property('materials',name,'emission.efficency','float',None,None,None,0.0,""))
             node.addProperty(Property('materials',name,'emission.samples','int',None,-1,1000,-1,""))
@@ -1202,6 +1202,7 @@ class TextureAttribute(QWidget):
             self.disableBtn.setText("X")
  
     def changed(self):
+        self.getColorValue() 
         self.valueChanged.emit()
 
     def changeColorValue(self,e):
@@ -1261,6 +1262,8 @@ class OptionAttribute(QWidget):
         self.value.currentIndexChanged.connect(self.changed)
         self.disableBtn.clicked.connect(self.toggleEnabled)
 
+        self.prop.value[0] = self.value.currentText()
+
     def enabled(self):
         return self.label.isEnabled()
 
@@ -1285,7 +1288,8 @@ class OptionAttribute(QWidget):
             self.disableBtn.setText("X")
  
     def changed(self,index):
-        self.prop.setValue(self.value.currentText())
+        #self.prop.setValue(self.value.currentText())
+        self.prop.value[0] = self.value.currentText()
         self.valueChanged.emit()
 
     def getValue(self):
@@ -1458,14 +1462,13 @@ class FloatAttribute(QWidget):
 class StringAttribute(QWidget):
     valueChanged = pyqtSignal()
 
-
     def __init__(self,prop):
         super().__init__()
         self.prop = prop
         self.label = QLabel(self.prop.vname)
         self.value = QLineEdit()
         self.value.setFixedWidth(80)
-        self.value.setText(self.prop.value)
+        self.value.setText(self.prop.value[0])
         self.disableBtn = QPushButton("X")
         self.disableBtn.setFixedWidth(30)
 
@@ -1555,7 +1558,7 @@ class FileAttribute(QWidget):
     def getFile(self):
         filename = QFileDialog.getOpenFileName(self,"Open Ply Mesh",".","Ply Files (*.ply)")
         self.value.setText(filename[0])
-        self.prop.value = self.value.text()
+        self.prop.value[0] = self.value.text()
         self.valueChanged.emit()
 
     def getValue(self):
@@ -2328,6 +2331,7 @@ class AttributeEditor(QDockWidget):
 
 # NODE ATTRIBUTE LOADER
 class NodeAttributeLoader(QWidget):
+    nodeChanged = pyqtSignal()
 
     def __init__(self,lux,node):
         super().__init__()
@@ -2349,24 +2353,41 @@ class NodeAttributeLoader(QWidget):
             if prop.vtype is 'string':
                 # is it a type option?
                 if prop.vname is 'type':
-                    self.vbox.addWidget(OptionAttribute(prop))
+                    attribute = OptionAttribute(prop)
+                    attribute.valueChanged.connect(self.updateNode)
+                    self.vbox.addWidget(attribute)
                 elif prop.vname is 'material':
                     matlist = self.lux.sg.getNames('materials')
-                    self.vbox.addWidget(OptionAttribute(prop,matlist))
+                    attribute = OptionAttribute(prop,matlist)
+                    attribute.valueChanged.connect(self.updateNode)
+                    self.vbox.addWidget(attribute)
                 elif prop.vname is 'ply':
-                    self.vbox.addWidget(FileAttribute(prop))
+                    attribute = FileAttribute(prop)
+                    attribute.valueChanged.connect(self.updateNode)
+                    self.vbox.addWidget(attribute)
                 else:
-                    self.vbox.addWidget(StringAttribute(prop))
+                    attribute = StringAttribute(prop)
+                    attribute.valueChanged.connect(self.updateNode)
+                    self.vbox.addWidget(attribute)
             if prop.vtype is 'int':
-                self.vbox.addWidget(IntAttribute(prop))        
+                attribute = IntAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)        
             if prop.vtype is 'float':
-                self.vbox.addWidget(FloatAttribute(prop))        
+                attribute = FloatAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)        
             if prop.vtype is 'texture':
-                self.vbox.addWidget(TextureAttribute(prop,self.lux))        
+                attribute = TextureAttribute(prop,self.lux)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)        
             if prop.vtype is 'spectrum':
-                self.vbox.addWidget(FloatAttribute(prop))        
+                attribute = FloatAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)        
 
-
+    def updateNode(self):
+        self.nodeChanged.emit()
 
 # NODE EDITOR DOCK
 
@@ -2384,6 +2405,7 @@ class NodeEditor(QDockWidget):
         palette.setColor(QPalette.Base,QColor(1,0,0))
         self.label.setPalette(palette)
         self.attributes = NodeAttributeLoader(self.lux,None)
+        self.node = None
 
         frame = QFrame()
 
@@ -2396,16 +2418,20 @@ class NodeEditor(QDockWidget):
 
         frame.setLayout(self.vbox)
         self.setWidget(frame)
+        
+        self.attributes.nodeChanged.connect(self.nodeUpdate)
 
     def load(self):
-        name = self.lux.sg.getNode(name)
-        self.attributes.load(node)
+        self.node = self.lux.sg.getNode(name)
+        self.attributes.load(self.node)
 
     def setEditor(self,name):
         self.label.setText(name)
-        node = self.lux.sg.getNode(name)
-        self.attributes.load(node)
+        self.node = self.lux.sg.getNode(name)
+        self.attributes.load(self.node)
 
+    def nodeUpdate(self):
+        self.lux.sg.lux.setProperties(self.node.getPropertyString())
 
 # ADD DIALOG
 class AddNodeDialog(QDialog):
@@ -3270,9 +3296,9 @@ class RenderingAction(QAction):
     def doit(self):
         if self.text() == 'Paused':
             self.setText('Rendering')
-            self.lux.sg.paused(0)
+            #self.lux.sg.paused(0)
         else:
-            self.lux.sg.paused(1)
+            #self.lux.sg.paused(1)
             self.setText('Paused')
 
  
