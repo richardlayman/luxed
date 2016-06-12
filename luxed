@@ -36,7 +36,8 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 # PROPERTIES CONTAINERS
 
-MaterialType = ["matte","glossy","glass","metal2"]
+MaterialsType = ["matte","glossy","glass","metal2"]
+TexturesType = ["imagemap"]
 
 class Property:
     
@@ -1083,10 +1084,16 @@ class LinkDialog(QDialog):
         vbox.addWidget(self.list)
         self.setLayout(vbox)
 
+        if(ltype == 'materials'):
+            self.list.clear()
+            for t in self.lux.sg.getNames('materials'):
+                self.list.addItem(t)
+
         if(ltype == 'textures'):
             self.list.clear()
             for t in self.lux.sg.getNames('textures'):
                 self.list.addItem(t)
+
 
         self.show()
         self.list.itemClicked.connect(self.setCurrentLink)
@@ -1114,9 +1121,12 @@ class TextureAttribute(QWidget):
         self.linkEnabled = 0 # use a color value or a texture link
         self.valueTypeBtn = QPushButton("T")
         self.valueTypeBtn.setFixedWidth(30)
-        self.link = LinkDialog(self.lux,'textures')
-        self.link.hide()
-        
+        self.link = None
+        if prop.nname == 'materials':
+            self.link = LinkDialog(self.lux,'textures')
+        if prop.nname == 'objects':
+            self.link = LinkDialog(self.lux,'materials')
+
         self.setToolTip(self.prop.desc)
  
         hbox = QHBoxLayout()        
@@ -1137,7 +1147,9 @@ class TextureAttribute(QWidget):
         self.disableBtn.clicked.connect(self.toggleEnabled)
         self.valueTypeBtn.clicked.connect(self.toggleValueType)
         self.linkValue.clicked.connect(self.showLinkDialog)
-        self.link.linkSelected.connect(self.setLink)
+        if self.link:
+            self.link.linkSelected.connect(self.setLink)
+            self.link.hide()
 
     def enabled(self):
         return self.label.isEnabled()
@@ -1208,24 +1220,28 @@ class TextureAttribute(QWidget):
             self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
 
 
-'''
 # Option Attribute
 class OptionAttribute(QWidget):
     valueChanged = pyqtSignal()
 
-    def __init__(self,prop,options):
+    def __init__(self,prop,options=None):
         super().__init__()
         self.prop = prop
-        self.label = QLabel(self.prop.name)
+        self.label = QLabel(self.prop.vname)
         self.value = QComboBox()
         self.disableBtn = QPushButton("X")
         self.disableBtn.setFixedWidth(30)
 
         self.setToolTip(self.prop.desc)
- 
-        for item in options:
-            self.value.addItem(item)
- 
+
+        if options is not None: 
+            for item in options:
+                self.value.addItem(item)
+        else:
+            if self.prop.ntype == 'materials':
+                for item in MaterialsType:
+                    self.value.addItem(item)
+
         hbox = QHBoxLayout()        
         hbox.addStretch()
         hbox.addWidget(self.label)
@@ -1236,7 +1252,7 @@ class OptionAttribute(QWidget):
 
         self.setLayout(hbox)
 
-        self.value.setCurrentText(self.prop.value)        
+        self.value.setCurrentText(self.prop.value[0])        
         self.value.currentIndexChanged.connect(self.changed)
         self.disableBtn.clicked.connect(self.toggleEnabled)
 
@@ -1281,6 +1297,7 @@ class OptionAttribute(QWidget):
         self.prop = prop
         self.value.setCurrentText(self.prop.value[0])
 
+'''
 # Int Attribute
 class IntAttribute(QWidget):
     valueChanged = pyqtSignal()
@@ -1501,7 +1518,7 @@ class StringAttribute(QWidget):
     def setProperty(self,prop):
         self.prop = prop
         self.value.setText(self.prop.value[0])
-
+'''
 
 # File Attribute
 class FileAttribute(QWidget):
@@ -1510,10 +1527,12 @@ class FileAttribute(QWidget):
     def __init__(self,prop):
         super().__init__()
         self.prop = prop
-        label = QLabel(self.prop.name)
+        label = QLabel(self.prop.vname)
         self.value = QPushButton("browse")
+        if len(self.prop.value) > 0:
+            self.value.setText(self.prop.value[0])
         self.value.setFixedWidth(150)
-        self.value.setText(self.prop.value)
+        #self.value.setText(self.prop.value)
  
         self.setToolTip(self.prop.desc)
               
@@ -1530,7 +1549,7 @@ class FileAttribute(QWidget):
         self.value.clicked.connect(self.getFile)
 
     def getFile(self):
-        filename = QFileDialog.getOpenFileName(self,"Open Image",".","Image Files (*.jpg *.png *.bmp)")
+        filename = QFileDialog.getOpenFileName(self,"Open Ply Mesh",".","Ply Files (*.ply)")
         self.value.setText(filename[0])
         self.prop.value = self.value.text()
         self.valueChanged.emit()
@@ -1546,7 +1565,7 @@ class FileAttribute(QWidget):
         self.prop = prop
         self.value.setText(self.prop.value[0])
 
-
+'''
 # EDITOR ATTRIBUTES
 
 # MATERIAL EDITORS
@@ -2310,16 +2329,30 @@ class NodeAttributeLoader(QWidget):
         super().__init__()
         self.vbox = QVBoxLayout()
         self.lux = lux
-        label = QLabel("name:")
-        self.vbox.addWidget(label)
+        self.label = QLabel("name:")
+        self.vbox.addWidget(self.label)
         self.setLayout(self.vbox)
         self.node = None
 
     def load(self,node):
-        self.node = node 
+        self.node = node
+
+        for i in reversed(range(self.vbox.count())):
+            self.vbox.itemAt(i).widget().setParent(None)
+        self.vbox.addWidget(self.label)
+
         for prop in self.node.props:
+            if prop.vtype is 'string':
+                # is it a type option?
+                if prop.vname is 'type':
+                    self.vbox.addWidget(OptionAttribute(prop))
+                if prop.vname is 'material':
+                    matlist = self.lux.sg.getNames('materials')
+                    self.vbox.addWidget(OptionAttribute(prop,matlist))
+                if prop.vname is 'ply':
+                    self.vbox.addWidget(FileAttribute(prop))
             if prop.vtype is 'int':
-                self.vbox.addItem(IntAttribute(prop))        
+                self.vbox.addWidget(IntAttribute(prop))        
             if prop.vtype is 'texture':
                 self.vbox.addWidget(TextureAttribute(prop,self.lux))        
 
@@ -3320,7 +3353,8 @@ class Example(QMainWindow):
 
     def objectSelected(self,item):
         print("Object Selected %s"%item)
-        #self.attributeEditor.setEditor("object","",item)
+        self.attributeEditor.setEditor(item)
+
 
     def materialSelected(self,item):
         print("Material Selected %s"%item)
