@@ -803,8 +803,6 @@ class TextureAttribute(QWidget):
         self.label = QLabel(self.prop.vname)
         self.colorValue = ColorWidget()
         self.colorValue.setColor(QColor(255.0*prop.value[0],255.0*prop.value[1],255.0*prop.value[2]))
-        self.disableBtn = QPushButton("X")
-        self.disableBtn.setFixedWidth(30)
         self.linkValue = QPushButton("select")
         self.linkEnabled = 0 # use a color value or a texture link
         self.valueTypeBtn = QPushButton("T")
@@ -823,7 +821,6 @@ class TextureAttribute(QWidget):
         hbox.addWidget(self.colorValue)
         hbox.addWidget(self.linkValue)
         hbox.addWidget(self.valueTypeBtn)
-        hbox.addWidget(self.disableBtn)
         hbox.setSpacing(2)
         hbox.setContentsMargins(1,1,1,1)
 
@@ -832,7 +829,6 @@ class TextureAttribute(QWidget):
         self.setValueWidget()
      
         self.colorValue.colorChanged.connect(self.changed) 
-        self.disableBtn.clicked.connect(self.toggleEnabled)
         self.valueTypeBtn.clicked.connect(self.toggleValueType)
         self.linkValue.clicked.connect(self.showLinkDialog)
         if self.link:
@@ -864,26 +860,6 @@ class TextureAttribute(QWidget):
         self.linkValue.setText(link)
         self.changed()
 
-    def hideDisableButton(self,hide):
-        if(hide):
-            self.disableBtn.setVisible(0)
-        else:
-            self.disableBtn.setVisible(1)
-    
-    def toggleEnabled(self):
-        if(self.label.isEnabled()):
-            self.prop.enabled = 0
-            self.label.setEnabled(0)
-            self.colorValue.setEnabled(0)
-            self.disableBtn.setFlat(1)
-            self.disableBtn.setText("O")
-        else:
-            self.prop.enabled = 1
-            self.label.setEnabled(1)
-            self.colorValue.setEnabled(1)
-            self.disableBtn.setFlat(0)
-            self.disableBtn.setText("X")
- 
     def changed(self):
         self.getColorValue() 
         self.valueChanged.emit()
@@ -918,8 +894,6 @@ class OptionAttribute(QWidget):
         self.prop = prop
         self.label = QLabel(self.prop.vname)
         self.value = QComboBox()
-        self.disableBtn = QPushButton("X")
-        self.disableBtn.setFixedWidth(30)
 
         self.setToolTip(self.prop.desc)
 
@@ -935,7 +909,6 @@ class OptionAttribute(QWidget):
         hbox.addStretch()
         hbox.addWidget(self.label)
         hbox.addWidget(self.value)
-        hbox.addWidget(self.disableBtn)
         hbox.setSpacing(2)
         hbox.setContentsMargins(1,1,1,1)
 
@@ -943,33 +916,12 @@ class OptionAttribute(QWidget):
 
         self.value.setCurrentText(self.prop.value[0])        
         self.value.currentIndexChanged.connect(self.changed)
-        self.disableBtn.clicked.connect(self.toggleEnabled)
 
         self.prop.value[0] = self.value.currentText()
 
     def enabled(self):
         return self.label.isEnabled()
 
-    def hideDisableButton(self,hide):
-        if(hide):
-            self.disableBtn.setVisible(0)
-        else:
-            self.disableBtn.setVisible(1)
-
-    def toggleEnabled(self):
-        if(self.label.isEnabled()):
-            self.prop.enabled = 0
-            self.label.setEnabled(0)
-            self.value.setEnabled(0)
-            self.disableBtn.setFlat(1)
-            self.disableBtn.setText("O")
-        else:
-            self.prop.enabled = 1
-            self.label.setEnabled(1)
-            self.value.setEnabled(1)
-            self.disableBtn.setFlat(0)
-            self.disableBtn.setText("X")
- 
     def changed(self,index):
         #self.prop.setValue(self.value.currentText())
         self.prop.value[0] = self.value.currentText()
@@ -1005,8 +957,6 @@ class IntAttribute(QWidget):
             self.validator = QIntValidator(self.prop.min,self.prop.max)
             self.value.setValidator(self.validator)
         self.value.setText("%d"%self.prop.value)
-        self.disableBtn = QPushButton("X")
-        self.disableBtn.setFixedWidth(30)
 
         self.setToolTip(self.prop.desc)
        
@@ -1014,7 +964,6 @@ class IntAttribute(QWidget):
         hbox.addStretch()
         hbox.addWidget(self.label)
         hbox.addWidget(self.value)
-        hbox.addWidget(self.disableBtn)
         hbox.setSpacing(2)
         hbox.setContentsMargins(1,1,1,1)
 
@@ -1022,32 +971,10 @@ class IntAttribute(QWidget):
 
         # connections
         self.value.editingFinished.connect(self.changed)
-        self.disableBtn.clicked.connect(self.toggleEnabled)
 
     def enabled(self):
         return self.label.isEnabled()
 
-
-    def hideDisableButton(self,hide):
-        if(hide):
-            self.disableBtn.setVisible(0)
-        else:
-            self.disableBtn.setVisible(1)
-
-    def toggleEnabled(self):
-        if(self.label.isEnabled()):
-            self.prop.enabled = 0
-            self.label.setEnabled(0)
-            self.value.setEnabled(0)
-            self.disableBtn.setFlat(1)
-            self.disableBtn.setText("O")
-        else:
-            self.prop.enabled = 1
-            self.label.setEnabled(1)
-            self.value.setEnabled(1)
-            self.disableBtn.setFlat(0)
-            self.disableBtn.setText("X")
- 
     def changed(self):
         self.prop.value = int(self.value.text())
         self.valueChanged.emit()
@@ -1079,8 +1006,6 @@ class FloatAttribute(QWidget):
             self.validator = QDoubleValidator(self.prop.min,self.prop.max,4)
             self.value.setValidator(self.validator)
         self.value.setText("%f"%self.prop.value)
-        self.disableBtn = QPushButton("X")
-        self.disableBtn.setFixedWidth(30)
 
         self.setToolTip(self.prop.desc)
        
@@ -1088,7 +1013,6 @@ class FloatAttribute(QWidget):
         hbox.addStretch()
         hbox.addWidget(self.label)
         hbox.addWidget(self.value)
-        hbox.addWidget(self.disableBtn)
         hbox.setSpacing(2)
         hbox.setContentsMargins(1,1,1,1)
 
@@ -1096,32 +1020,10 @@ class FloatAttribute(QWidget):
 
         # connections
         self.value.editingFinished.connect(self.changed)
-        self.disableBtn.clicked.connect(self.toggleEnabled)
 
     def enabled(self):
         return self.label.isEnabled()
 
-
-    def hideDisableButton(self,hide):
-        if(hide):
-            self.disableBtn.setVisible(0)
-        else:
-            self.disableBtn.setVisible(1)
-
-    def toggleEnabled(self):
-        if(self.label.isEnabled()):
-            self.prop.enabled = 0
-            self.label.setEnabled(0)
-            self.value.setEnabled(0)
-            self.disableBtn.setFlat(1)
-            self.disableBtn.setText("O")
-        else:
-            self.prop.enabled = 1
-            self.label.setEnabled(1)
-            self.value.setEnabled(1)
-            self.disableBtn.setFlat(0)
-            self.disableBtn.setText("X")
- 
     def changed(self):
         self.prop.value = float(self.value.text())
         self.valueChanged.emit()
@@ -1152,8 +1054,6 @@ class StringAttribute(QWidget):
         self.value = QLineEdit()
         self.value.setFixedWidth(80)
         self.value.setText(self.prop.value[0])
-        self.disableBtn = QPushButton("X")
-        self.disableBtn.setFixedWidth(30)
 
         self.setToolTip(self.prop.desc)
        
@@ -1161,7 +1061,6 @@ class StringAttribute(QWidget):
         hbox.addStretch()
         hbox.addWidget(self.label)
         hbox.addWidget(self.value)
-        hbox.addWidget(self.disableBtn)
         hbox.setSpacing(2)
         hbox.setContentsMargins(1,1,1,1)
 
@@ -1169,32 +1068,10 @@ class StringAttribute(QWidget):
 
         # connections
         self.value.editingFinished.connect(self.changed)
-        self.disableBtn.clicked.connect(self.toggleEnabled)
 
     def enabled(self):
         return self.label.isEnabled()
 
-
-    def hideDisableButton(self,hide):
-        if(hide):
-            self.disableBtn.setVisible(0)
-        else:
-            self.disableBtn.setVisible(1)
-
-    def toggleEnabled(self):
-        if(self.label.isEnabled()):
-            self.prop.enabled = 0
-            self.label.setEnabled(0)
-            self.value.setEnabled(0)
-            self.disableBtn.setFlat(1)
-            self.disableBtn.setText("O")
-        else:
-            self.prop.enabled = 1
-            self.label.setEnabled(1)
-            self.value.setEnabled(1)
-            self.disableBtn.setFlat(0)
-            self.disableBtn.setText("X")
- 
     def changed(self):
         self.prop.value = self.value.text()
         self.valueChanged.emit()
@@ -1559,14 +1436,11 @@ class RenderSettings(QDockWidget):
 
         frame = QFrame()
         self.renderWidth = IntAttribute(self.lux.sg.getRenderProperty('film','width'))
-        self.renderWidth.hideDisableButton(1)
         self.renderHeight = IntAttribute(self.lux.sg.getRenderProperty('film','height'))
-        self.renderHeight.hideDisableButton(1)
 
         # Engine 
         self.engine = QGroupBox('engine')
         self.engineType = OptionAttribute(self.lux.sg.getRenderProperty('renderengine','type'),['PATHCPU','BIASPATHCPU','BIDIRCPU','PATHOCL','RTPATHOCL','BIASPATHOCL','RTBIASPATHOCL'])
-        self.engineType.hideDisableButton(1)
         self.enginevbox = QVBoxLayout()
         self.enginevbox.addWidget(self.engineType)
         self.enginevbox.setContentsMargins(0,0,0,0)
@@ -1576,7 +1450,6 @@ class RenderSettings(QDockWidget):
         # Sampler
         self.sampler = QGroupBox('sampler')
         self.samplerType = OptionAttribute(self.lux.sg.getRenderProperty('sampler','type'),["SOBOL","METROPOLIS","RANDOM"])
-        self.samplerType.hideDisableButton(1)
         self.samplervbox = QVBoxLayout()
         self.samplervbox.addWidget(self.samplerType)
         self.samplervbox.setContentsMargins(0,0,0,0)
