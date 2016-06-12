@@ -566,7 +566,7 @@ class SceneGraph():
 
         return nodelist 
 
-    def setRenderSettings(self):
+    def getRenderSettings(self):
         propstring = ''
 
         # ENGINE
@@ -600,7 +600,10 @@ class SceneGraph():
             if node.ntype == 'film':
                 propstring += node.getPropertyString()
 
-        self.lux.setRenderSettings(propstring)
+        return propstring
+
+    def setRenderSettings(self):
+        self.lux.setRenderSettings(self.getRenderSettings())
 
     def getNode(self, name):
         for node in self.nodes:
@@ -638,6 +641,12 @@ class SceneGraph():
         print("nodes size = %d"%len(self.nodes))
         self.lux.setProperties(node.getPropertyString())
         return node
+
+    def getSceneString(self):
+        out = ''
+        for node in self.nodes:
+            out += node.getPropertyString() + '\n\n'
+        return out
 
     def addObject(self):
         node = Node('mat_test','materials')
@@ -1699,7 +1708,7 @@ class FileNewAction(QAction):
     def doit(self):
         print("New")
 
-
+'''
 class FileSaveAction(QAction):
 
     def __init__(self,parent):
@@ -1708,6 +1717,7 @@ class FileSaveAction(QAction):
 
     def doit(self):
         print("Save")
+'''
 
 class FileExitAction(QAction):
 
@@ -1721,15 +1731,17 @@ class FileExitAction(QAction):
  
 class ImportMenu(QMenu):
 
-    def __init__(self,parent):
+    def __init__(self,lux,parent):
         super().__init__("Import",parent)
         self.addAction(ImportPlyAction(self))
 
 class ExportMenu(QMenu):
 
-    def __init__(self,parent):
+    def __init__(self,lux,parent):
         super().__init__("Export",parent)
-        self.addAction(ExportSceneAction(self))
+        self.addAction(ExportRenderAction(lux,self))
+        self.addAction(ExportSceneAction(lux,self))
+
 
 # IMPORT ACTIONS
 class ImportPlyAction(QAction):
@@ -1743,34 +1755,52 @@ class ImportPlyAction(QAction):
 
 
 # EXPORT ACTIONS 
-class ExportSceneAction(QAction):
+class ExportRenderAction(QAction):
 
-    def __init__(self,parent):
-        super().__init__("Scene",parent)
+    def __init__(self,lux,parent):
+        super().__init__("Render",parent)
         self.triggered.connect(self.doit)
+        self.lux = lux
 
     def doit(self):
-        print("Scene")
+        filename = QFileDialog.getSaveFileName(None,"Export Render Configuration",".","Config Files (*.cfg)")
+        out = self.lux.sg.getRenderSettings()
+        file = open(filename[0],'w')
+        file.write(out)
+        file.close()
 
- 
+class ExportSceneAction(QAction):
+
+    def __init__(self,lux,parent):
+        super().__init__("Scene",parent)
+        self.triggered.connect(self.doit)
+        self.lux = lux
+
+    def doit(self):
+        filename = QFileDialog.getSaveFileName(None,"Export Scene File",".","Scene Files (*.scn)")
+        out = self.lux.sg.getSceneString()
+        file = open(filename[0],'w')
+        file.write(out)
+        file.close()
+
+
 class FileMenu(QMenu):
 
-    def __init__(self,name):
+    def __init__(self,lux,name):
         super().__init__(name)
         self.addAction(FileNewAction(self))
-        self.addAction(FileSaveAction(self))
         self.addSeparator()
-        self.addMenu(ImportMenu(self))
-        self.addMenu(ExportMenu(self))
+        self.addMenu(ImportMenu(lux,self))
+        self.addMenu(ExportMenu(lux,self))
         self.addSeparator()
         self.addAction(FileExitAction(self))
  
 
 class MainMenu(QMenuBar):
 
-    def __init__(self):
+    def __init__(self,lux):
         super().__init__()
-        self.fileMenu = FileMenu("File")
+        self.fileMenu = FileMenu(lux,"File")
 
         self.addMenu(self.fileMenu)
 
@@ -1823,7 +1853,7 @@ class Example(QMainWindow):
 
         luxvbox.addWidget(self.lux,Qt.AlignCenter)
 
-        self.menu = MainMenu()
+        self.menu = MainMenu(self.lux)
         self.setMenuBar(self.menu)
 
         # Layout UI widgets
