@@ -953,12 +953,23 @@ class SceneGraph():
         if subtype == 'matte':
             node.addProperty(Property('materials',name,'type','string',None,None,None,['matte'],""))
             node.addProperty(Property('materials',name,'kd','texture',None,None,None,[1,1,1],""))
+        if subtype == 'glossy2':
+            node.addProperty(Property('materials',name,'type','string',None,None,None,['matte'],""))
+            node.addProperty(Property('materials',name,'kd','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('materials',name,'ks','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('materials',name,'uroughness','texture',None,None,None,[0.1,0.1,0.1],""))
+            node.addProperty(Property('materials',name,'vroughness','texture',None,None,None,[0.1,0.1,0.1],""))
+            node.addProperty(Property('materials',name,'ka','texture',None,None,None,[0.0,0.0,0.0],""))
+            node.addProperty(Property('materials',name,'d','texture',None,None,None,[0.0,0.0,0.0],""))
+            node.addProperty(Property('materials',name,'index','texture',None,None,None,[0.0,0.0,0.0],""))
+        if ntype == 'materials':
             node.addProperty(Property('materials',name,'emission','texture',None,None,None,[0,0,0],""))
             node.addProperty(Property('materials',name,'emission.gain','texture',None,None,None,[0,0,0],""))
             node.addProperty(Property('materials',name,'emission.power','spectrum',None,None,None,0.0,""))
             node.addProperty(Property('materials',name,'emission.efficency','float',None,None,None,0.0,""))
             node.addProperty(Property('materials',name,'emission.samples','int',None,-1,1000,-1,""))
-            self.nodes.append(node)
+ 
+        self.nodes.append(node)
         print("nodes size = %d"%len(self.nodes))
         self.lux.setProperties(node.getPropertyString())
         return node
