@@ -46,7 +46,7 @@ class Property:
         self.nname = nname
         self.vname = vname
         self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, texture, uv, vector, normal, point, matrix4x4, spectrum
-        self.value = vdefault 
+        self.value = vdefault
         self.default = vdefault 
         self.min = vmin 
         self.max = vmax 
@@ -415,6 +415,18 @@ class Lux(QThread):
     def getColor(self,prop):
         print(prop.Get())
 
+    # TODO - FIX THIS!!!
+    def removeNode(self,node):
+        self.session.BeginSceneEdit()
+        for prop in node.props:
+            #luxprop = pyluxcore.Property(prop.getCallString(), prop.value)
+            #self.scene.Parse(self.sceneprops.Delete(prop.getCallString()))
+            self.sceneprops.Delete(prop.getCallString())
+
+        self.scene.Parse(self.sceneprops) 
+        self.session.EndSceneEdit()
+        self.writeImage()
+            
     def addNode(self,node):
 
         print("ADD NODE %s"%node.name)
@@ -613,7 +625,37 @@ class SceneGraph():
     def addNode(self, node):
         self.nodes.append(self.lux.addNode(node))
 
-    def addNode(self,name,ntype,subtype):
+    def addSceneNode(self,name,ntype,subtype):
+        # if the scene node already exist, replace it
+        # else add it
+        node = None
+        for n in self.nodes:
+            if n.name == name:
+                node = n
+                if n.ntype == ntype:
+                    for prop in n.props:
+                        if prop.vname == 'type' and prop.value[0] != subtype:
+                            print("replacing node %s with type %s node"%(name,prop.value[0]))
+                            self.removeNode(n)
+                            self.nodes.remove(n)
+                            node = self.createNode(name,ntype,subtype)
+                            #self.nodes.append(node)
+                            self.nodes.append(node)
+                            self.lux.setProperties(node.getPropertyString())
+                else:
+                    print("can't add node because of node of the same name already exist as a different type")
+        if node == None:
+            print("no node %s found, creating a new one"%name)
+            node = self.createNode(name,ntype,subtype)
+            self.nodes.append(node)
+            self.lux.setProperties(node.getPropertyString())
+
+        return node 
+
+    def removeNode(self,node):
+        self.lux.removeNode(node)
+
+    def createNode(self,name,ntype,subtype):
         node = Node(name,ntype)
         if subtype == 'ply':
             node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
@@ -671,9 +713,6 @@ class SceneGraph():
             node.addProperty(Property('materials',name,'emission.efficency','float',None,None,None,0.0,"luminous efficacy in lumens/watt. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
             node.addProperty(Property('materials',name,'emission.samples','int',None,-1,1000,-1,"the number of shadow ray to trace to compute direct light from this material. This property is an hint and the render engine can ignore this information. -1 means use the default global value."))
  
-        self.nodes.append(node)
-        print("nodes size = %d"%len(self.nodes))
-        self.lux.setProperties(node.getPropertyString())
         return node
 
     def getSceneString(self):
@@ -1186,7 +1225,6 @@ class NodeAttributeLoader(QWidget):
 
     def load(self,node):
         self.node = node
-
         for i in reversed(range(self.vbox.count())):
             self.vbox.itemAt(i).widget().setParent(None)
         self.vbox.addWidget(self.label)
@@ -1196,7 +1234,7 @@ class NodeAttributeLoader(QWidget):
                 # is it a type option?
                 if prop.vname is 'type':
                     attribute = OptionAttribute(prop)
-                    attribute.valueChanged.connect(self.updateNode)
+                    attribute.valueChanged.connect(self.typeChanged)
                     self.vbox.addWidget(attribute)
                 elif prop.vname is 'material':
                     matlist = self.lux.sg.getNames('materials')
@@ -1230,6 +1268,13 @@ class NodeAttributeLoader(QWidget):
 
     def updateNode(self):
         self.nodeChanged.emit()
+
+    def typeChanged(self):
+        for prop in self.node.props:
+            if prop.vname == 'type':
+                subtype = prop.value
+        self.load(self.lux.sg.addSceneNode(self.node.name,self.node.ntype,subtype))
+    
 
 # NODE EDITOR DOCK
 
@@ -1384,7 +1429,7 @@ class SceneLayout(QDockWidget):
 
     def addNode(self,name,ntype,vtype):
         print("%s, %s, %s node to add"%(name,ntype,vtype))
-        self.lux.sg.addNode(name,ntype,vtype)
+        self.lux.sg.addSceneNode(name,ntype,vtype)
         self.updateTabs()
 
     def add(self):
