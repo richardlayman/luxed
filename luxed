@@ -653,6 +653,7 @@ class SceneGraph():
         # if the scene node already exist, replace it
         # else add it
         print("addSceneNode() name=%s, ntype=%s, subtype=%s"%(name,ntype,subtype))
+        '''
         node = None
         i = 0
         for n in self.nodes:
@@ -663,11 +664,15 @@ class SceneGraph():
                         #print("prop value name is " + prop.vname + " and it's value is " + prop.value[0])
                         if prop.vname == 'type': # and prop.value[0] != subtype:
                             print("replacing node %s with type %s node"%(name,prop.value[0]))
-                            self.removeNode(n)
-                            del self.nodes[i]
-                            node = self.createNode(name,ntype,subtype)
-                            #n = node
-                            #self.lux.setProperties(node.getPropertyString())
+                            #self.removeNode(n)
+                            #del self.nodes[i]
+                            #node = self.createNode(name,ntype,subtype)
+                            n.name = name
+                            n.ntype = ntype
+                            n.subtype = subtype
+                            prop.value = ['glossy2']
+                            node = n
+                            self.lux.setProperties(node.getPropertyString())
                 else:
                     print("can't add node because of node of the same name already exist as a different type")
             i += 1
@@ -675,16 +680,29 @@ class SceneGraph():
         if node == None:
             print("no node %s found, creating a new one"%name)
             node = self.createNode(name,ntype,subtype)
-            #self.nodes.append(node)
+            self.nodes.append(node)
+            self.lux.setProperties(node.getPropertyString())
 
-        self.nodes.append(node)
-        self.lux.setProperties(node.getPropertyString())
         print("FINISHED!!!")
         print("ALL NODES IN SCENEGRAPH")
         for n in self.nodes:
             print("NODE: %s,%s"%(node.name,node.ntype))
             for prop in n.props:
                 print("\tPROP: %s"%prop.vname)
+        '''
+        node = None
+        for n in self.nodes:
+            if n.name == name:
+                n = self.createNode(name,ntype,subtype)
+                n.name = name
+                n.ntype = ntype
+                n.subtype = subtype
+                node = n
+                self.lux.setProperties(node.getPropertyString())
+        if node is None:
+                node = self.createNode(name,ntype,subtype)
+                self.lux.setProperties(node.getPropertyString())
+                self.nodes.append(node)
 
         return node 
 
