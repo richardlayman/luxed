@@ -269,7 +269,7 @@ class Lux(QThread):
         self.session = pyluxcore.RenderSession(self.config)
         self.session.Start()
 
-
+    '''
     def setProperty(self,propname,propval):
         self.session.BeginSceneEdit()
         self.scene.Parse(pyluxcore.Properties().Set(pyluxcore.Property(propname, [propval])).
@@ -279,17 +279,26 @@ class Lux(QThread):
         )
         self.session.EndSceneEdit()
         self.writeImage()
+    '''
 
     def setProperties(self,propstring):
+        names = self.sceneprops.GetAllNames()
+        print("setProperties() List BEFORE")
+        for name in names:
+            print(name)
+        print("END")
+        print("PROP CALL STRING")
         print(propstring)
         self.session.BeginSceneEdit()
         try:
-            self.scene.Parse(pyluxcore.Properties().SetFromString(propstring))
+            #self.scene.Parse(pyluxcore.Properties().SetFromString(propstring))
+            self.scene.Parse(self.sceneprops.SetFromString(propstring))
         except RuntimeError:
             pass
         self.session.EndSceneEdit()
         self.writeImage()
 
+    '''
     def getMaterialProperties(self,mtype,name):
         if mtype is "materialcommmon":
             props = MaterialCommonProps()
@@ -368,7 +377,7 @@ class Lux(QThread):
             props.gamma.setValue(self.scnprops.Get("scene.textures.%s.gamma"%name).Get())
             props.gain.setValue(self.scnprops.Get("scene.textures.%s.gain"%name).Get())
         return props 
-     
+    '''
     
     def setRenderSettings(self,propstring):
         # Stop the rendering
@@ -417,14 +426,29 @@ class Lux(QThread):
 
     # TODO - FIX THIS!!!
     def removeNode(self,node):
-        self.session.BeginSceneEdit()
+        names = self.sceneprops.GetAllNames()
+        print("Property List BEFORE")
+        for name in names:
+            print(name)
+        print("END")
         for prop in node.props:
             #luxprop = pyluxcore.Property(prop.getCallString(), prop.value)
             #self.scene.Parse(self.sceneprops.Delete(prop.getCallString()))
             self.sceneprops.Delete(prop.getCallString())
+            #self.sceneprops.Clear()
 
+        self.session.BeginSceneEdit()
         self.scene.Parse(self.sceneprops) 
         self.session.EndSceneEdit()
+        names = ""
+        names = self.sceneprops.GetAllNames()
+        print("Property List AFTER")
+        for name in names:
+            print(name)
+        print("END")
+
+        self.config = pyluxcore.RenderConfig(self.props, self.scene)
+        self.session = pyluxcore.RenderSession(self.config)
         self.writeImage()
             
     def addNode(self,node):
@@ -628,27 +652,39 @@ class SceneGraph():
     def addSceneNode(self,name,ntype,subtype):
         # if the scene node already exist, replace it
         # else add it
+        print("addSceneNode() name=%s, ntype=%s, subtype=%s"%(name,ntype,subtype))
         node = None
+        i = 0
         for n in self.nodes:
             if n.name == name:
                 node = n
                 if n.ntype == ntype:
                     for prop in n.props:
-                        if prop.vname == 'type' and prop.value[0] != subtype:
+                        #print("prop value name is " + prop.vname + " and it's value is " + prop.value[0])
+                        if prop.vname == 'type': # and prop.value[0] != subtype:
                             print("replacing node %s with type %s node"%(name,prop.value[0]))
                             self.removeNode(n)
-                            self.nodes.remove(n)
+                            del self.nodes[i]
                             node = self.createNode(name,ntype,subtype)
-                            #self.nodes.append(node)
-                            self.nodes.append(node)
-                            self.lux.setProperties(node.getPropertyString())
+                            #n = node
+                            #self.lux.setProperties(node.getPropertyString())
                 else:
                     print("can't add node because of node of the same name already exist as a different type")
+            i += 1
+
         if node == None:
             print("no node %s found, creating a new one"%name)
             node = self.createNode(name,ntype,subtype)
-            self.nodes.append(node)
-            self.lux.setProperties(node.getPropertyString())
+            #self.nodes.append(node)
+
+        self.nodes.append(node)
+        self.lux.setProperties(node.getPropertyString())
+        print("FINISHED!!!")
+        print("ALL NODES IN SCENEGRAPH")
+        for n in self.nodes:
+            print("NODE: %s,%s"%(node.name,node.ntype))
+            for prop in n.props:
+                print("\tPROP: %s"%prop.vname)
 
         return node 
 
@@ -656,6 +692,10 @@ class SceneGraph():
         self.lux.removeNode(node)
 
     def createNode(self,name,ntype,subtype):
+        print("Creating Node")
+        print(name)
+        print(ntype)
+        print(subtype)
         node = Node(name,ntype)
         if subtype == 'ply':
             node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
@@ -1224,6 +1264,7 @@ class NodeAttributeLoader(QWidget):
         self.node = None
 
     def load(self,node):
+        print("loading node: %s"%node.name)
         self.node = node
         for i in reversed(range(self.vbox.count())):
             self.vbox.itemAt(i).widget().setParent(None)
@@ -1265,20 +1306,23 @@ class NodeAttributeLoader(QWidget):
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-
+        print("finished loading node: %s"%node.name)
+ 
     def updateNode(self):
         self.nodeChanged.emit()
 
     def typeChanged(self):
         for prop in self.node.props:
             if prop.vname == 'type':
-                subtype = prop.value
-        self.load(self.lux.sg.addSceneNode(self.node.name,self.node.ntype,subtype))
-    
+                subtype = prop.value[0]
+        self.node = self.lux.sg.addSceneNode(self.node.name,self.node.ntype,subtype)
+        self.load(self.node)
+        self.nodeChanged.emit()    
 
 # NODE EDITOR DOCK
 
 class NodeEditor(QDockWidget):
+    nodeChanged = pyqtSignal()
 
     def __init__(self,lux):
         super().__init__()
@@ -1309,17 +1353,21 @@ class NodeEditor(QDockWidget):
         self.attributes.nodeChanged.connect(self.nodeUpdate)
 
     def load(self):
+        print("load()")
         self.node = self.lux.sg.getNode(name)
         self.attributes.load(self.node)
 
     def setEditor(self,name):
+        print("setEditor()")
         self.label.setText(name)
         self.node = self.lux.sg.getNode(name)
         self.attributes.load(self.node)
 
     def nodeUpdate(self):
+        self.node = self.attributes.node
         self.lux.sg.lux.setProperties(self.node.getPropertyString())
-
+        self.nodeChanged.emit()
+ 
 # ADD DIALOG
 class AddNodeDialog(QDialog):
     nodeAdded = pyqtSignal(['QString','QString','QString'])
@@ -1851,6 +1899,8 @@ class Example(QMainWindow):
         matstring = "scene.materials.luxed_default_mat.type = \"matte\"\n"
         matstring += "scene.materials.luxed_default_mat.kd = 1 1 1\n"
         self.lux.sg.lux.setProperties(matstring)
+
+        self.attributeEditor.nodeChanged.connect(self.updateSceneLayout)
  
     def updateLux(self):
         self.lux.sg.write()
@@ -1884,6 +1934,10 @@ class Example(QMainWindow):
     def lightSelected(self,item):
         print("Light Selected %s"%item)
         #self.attributeEditor.setEditor("object","",item)
+
+    def updateSceneLayout(self):
+        self.sceneLayout.updateTabs()
+ 
 
 if __name__ == '__main__':
     
