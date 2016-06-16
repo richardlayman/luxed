@@ -13,6 +13,36 @@ Installation
 ---------------
 LuxEd is a single python file that you can run straight from the folder. Currently you manually add your objects and materials to the scene. LuxEd was developed and tested on Linux but should work fine on any other operating system.
 
-Status
+Currently Supported Features
 ---------------
-I had to add a scenegraph to the program which broke it for a little bit but it's virtually back to it's original state. You can add objects, matte and glossy2 materials but that will change soon. There is also no access to the render settings but that too should be fixed soon.
+File IO
+* Export Render Config
+* Export Scene
+Render Settings
+Engine Type
+* PATHCPU
+Sampler
+* Metropolis
+Filter
+* TODO
+Light Strategy
+* TODO
+Film
+* TODO 
+Objects/Shapes
+* Ply
+Materials
+* Matte
+* Glossy2
+* Glass
+* MatteTranslucent
+* Mirror
+* Metal
+* Mix
+* Null
+Textures
+* TODO
+Lights
+* TODO
+Volumes
+* TODO
