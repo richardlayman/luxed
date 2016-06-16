@@ -30,7 +30,7 @@ sys.path.append("./lib")
 import pyluxcore
 
 from PyQt5.QtCore import pyqtSignal, Qt, QRect, QThread, QTimer
-from PyQt5.QtWidgets import QMainWindow, QSlider, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
+from PyQt5.QtWidgets import QMainWindow, QSlider, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
 from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, QIntValidator, QDoubleValidator
 
 
@@ -111,6 +111,9 @@ class Node:
     def addProperty(self,prop):
         self.props.append(prop)
 
+    def clearProperties(self):
+        self.props = []
+
     def getPropertyString(self):
         out = ""
         for prop in self.props:
@@ -124,13 +127,6 @@ class Lux(QThread):
     def __init__(self):
         super().__init__()
         pyluxcore.Init()
-
-        # Load the configuration from files
-        #self.props = pyluxcore.Properties("render.cfg")
-        #self.scene = pyluxcore.Scene("scene.scn")
-        #self.scnprops = pyluxcore.Properties("scene.scn")
-        #self.config = pyluxcore.RenderConfig(self.props, self.scene)
-        #self.session = pyluxcore.RenderSession(self.config)
 
         self.props = pyluxcore.Properties()
         self.props.Set(pyluxcore.Property("renderengine.type", ["PATHCPU"]))
@@ -175,12 +171,6 @@ class Lux(QThread):
         print("Object Count:%d"%(self.scene.GetObjectCount()))
         print("Light Count:%d"%(self.scene.GetObjectCount()))
 
-        #self.textures = self.scnprops.GetAllUniqueSubNames("scene.textures")
-        #self.materials = self.scnprops.GetAllUniqueSubNames("scene.materials")
-        #self.lights = self.scnprops.GetAllUniqueSubNames("scene.lights")
-        #self.objects = self.scnprops.GetAllUniqueSubNames("scene.objects")
-        #print("Loaded... Lights:%d, Textures%d, Materials%d, Objects%d"%(len(self.lights), len(self.textures), len(self.materials), len(self.objects))) 
-       
     def startRendering(self):
         self.session.Start() 
         
@@ -230,8 +220,6 @@ class Lux(QThread):
         self.session.EndSceneEdit()
         self.writeImage()
 
-
-
     # This is needed since luxcore will crash if you try to set a property that was not set in the file.
     # To fix this we will call this method before we try to set any properties.
     # When the AE is first loaded it will load the properties for lux and then this method will get called
@@ -269,18 +257,6 @@ class Lux(QThread):
         self.session = pyluxcore.RenderSession(self.config)
         self.session.Start()
 
-    '''
-    def setProperty(self,propname,propval):
-        self.session.BeginSceneEdit()
-        self.scene.Parse(pyluxcore.Properties().Set(pyluxcore.Property(propname, [propval])).
-            Set(pyluxcore.Property("scene.camera.lookat.orig", [-5.35,7.7,-4.35])).
-            Set(pyluxcore.Property("scene.camera.lookat.target", [10,5.69,-9.98])).
-            Set(pyluxcore.Property("scene.camera.up", [0,1,0]))
-        )
-        self.session.EndSceneEdit()
-        self.writeImage()
-    '''
-
     def setProperties(self,propstring):
         names = self.sceneprops.GetAllNames()
         print("setProperties() List BEFORE")
@@ -296,89 +272,8 @@ class Lux(QThread):
         except RuntimeError:
             pass
         self.session.EndSceneEdit()
-        self.writeImage()
-
-    '''
-    def getMaterialProperties(self,mtype,name):
-        if mtype is "materialcommmon":
-            props = MaterialCommonProps()
-            props.id.setValue(self.scnprops.Get("scene.materials.%s.id"%name).Get())
-            props.bumptex.setValue(self.scnprops.Get("scene.materials.%s.bumptex"%name).Get())
-            props.normaltex.setValue(self.scnprops.Get("scene.materials.%s.normaltex"%name).Get())
- 
-        if mtype is "materialemission":
-            props = MaterialEmissionProps()
-            props.emission.setValue(self.scnprops.Get("scene.materials.%s.emission"%name).Get())
-            props.emissiongain.setValue(self.scnprops.Get("scene.materials.%s.emission.gain"%name).Get())
-            props.emissionpower.setValue(self.scnprops.Get("scene.materials.%s.emission.power"%name).Get())
-            props.emissionefficency.setValue(self.scnprops.Get("scene.materials.%s.emission.efficency"%name).Get())
-        
-        if mtype is "matte":
-            props = MatteProps()
-            props.kd.setValue(self.scnprops.Get("scene.materials.%s.kd"%name).Get())
-
-        if mtype is "carpaint":
-            props = CarPaintProps()
-            props.preset.setValue(self.scnprops.Get("scene.materials.%s.preset"%name).Get())
-            props.ka.setValue(self.scnprops.Get("scene.materials.%s.ka"%name).Get())
-            props.d.setValue(self.scnprops.Get("scene.materials.%s.d"%name).Get())
-            props.kd.setValue(self.scnprops.Get("scene.materials.%s.kd"%name).Get())
-            props.ks1.setValue(self.scnprops.Get("scene.materials.%s.ks1"%name).Get())
-            props.ks2.setValue(self.scnprops.Get("scene.materials.%s.ks2"%name).Get())
-            props.ks3.setValue(self.scnprops.Get("scene.materials.%s.ks3"%name).Get())
-            props.r1.setValue(self.scnprops.Get("scene.materials.%s.r1"%name).Get())
-            props.r2.setValue(self.scnprops.Get("scene.materials.%s.r2"%name).Get())
-            props.r3.setValue(self.scnprops.Get("scene.materials.%s.r3"%name).Get())
-            props.m1.setValue(self.scnprops.Get("scene.materials.%s.m1"%name).Get())
-            props.m2.setValue(self.scnprops.Get("scene.materials.%s.m2"%name).Get())
-            props.m3.setValue(self.scnprops.Get("scene.materials.%s.m3"%name).Get())
-
-        if mtype is "glass":
-            props = GlassProps()
-            props.kr.setValue(self.scnprops.Get("scene.materials.%s.kr"%name).Get())
-            props.kt.setValue(self.scnprops.Get("scene.materials.%s.kt"%name).Get())
-            props.interior.setValue(self.scnprops.Get("scene.materials.%s.interior"%name).Get())
-            props.exterior.setValue(self.scnprops.Get("scene.materials.%s.exterior"%name).Get())
-
-        if mtype is "glossy2":
-            props = Glossy2Props()
-            #stats = self.session.GetStats();
-            #props.kd.setValue(self.session.Parse(self.scnprops.Get("scene.materials.%s.kd"%name).Get()))
-            #val = None
-            #val = stats.Get("stats.scene.materials.%s.kd"%name).GetString()
-            #self.config.GetProperty(self.scnprops.Get("scene.materials.%s.ks"%name).Get())
-            #self.scene.Parse(self.scnprops.Get("scene.materials.%s.kd"%name).Get())
-            print("GLOSSY NAME")
-            #print(self.scnprops.Get("scene.materials.%s.ks"%name).Get())
-            props.kd.setValue(self.scnprops.Get("scene.materials.%s.kd"%name).Get())
-            props.ks.setValue(self.scnprops.Get("scene.materials.%s.ks"%name).Get())
-            #print(self.scnprops.Get("scene.materials.%s.ks"%name).Get())
-            #self.config.GetProperty(self.scnprops.Get("scene.materials.%s.ks"%name).GetName())
-            #print(self.scene.ToProperties().Get(self.scnprops.Get("scene.materials.%s.ks"%name)).Get())
-
-
-
-            props.uroughness.setValue(self.scnprops.Get("scene.materials.%s.uroughness"%name).Get())
-            props.vroughness.setValue(self.scnprops.Get("scene.materials.%s.vroughness"%name).Get())
-
-        if mtype is "mix":
-            props = MaterialMixProps()
-            props.material1.setValue(self.scnprops.Get("scene.materials.%s.material1"%name).Get())
-            props.material2.setValue(self.scnprops.Get("scene.materials.%s.material2"%name).Get())
-            props.amount.setValue(self.scnprops.Get("scene.materials.%s.amount"%name).Get())
- 
-        return props 
- 
-    def getTextureProperties(self,mtype,name):
-        props = None
-        if mtype is "imagemap":
-            props = ImageMapProps()
-            props.file.setValue(self.scnprops.Get("scene.textures.%s.file"%name).Get())
-            props.gamma.setValue(self.scnprops.Get("scene.textures.%s.gamma"%name).Get())
-            props.gain.setValue(self.scnprops.Get("scene.textures.%s.gain"%name).Get())
-        return props 
-    '''
-    
+        #self.writeImage()
+   
     def setRenderSettings(self,propstring):
         # Stop the rendering
         self.session.Stop()
@@ -501,7 +396,7 @@ class Lux(QThread):
             Set(pyluxcore.Property(prop.GetName(), [1,0,0]))
         ) 
         self.session.EndSceneEdit()
-        self.writeImage()
+        #self.writeImage()
  
         names = self.scene.ToProperties().GetAllUniqueSubNames("scene.materials")
         for n in names:
@@ -641,6 +536,9 @@ class SceneGraph():
     def setRenderSettings(self):
         self.lux.setRenderSettings(self.getRenderSettings())
 
+    def updateNode(self,node):
+        self.lux.setProperties(node.getPropertyString())
+
     def getNode(self, name):
         for node in self.nodes:
             if node.name == name:
@@ -653,68 +551,38 @@ class SceneGraph():
         # if the scene node already exist, replace it
         # else add it
         print("addSceneNode() name=%s, ntype=%s, subtype=%s"%(name,ntype,subtype))
-        '''
         node = None
         i = 0
         for n in self.nodes:
-            if n.name == name:
-                node = n
-                if n.ntype == ntype:
-                    for prop in n.props:
-                        #print("prop value name is " + prop.vname + " and it's value is " + prop.value[0])
-                        if prop.vname == 'type': # and prop.value[0] != subtype:
-                            print("replacing node %s with type %s node"%(name,prop.value[0]))
-                            #self.removeNode(n)
-                            #del self.nodes[i]
-                            #node = self.createNode(name,ntype,subtype)
-                            n.name = name
-                            n.ntype = ntype
-                            n.subtype = subtype
-                            prop.value = ['glossy2']
-                            node = n
-                            self.lux.setProperties(node.getPropertyString())
-                else:
-                    print("can't add node because of node of the same name already exist as a different type")
-            i += 1
-
-        if node == None:
-            print("no node %s found, creating a new one"%name)
-            node = self.createNode(name,ntype,subtype)
-            self.nodes.append(node)
-            self.lux.setProperties(node.getPropertyString())
-
-        print("FINISHED!!!")
-        print("ALL NODES IN SCENEGRAPH")
-        for n in self.nodes:
-            print("NODE: %s,%s"%(node.name,node.ntype))
-            for prop in n.props:
-                print("\tPROP: %s"%prop.vname)
-        '''
-        node = None
-        for n in self.nodes:
-            if n.name == name:
-                n = self.createNode(name,ntype,subtype)
-                n.name = name
-                n.ntype = ntype
-                n.subtype = subtype
+            if n.name == name and n.ntype == ntype:
+                # clear out old properties
+                for prop in n.props:
+                    del(prop)
+                self.addProperties(n,subtype)
                 node = n
                 self.lux.setProperties(node.getPropertyString())
+            elif n.name == name:    
+                print("node with name already exist but not of the same type")
+            i += 1
         if node is None:
-                node = self.createNode(name,ntype,subtype)
+                node = Node(name,ntype)
+                self.addProperties(node,subtype)
                 self.lux.setProperties(node.getPropertyString())
                 self.nodes.append(node)
 
         return node 
 
     def removeNode(self,node):
-        self.lux.removeNode(node)
+        i = 0
+        for n in self.nodes:
+            if n == node:
+                print("removing %s"%n.name)
+                del self.nodes[i]
+            i += 1
 
-    def createNode(self,name,ntype,subtype):
-        print("Creating Node")
-        print(name)
-        print(ntype)
-        print(subtype)
-        node = Node(name,ntype)
+    def addProperties(self,node,subtype):
+        name = node.name
+        node.clearProperties()
         if subtype == 'ply':
             node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
             node.addProperty(Property('objects',name,'ply','string',None,None,None,[''],"mesh path (e.g scenes/luxball/luxball-shell.ply)"))
@@ -764,14 +632,13 @@ class SceneGraph():
             node.addProperty(Property('materials',name,'type','string',None,None,None,['null'],"type of material"))
 
 
-        if ntype == 'materials':
+        if node.ntype == 'materials':
             node.addProperty(Property('materials',name,'emission','texture',None,None,None,[0,0,0],"color of the emitted light"))
             node.addProperty(Property('materials',name,'emission.gain','texture',None,None,None,[0,0,0],""))
             node.addProperty(Property('materials',name,'emission.power','spectrum',None,None,None,0.0,"lamp output power in watts. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
             node.addProperty(Property('materials',name,'emission.efficency','float',None,None,None,0.0,"luminous efficacy in lumens/watt. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
             node.addProperty(Property('materials',name,'emission.samples','int',None,-1,1000,-1,"the number of shadow ray to trace to compute direct light from this material. This property is an hint and the render engine can ignore this information. -1 means use the default global value."))
  
-        return node
 
     def getSceneString(self):
         out = ''
@@ -796,7 +663,6 @@ class SceneGraph():
  
 class LuxWidget(QWidget):
     nodeAdded = pyqtSignal()
-
 
     def __init__(self,width,height):
         super().__init__()
@@ -1049,7 +915,7 @@ class OptionAttribute(QWidget):
         self.value.currentIndexChanged.connect(self.changed)
 
         self.prop.value[0] = self.value.currentText()
-
+  
     def enabled(self):
         return self.label.isEnabled()
 
@@ -1077,7 +943,6 @@ class OptionAttribute(QWidget):
 class IntAttribute(QWidget):
     valueChanged = pyqtSignal()
 
-
     def __init__(self,prop):
         super().__init__()
         self.prop = prop
@@ -1102,6 +967,7 @@ class IntAttribute(QWidget):
 
         # connections
         self.value.editingFinished.connect(self.changed)
+
 
     def enabled(self):
         return self.label.isEnabled()
@@ -1230,7 +1096,7 @@ class FileAttribute(QWidget):
         if len(self.prop.value) > 0:
             self.value.setText(self.prop.value[0])
         self.value.setFixedWidth(150)
-        #self.value.setText(self.prop.value)
+        #self.value.setText(self.prop.value[0])
  
         self.setToolTip(self.prop.desc)
               
@@ -1266,34 +1132,40 @@ class FileAttribute(QWidget):
 # DOCKS
 
 # ATTRIBUTE EDITOR DOCK
-
-
+     
 # NODE ATTRIBUTE LOADER
 class NodeAttributeLoader(QWidget):
-    nodeChanged = pyqtSignal()
+    attributeChanged = pyqtSignal()
 
     def __init__(self,lux,node):
         super().__init__()
-        self.vbox = QVBoxLayout()
+        self.vbox = QVBoxLayout(self)
         self.lux = lux
-        self.label = QLabel("name:")
-        self.vbox.addWidget(self.label)
         self.setLayout(self.vbox)
         self.node = None
 
-    def load(self,node):
-        print("loading node: %s"%node.name)
-        self.node = node
+    def clearPanel(self):
         for i in reversed(range(self.vbox.count())):
-            self.vbox.itemAt(i).widget().setParent(None)
-        self.vbox.addWidget(self.label)
+            item = self.vbox.itemAt(i)
+            widget = self.vbox.itemAt(i).widget()
+            self.vbox.removeItem(item)
+            self.vbox.removeWidget(widget)
+            widget.hide()
+            self.vbox.update()
+        self.vbox.invalidate()
+
+    def load(self,node):
+        self.node = node 
+
+        self.clearPanel()
 
         for prop in self.node.props:
             if prop.vtype is 'string':
                 # is it a type option?
                 if prop.vname is 'type':
                     attribute = OptionAttribute(prop)
-                    attribute.valueChanged.connect(self.typeChanged)
+                    attribute.valueChanged.connect(self.setMaterialType)
+                    self.subtype = prop.value[0]
                     self.vbox.addWidget(attribute)
                 elif prop.vname is 'material':
                     matlist = self.lux.sg.getNames('materials')
@@ -1303,6 +1175,7 @@ class NodeAttributeLoader(QWidget):
                 elif prop.vname is 'ply':
                     attribute = FileAttribute(prop)
                     attribute.valueChanged.connect(self.updateNode)
+                    self.subtype = 'ply'
                     self.vbox.addWidget(attribute)
                 else:
                     attribute = StringAttribute(prop)
@@ -1324,19 +1197,24 @@ class NodeAttributeLoader(QWidget):
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-        print("finished loading node: %s"%node.name)
- 
-    def updateNode(self):
-        self.nodeChanged.emit()
 
-    def typeChanged(self):
+
+    def updateNode(self):
+        name = self.node.name
+        ntype = self.node.ntype
+        self.lux.sg.updateNode(self.node)
+        #self.node = self.lux.sg.addSceneNode(name,ntype,self.subtype)
+        #self.load(self.node)
+
+    def setMaterialType(self):
+        self.clearPanel()
         for prop in self.node.props:
             if prop.vname == 'type':
-                subtype = prop.value[0]
-        self.node = self.lux.sg.addSceneNode(self.node.name,self.node.ntype,subtype)
+                self.subtype = prop.value[0]
+        self.node = self.lux.sg.addSceneNode(self.node.name,self.node.ntype,self.subtype)
+        self.updateNode()
         self.load(self.node)
-        self.nodeChanged.emit()    
-
+ 
 # NODE EDITOR DOCK
 
 class NodeEditor(QDockWidget):
@@ -1368,7 +1246,9 @@ class NodeEditor(QDockWidget):
         frame.setLayout(self.vbox)
         self.setWidget(frame)
         
-        self.attributes.nodeChanged.connect(self.nodeUpdate)
+        self.attributes.attributeChanged.connect(self.nodeUpdate)
+        #self.attributes.typeChanged.connect(self.nodeUpdate)
+
 
     def load(self):
         print("load()")
@@ -1382,9 +1262,11 @@ class NodeEditor(QDockWidget):
         self.attributes.load(self.node)
 
     def nodeUpdate(self):
-        self.node = self.attributes.node
-        self.lux.sg.lux.setProperties(self.node.getPropertyString())
-        self.nodeChanged.emit()
+        pass
+        #self.node = self.attributes.node
+        #self.attributes.load(self.node)
+        #self.lux.sg.lux.setProperties(self.node.getPropertyString())
+        #self.nodeChanged.emit()
  
 # ADD DIALOG
 class AddNodeDialog(QDialog):
@@ -1511,8 +1393,6 @@ class SceneLayout(QDockWidget):
         self.addNodeDialog.exec()
         self.updateTabs()
 
-        self.updateTabs() 
-
     def remove(self):
         pass
 
@@ -1522,17 +1402,14 @@ class SceneLayout(QDockWidget):
     def updateTabs(self):
         # Objects
         print("updateTabs")
+
         self.objects.clear()
-        objects = self.lux.sg.getNames('objects')
-        materials = self.lux.sg.getNames('materials')
-
-
-        for o in objects:
+        for o in self.lux.sg.getNames('objects'):
             self.objects.addItem(o)
 
         # Materials
         self.materials.clear()
-        for m in materials:
+        for m in self.lux.sg.getNames('materials'):
             self.materials.addItem(m)
 
         # Materials
@@ -1955,7 +1832,6 @@ class Example(QMainWindow):
 
     def updateSceneLayout(self):
         self.sceneLayout.updateTabs()
- 
 
 if __name__ == '__main__':
     
