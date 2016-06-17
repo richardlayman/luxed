@@ -468,6 +468,8 @@ class SceneGraph():
         bidir.addProperty(Property('path','path','russianroulette.cap','float',None,0.0,1.0,0.5,""))
 
         # OpenCL Engines
+
+        # COMMON
         opencl= Node('opencl','opencl')
         opencl.addProperty(Property('opencl','opencl','platform.index','int',None,None,None,-1,""))
         opencl.addProperty(Property('opencl','opencl','cpu.use','int',None,0,1,0,""))
@@ -486,9 +488,14 @@ class SceneGraph():
         for prop in opencl.props:
             pathocl.props.append(prop) 
 
+        # RTPATHOCL
+        rtpath = Node('rtpath','rtpath')
+        rtpath.addProperty(Property('rtpath','rtpath','miniterations','int',None,1,32,2,""))
+        # add pathocl attributes
+        for prop in pathocl.props:
+            rtpath.props.append(prop)
+ 
 
-
-        # COMMON
         
 
  
