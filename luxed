@@ -430,6 +430,30 @@ class SceneGraph():
         path.addProperty(Property('path','path','clamping.variance.maxvalue','float',None,0.0,None,0.0,""))
         path.addProperty(Property('path','path','clamping.pdf.value','float',None,0.0,1.0,0.0,""))
         path.addProperty(Property('path','path','fastpixelfilter.enable','bool',None,0,1,1,""))
+        # BIASPATHCPU
+        biaspath = Node('biaspath','biaspath')
+        biaspath.addProperty(Property('biaspath','biaspath','pathdepth.total','int',None,0,16,10,""))
+        biaspath.addProperty(Property('biaspath','biaspath','pathdepth.diffuse','int',None,0,16,4,""))
+        biaspath.addProperty(Property('biaspath','biaspath','pathdepth.glossy','int',None,0,16,3,""))
+        biaspath.addProperty(Property('biaspath','biaspath','pathdepth.specular','int',None,0,16,3,""))
+        biaspath.addProperty(Property('biaspath','biaspath','sampling.aa.size','int',None,1,13,3,""))
+        biaspath.addProperty(Property('biaspath','biaspath','sampling.diffuse.size','int',None,1,13,3,""))
+        biaspath.addProperty(Property('biaspath','biaspath','sampling.glossy.size','int',None,1,13,2,""))
+        biaspath.addProperty(Property('biaspath','biaspath','sampling.specular.size','int',None,1,13,2,""))
+        biaspath.addProperty(Property('biaspath','biaspath','sampling.directlight.size','int',None,1,13,1,""))
+        biaspath.addProperty(Property('biaspath','biaspath','lights.lowthreshold','float',None,0.0,None,0.0,""))
+        biaspath.addProperty(Property('biaspath','biaspath','lights.nearstart','float',None,0.0,None,0.001,""))
+        biaspath.addProperty(Property('biaspath','biaspath','lights.firstvertexsamples','int',None,1,16,4,""))
+        biaspath.addProperty(Property('biaspath','biaspath','clamping.variance.maxvalue','float',None,0.0,0.0,0.0,""))
+        biaspath.addProperty(Property('biaspath','biaspath','clamping.pdf.value','float',None,0.0,1.0,0.0,""))
+        biaspath.addProperty(Property('tile','tile','size','int',None,8,256,32,""))
+        biaspath.addProperty(Property('tile','tile','size.x','int',None,8,256,32,""))
+        biaspath.addProperty(Property('tile','tile','size.y','int',None,8,256,32,""))
+        biaspath.addProperty(Property('tile','tile','multipass.enable','int',None,0,1,1,""))
+        biaspath.addProperty(Property('tile','tile','multipass.convergencetest.threshold','float',None,1.0,256.0,6.0,""))
+        biaspath.addProperty(Property('tile','tile','multipass.convergencetest.threshold256','float',None,0.0,256.0,6.0,""))
+        biaspath.addProperty(Property('tile','tile','multipass.convergencetest.threshold.reduction','float',None,0.0,1.0,0.0,""))
+        biaspath.addProperty(Property('tile','tile','multipass.convergencetest.warmup.count','int',None,0,None,32,""))
  
         # SAMPLERS
 
@@ -450,8 +474,9 @@ class SceneGraph():
         self.rendernodes.append(sampler)
         self.rendernodes.append(samplermetropolis)
         self.rendernodes.append(path)
+        self.rendernodes.append(biaspath)
         self.rendernodes.append(film)
- 
+
     def start(self):
         self.lux.startRendering() 
         
@@ -511,6 +536,9 @@ class SceneGraph():
         for node in self.rendernodes:
             if node.ntype == 'path' and enginenode.props[0].value[0] == 'PATHCPU':
                  propstring += node.getPropertyString()
+            elif node.ntype == 'biaspath' and enginenode.props[0].value[0] == 'BIASPATHCPU':
+                 propstring += node.getPropertyString()
+
 
         # SAMPLER
         samplernode = None
@@ -541,6 +569,11 @@ class SceneGraph():
 
     def getNode(self, name):
         for node in self.nodes:
+            if node.name == name:
+                return node
+
+    def getRenderNode(self, name):
+        for node in self.rendernodes:
             if node.name == name:
                 return node
 
@@ -1468,9 +1501,9 @@ class RenderSettings(QDockWidget):
 
         # Engine 
         self.engine = QGroupBox('engine')
-        self.engineType = OptionAttribute(self.lux.sg.getRenderProperty('renderengine','type'),['PATHCPU','BIASPATHCPU','BIDIRCPU','PATHOCL','RTPATHOCL','BIASPATHOCL','RTBIASPATHOCL'])
+        #self.engineType = OptionAttribute(self.lux.sg.getRenderProperty('renderengine','type'),['PATHCPU','BIASPATHCPU','BIDIRCPU','PATHOCL','RTPATHOCL','BIASPATHOCL','RTBIASPATHOCL'])
         self.enginevbox = QVBoxLayout()
-        self.enginevbox.addWidget(self.engineType)
+        #self.enginevbox.addWidget(self.engineType)
         self.enginevbox.setContentsMargins(0,0,0,0)
         self.enginevbox.setSpacing(0)
         self.engine.setLayout(self.enginevbox)
@@ -1499,38 +1532,70 @@ class RenderSettings(QDockWidget):
 
         self.renderWidth.valueChanged.connect(self.updateSettings)
         self.renderHeight.valueChanged.connect(self.updateSettings)
-        self.engineType.valueChanged.connect(self.updateEngine)
+        #self.engineType.valueChanged.connect(self.updateEngine)
         self.samplerType.valueChanged.connect(self.updateSampler)
 
         self.updateEngine()
         self.updateSampler()
 
+    def clearRenderEnginePanel(self):
+        for i in reversed(range(self.enginevbox.count())):
+            item = self.enginevbox.itemAt(i)
+            widget = self.enginevbox.itemAt(i).widget()
+            self.enginevbox.removeItem(item)
+            self.enginevbox.removeWidget(widget)
+            widget.hide()
+            self.enginevbox.update()
+        self.enginevbox.invalidate()
 
     def updateEngine(self):
-        for i in reversed(range(self.enginevbox.count())):
-            self.enginevbox.itemAt(i).widget().setParent(None)
-        self.enginevbox.addWidget(self.engineType)
-        if self.engineType.getValue() == 'PATHCPU':
-            maxdepth = IntAttribute(self.lux.sg.getRenderProperty('path','maxdepth'))
-            russianroulettedepth = IntAttribute(self.lux.sg.getRenderProperty('path','russianroulette.depth'))
-            russianroulettecap = FloatAttribute(self.lux.sg.getRenderProperty('path','russianroulette.cap'))
-            clampingvariancemaxvalue = FloatAttribute(self.lux.sg.getRenderProperty('path','clamping.variance.maxvalue'))
-            clampingpdfvalue = FloatAttribute(self.lux.sg.getRenderProperty('path','clamping.pdf.value'))
-            fastpixelfilterenable = IntAttribute(self.lux.sg.getRenderProperty('path','fastpixelfilter.enable'))
+        self.clearRenderEnginePanel()
 
-            maxdepth.valueChanged.connect(self.updateSettings)
-            russianroulettedepth.valueChanged.connect(self.updateSettings)
-            russianroulettecap.valueChanged.connect(self.updateSettings)
-            clampingvariancemaxvalue.valueChanged.connect(self.updateSettings)
-            clampingpdfvalue.valueChanged.connect(self.updateSettings)
-            fastpixelfilterenable.valueChanged.connect(self.updateSettings)
+        engineType = OptionAttribute(self.lux.sg.getRenderProperty('renderengine','type'),['PATHCPU','BIASPATHCPU','BIDIRCPU','PATHOCL','RTPATHOCL','BIASPATHOCL','RTBIASPATHOCL'])
+        engineType.valueChanged.connect(self.updateEngine)
+        self.enginevbox.addWidget(engineType)
 
-            self.enginevbox.addWidget(maxdepth)
-            self.enginevbox.addWidget(russianroulettedepth)
-            self.enginevbox.addWidget(russianroulettecap)
-            self.enginevbox.addWidget(clampingvariancemaxvalue)
-            self.enginevbox.addWidget(clampingpdfvalue)
-            self.enginevbox.addWidget(fastpixelfilterenable)
+        node = None
+
+        if engineType.getValue() == 'PATHCPU':
+            node = self.lux.sg.getRenderNode('path')
+        elif engineType.getValue() == 'BIASPATHCPU':
+            node = self.lux.sg.getRenderNode('biaspath')
+
+        if node is None:
+            return 
+
+        for prop in node.props:
+            if prop.vtype is 'string':
+                # is it a type option?
+                if prop.vname is 'type':
+                    attribute = OptionAttribute(prop)
+                    attribute.valueChanged.connect(self.updateSettings)
+                    self.subtype = prop.value[0]
+                    self.enginevbox.addWidget(attribute)
+                else:
+                    attribute = StringAttribute(prop)
+                    attribute.valueChanged.connect(self.updateSettings)
+                    self.enginevbox.addWidget(attribute)
+            if prop.vtype is 'int':
+                attribute = IntAttribute(prop)
+                attribute.valueChanged.connect(self.updateSettings)
+                self.enginevbox.addWidget(attribute)        
+            if prop.vtype is 'float':
+                attribute = FloatAttribute(prop)
+                attribute.valueChanged.connect(self.updateSettings)
+                self.enginevbox.addWidget(attribute)        
+            '''
+            if prop.vtype is 'texture':
+                attribute = TextureAttribute(prop,self.lux)
+                attribute.valueChanged.connect(self.updateNode)
+                self.enginevbox.addWidget(attribute)        
+            if prop.vtype is 'spectrum':
+                attribute = FloatAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.enginevbox.addWidget(attribute)        
+            '''
+        self.updateSettings()
 
  
     def updateSampler(self):
