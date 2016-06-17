@@ -422,8 +422,12 @@ class SceneGraph():
         # render engine
         renderengine = Node('renderengine','renderengine')
         renderengine.addProperty(Property('renderengine','renderengine','type','string',None,None,None,['PATHCPU'],""))
+        # CPU
+        cpu = Node('cpu','cpu')
+        cpu.addProperty(Property('native','native','threads.count','int',None,1,None,3,""))
         # PATHCPU
         path = Node('path','path')
+        path.props.append(cpu.props[0])
         path.addProperty(Property('path','path','maxdepth','int',None,1,16,5,""))
         path.addProperty(Property('path','path','russianroulette.depth','int',None,1,16,3,""))
         path.addProperty(Property('path','path','russianroulette.cap','float',None,0.0,1.0,0.5,""))
@@ -432,6 +436,7 @@ class SceneGraph():
         path.addProperty(Property('path','path','fastpixelfilter.enable','bool',None,0,1,1,""))
         # BIASPATHCPU
         biaspath = Node('biaspath','biaspath')
+        biaspath.props.append(cpu.props[0])
         biaspath.addProperty(Property('biaspath','biaspath','pathdepth.total','int',None,0,16,10,""))
         biaspath.addProperty(Property('biaspath','biaspath','pathdepth.diffuse','int',None,0,16,4,""))
         biaspath.addProperty(Property('biaspath','biaspath','pathdepth.glossy','int',None,0,16,3,""))
@@ -456,10 +461,36 @@ class SceneGraph():
         biaspath.addProperty(Property('tile','tile','multipass.convergencetest.warmup.count','int',None,0,None,32,""))
         # BIDIRCPU 
         bidir= Node('bidir','bidir')
+        bidir.props.append(cpu.props[0])
         bidir.addProperty(Property('path','path','maxdepth','int',None,1,16,5,""))
         bidir.addProperty(Property('light','light','maxdepth','int',None,1,16,5,""))
         bidir.addProperty(Property('path','path','russianroulette.depth','int',None,1,16,3,""))
         bidir.addProperty(Property('path','path','russianroulette.cap','float',None,0.0,1.0,0.5,""))
+
+        # OpenCL Engines
+        opencl= Node('opencl','opencl')
+        opencl.addProperty(Property('opencl','opencl','platform.index','int',None,None,None,-1,""))
+        opencl.addProperty(Property('opencl','opencl','cpu.use','int',None,0,1,0,""))
+        opencl.addProperty(Property('opencl','opencl','gpu.use','int',None,0,1,0,""))
+        opencl.addProperty(Property('opencl','opencl','cpu.workgroup.size','int',None,0,None,0,""))
+        opencl.addProperty(Property('opencl','opencl','gpu.workgroup.size','int',None,0,None,0,""))
+        opencl.addProperty(Property('opencl','opencl','device.select','string',None,None,None,[''],""))
+        # PATHOCL
+        pathocl= Node('pathocl','pathocl')
+        pathocl.addProperty(Property('pathocl','pathocl','pixelatomics.enable','int',None,0,1,0,""))
+        pathocl.addProperty(Property('opencl','opencl','task.count','string',None,None,None,['Auto'],""))
+        # add pathcpu attributes
+        for prop in path.props:
+            pathocl.props.append(prop)
+        # add common attributes
+        for prop in opencl.props:
+            pathocl.props.append(prop) 
+
+
+
+        # COMMON
+        
+
  
         # SAMPLERS
 
@@ -482,6 +513,8 @@ class SceneGraph():
         self.rendernodes.append(path)
         self.rendernodes.append(biaspath)
         self.rendernodes.append(bidir)
+        self.rendernodes.append(opencl)
+        self.rendernodes.append(pathocl)
         self.rendernodes.append(film)
 
     def start(self):
@@ -1570,6 +1603,9 @@ class RenderSettings(QDockWidget):
             node = self.lux.sg.getRenderNode('biaspath')
         elif engineType.getValue() == 'BIDIRCPU':
             node = self.lux.sg.getRenderNode('bidir')
+        elif engineType.getValue() == 'PATHOCL':
+            node = self.lux.sg.getRenderNode('pathocl')
+
 
         if node is None:
             return 
