@@ -21,6 +21,8 @@ File IO
 Render Settings
 Engine Type
 * PATHCPU
+* BIASPATHCPU
+* BIDIRCPU
 Sampler
 * Metropolis
 Filter

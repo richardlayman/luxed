@@ -454,6 +454,12 @@ class SceneGraph():
         biaspath.addProperty(Property('tile','tile','multipass.convergencetest.threshold256','float',None,0.0,256.0,6.0,""))
         biaspath.addProperty(Property('tile','tile','multipass.convergencetest.threshold.reduction','float',None,0.0,1.0,0.0,""))
         biaspath.addProperty(Property('tile','tile','multipass.convergencetest.warmup.count','int',None,0,None,32,""))
+        # BIDIRCPU 
+        bidir= Node('bidir','bidir')
+        bidir.addProperty(Property('path','path','maxdepth','int',None,1,16,5,""))
+        bidir.addProperty(Property('light','light','maxdepth','int',None,1,16,5,""))
+        bidir.addProperty(Property('path','path','russianroulette.depth','int',None,1,16,3,""))
+        bidir.addProperty(Property('path','path','russianroulette.cap','float',None,0.0,1.0,0.5,""))
  
         # SAMPLERS
 
@@ -475,6 +481,7 @@ class SceneGraph():
         self.rendernodes.append(samplermetropolis)
         self.rendernodes.append(path)
         self.rendernodes.append(biaspath)
+        self.rendernodes.append(bidir)
         self.rendernodes.append(film)
 
     def start(self):
@@ -1561,6 +1568,8 @@ class RenderSettings(QDockWidget):
             node = self.lux.sg.getRenderNode('path')
         elif engineType.getValue() == 'BIASPATHCPU':
             node = self.lux.sg.getRenderNode('biaspath')
+        elif engineType.getValue() == 'BIDIRCPU':
+            node = self.lux.sg.getRenderNode('bidir')
 
         if node is None:
             return 
