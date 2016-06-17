@@ -15,40 +15,42 @@ LuxEd is a single python file that you can run straight from the folder. Current
 
 Currently Supported Features
 ---------------
-File IO
-* Export Render Config
-* Export Scene
-Render Settings
-Engine Type
-* PATHCPU
-* BIASPATHCPU
-* BIDIRCPU
-* PATHOCL
-* RTPATHOCL
-* BIASPATHOCL
-* RTBIASPATHOCL
-Sampler
-* Metropolis
-Filter
-* TODO
-Light Strategy
-* TODO
-Film
-* TODO 
-Objects/Shapes
-* Ply
-Materials
-* Matte
-* Glossy2
-* Glass
-* MatteTranslucent
-* Mirror
-* Metal
-* Mix
-* Null
-Textures
-* TODO
-Lights
-* TODO
-Volumes
-* TODO
+- File IO
+  * Export Render Config
+  * Export Scene
+- Render Settings
+- Engine Type
+  * PATHCPU
+  * BIASPATHCPU
+  * BIDIRCPU
+  * PATHOCL
+  * RTPATHOCL
+  * BIASPATHOCL
+  * RTBIASPATHOCL
+- Sampler
+  * SOBOL
+  * METROPOLIS
+  * RANDOM
+- Filter
+  * TODO
+- Light Strategy
+  * TODO
+- Film
+  * TODO 
+- Objects/Shapes
+  * Ply
+- Materials
+  * Matte
+  * Glossy2
+  * Glass
+  * MatteTranslucent
+  * Mirror
+  * Metal
+  * Mix
+  * Null
+- Textures
+  * TODO
+- Lights
+  * TODO
+- Volumes
+  * TODO
