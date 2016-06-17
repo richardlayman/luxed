@@ -23,6 +23,10 @@ Engine Type
 * PATHCPU
 * BIASPATHCPU
 * BIDIRCPU
+* PATHOCL
+* RTPATHOCL
+* BIASPATHOCL
+* RTBIASPATHOCL
 Sampler
 * Metropolis
 Filter

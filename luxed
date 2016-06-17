@@ -30,7 +30,7 @@ sys.path.append("./lib")
 import pyluxcore
 
 from PyQt5.QtCore import pyqtSignal, Qt, QRect, QThread, QTimer
-from PyQt5.QtWidgets import QMainWindow, QSlider, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
+from PyQt5.QtWidgets import QMainWindow, QScrollArea, QSlider, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
 from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, QIntValidator, QDoubleValidator
 
 
@@ -505,10 +505,20 @@ class SceneGraph():
         for prop in opencl.props:
             biaspathocl.props.append(prop) 
 
-       
-         
-
-        
+        # RTBIASPATHOCL 
+        rtbiaspathocl = Node('rtbiaspathocl','rtbiaspathocl')
+        rtbiaspathocl.addProperty(Property('rtpath','rtpath','resolutionreduction.preview','int',None,1,8,4,""))
+        rtbiaspathocl.addProperty(Property('rtpath','rtpath','resolutionreduction.preview.step','int',None,1,8,2,""))
+        rtbiaspathocl.addProperty(Property('rtpath','rtpath','resolutionreduction.preview.dlonly.enable','int',None,0,1,0,""))
+        rtbiaspathocl.addProperty(Property('rtpath','rtpath','resolutionreduction','int',None,1,None,2,""))
+        rtbiaspathocl.addProperty(Property('rtpath','rtpath','resolutionreduction.longrun','int',None,1,None,16,""))
+        rtbiaspathocl.addProperty(Property('rtpath','rtpath','resolutionreduction.longrun.step','int',None,0,None,0,""))
+        # add pathcpu attributes
+        for prop in biaspath.props:
+            rtbiaspathocl.props.append(prop)
+        # add common attributes
+        for prop in opencl.props:
+            rtbiaspathocl.props.append(prop) 
 
  
         # SAMPLERS
@@ -535,6 +545,7 @@ class SceneGraph():
         self.rendernodes.append(pathocl)
         self.rendernodes.append(rtpath)
         self.rendernodes.append(biaspathocl)
+        self.rendernodes.append(rtbiaspathocl)
         # sampler
         self.rendernodes.append(sampler)
         self.rendernodes.append(samplermetropolis)
@@ -1541,6 +1552,7 @@ class RenderSettings(QDockWidget):
         super().__init__()
         self.lux = lux
         self.setWindowTitle("Render Settings")
+        self.setFixedWidth(420)
 
         self.props = self.lux.sg.lux.getRenderSettings()
 
@@ -1559,7 +1571,11 @@ class RenderSettings(QDockWidget):
         self.preset.addItem("1:79 4k")
         self.preset.addItem("2.39 4k")
 
+        scrollarea = QScrollArea()
+        scrollarea.setWidgetResizable(1)
+
         frame = QFrame()
+
         self.renderWidth = IntAttribute(self.lux.sg.getRenderProperty('film','width'))
         self.renderHeight = IntAttribute(self.lux.sg.getRenderProperty('film','height'))
 
@@ -1592,7 +1608,8 @@ class RenderSettings(QDockWidget):
         vbox.setSpacing(0)
 
         frame.setLayout(vbox)
-        self.setWidget(frame)
+        scrollarea.setWidget(frame)
+        self.setWidget(scrollarea)
 
         self.renderWidth.valueChanged.connect(self.updateSettings)
         self.renderHeight.valueChanged.connect(self.updateSettings)
@@ -1611,7 +1628,7 @@ class RenderSettings(QDockWidget):
             widget.hide()
             self.enginevbox.update()
         self.enginevbox.invalidate()
-
+        
     def updateEngine(self):
         self.clearRenderEnginePanel()
 
@@ -1633,6 +1650,8 @@ class RenderSettings(QDockWidget):
             node = self.lux.sg.getRenderNode('rtpath')
         elif engineType.getValue() == 'BIASPATHOCL':
             node = self.lux.sg.getRenderNode('biaspathocl')
+        elif engineType.getValue() == 'RTBIASPATHOCL':
+            node = self.lux.sg.getRenderNode('rtbiaspathocl')
 
         if node is None:
             return 
