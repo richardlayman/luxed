@@ -30,7 +30,7 @@ sys.path.append("./lib")
 import pyluxcore
 
 from PyQt5.QtCore import pyqtSignal, Qt, QRect, QThread, QTimer
-from PyQt5.QtWidgets import QMainWindow, QScrollArea, QSlider, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
+from PyQt5.QtWidgets import QMainWindow, QAbstractScrollArea, QScrollArea, QSlider, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
 from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, QIntValidator, QDoubleValidator
 
 
@@ -357,36 +357,6 @@ class Lux(QThread):
         self.scene.Parse(self.sceneprops)
 
         return node
- 
-    def addObject(self):
-        self.session.BeginSceneEdit()
-
-        #self.scene.Parse(pyluxcore.Properties().
-
-        mattekd = pyluxcore.Property("scene.materials.mat.kd", [1,1,1])
-        mattename = mattekd.GetName()
-        print("NEW PROP NAME: " + mattename)
- 
-        #self.scene.Parse(self.sceneprops.Set(pyluxcore.Property("scene.materials.light_mat.type", ["matte"]))
- 
-        self.scene.Parse(pyluxcore.Properties().
-            Set(pyluxcore.Property("scene.materials.light_mat.type", ["matte"])).
-            Set(pyluxcore.Property("scene.materials.light_mat.kd", [1, 1, 1])). 
-            Set(pyluxcore.Property("scene.materials.light_mat.emission", [1, 1, 1])).
-            Set(pyluxcore.Property("scene.materials.light_mat.emission.gain", [1, 1, 1])).
-            Set(pyluxcore.Property("scene.materials.light_mat.emission.power", [1000])).
-            Set(pyluxcore.Property("scene.materials.light_mat.emission.efficency", [1])).
-            Set(pyluxcore.Property("scene.materials.mat.type", ["matte"])).
-            Set(mattekd).
-            Set(pyluxcore.Property("scene.objects.ball.material", ["mat"])).
-            Set(pyluxcore.Property("scene.objects.ball.ply", ["mesh/outer_ball.ply"])).
-            Set(pyluxcore.Property("scene.objects.light_obj.material", ["light_mat"])).
-            Set(pyluxcore.Property("scene.objects.light_obj.ply", ["mesh/light_left.ply"]))
-        )
-
-        self.session.EndSceneEdit()
-        self.writeImage()
-        return mattekd
 
     def getName(self,prop):
         print("PASSED PROP NAME " + prop.GetName())
@@ -804,21 +774,7 @@ class SceneGraph():
             out += node.getPropertyString() + '\n\n'
         return out
 
-    def addObject(self):
-        node = Node('mat_test','materials')
-        #node.addProperty(Property(ntype,name, attribute, luxprop, vtype, vmin, vmax, vdefault, desc=""))
-        node.addProperty(Property(node.ntype,'mat_test', 'type', None, 'string', None, None, ["matte"], desc="Test"))
-        node.addProperty(Property(node.ntype,'mat_test', 'kd', None, 'texture', None, None, [1,0,0], desc="Test"))
 
-        node = self.lux.addNode(node)
-        for prop in node.props:
-            print(prop.luxprop)
-            print(prop.getCallString())
-            print(prop.value)
-        #prop = self.lux.addObject()
-        #print(self.lux.getName(prop))
-
- 
 class LuxWidget(QWidget):
     nodeAdded = pyqtSignal()
 
@@ -1623,7 +1579,7 @@ class RenderSettings(QDockWidget):
         super().__init__()
         self.lux = lux
         self.setWindowTitle("Render Settings")
-        self.setFixedWidth(420)
+        #self.setFixedWidth(420)
 
         self.props = self.lux.sg.lux.getRenderSettings()
 
@@ -1642,10 +1598,12 @@ class RenderSettings(QDockWidget):
         self.preset.addItem("1:79 4k")
         self.preset.addItem("2.39 4k")
 
-        scrollarea = QScrollArea()
-        scrollarea.setWidgetResizable(1)
+        self.scrollarea = QScrollArea(self)
+        self.scrollarea.setWidgetResizable(1)
+        self.scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scrollarea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
 
-        frame = QFrame()
+        self.frame = QFrame()
 
         self.renderWidth = IntAttribute(self.lux.sg.getRenderProperty('film','width'))
         self.renderHeight = IntAttribute(self.lux.sg.getRenderProperty('film','height'))
@@ -1682,9 +1640,9 @@ class RenderSettings(QDockWidget):
         vbox.addStretch()
         vbox.setSpacing(0)
 
-        frame.setLayout(vbox)
-        scrollarea.setWidget(frame)
-        self.setWidget(scrollarea)
+        self.frame.setLayout(vbox)
+        self.scrollarea.setWidget(self.frame)
+        self.setWidget(self.scrollarea)
 
         self.renderWidth.valueChanged.connect(self.updateSettings)
         self.renderHeight.valueChanged.connect(self.updateSettings)
@@ -1723,7 +1681,7 @@ class RenderSettings(QDockWidget):
             widget.hide()
             self.filtervbox.update()
         self.filtervbox.invalidate()
-        
+         
     def updateEngine(self):
         self.clearRenderEnginePanel()
 
@@ -1783,7 +1741,6 @@ class RenderSettings(QDockWidget):
             '''
         self.updateSettings()
 
- 
     def updateSampler(self):
         self.clearRenderSamplerPanel()
 
@@ -1819,7 +1776,6 @@ class RenderSettings(QDockWidget):
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateSettings)
                 self.samplervbox.addWidget(attribute)        
- 
   
     def updateFilter(self):
         self.clearRenderFilterPanel()
@@ -1864,7 +1820,6 @@ class RenderSettings(QDockWidget):
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateSettings)
                 self.filtervbox.addWidget(attribute)        
-       
 
     def updateSettings(self):
         print("Updating Render Settings")
@@ -2103,9 +2058,9 @@ class Example(QMainWindow):
         self.lux.startRendering()
 
         # Create a default material
-        matstring = "scene.materials.luxed_default_mat.type = \"matte\"\n"
-        matstring += "scene.materials.luxed_default_mat.kd = 1 1 1\n"
-        self.lux.sg.lux.setProperties(matstring)
+        #matstring = "scene.materials.luxed_default_mat.type = \"matte\"\n"
+        #matstring += "scene.materials.luxed_default_mat.kd = 1 1 1\n"
+        #self.lux.sg.lux.setProperties(matstring)
 
         self.attributeEditor.nodeChanged.connect(self.updateSceneLayout)
  
