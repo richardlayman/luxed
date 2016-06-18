@@ -324,7 +324,6 @@ class Lux(QThread):
     def getColor(self,prop):
         print(prop.Get())
 
-    # TODO - FIX THIS!!!
     def removeNode(self,node):
         names = self.sceneprops.GetAllNames()
         print("Property List BEFORE")
@@ -705,10 +704,10 @@ class SceneGraph():
 
         return node 
 
-    def removeNode(self,node):
+    def removeNode(self,name):
         i = 0
         for n in self.nodes:
-            if n == node:
+            if n.name == name:
                 print("removing %s"%n.name)
                 del self.nodes[i]
             i += 1
@@ -1512,6 +1511,10 @@ class NodeEditor(QDockWidget):
         self.node = self.lux.sg.getNode(name)
         self.attributes.load(self.node)
 
+    def clear(self):
+        self.attributes.clearPanel()
+        self.attributes.node = None
+
     def nodeUpdate(self):
         pass
         #self.node = self.attributes.node
@@ -1573,11 +1576,14 @@ class AddNodeDialog(QDialog):
 
 class SceneLayout(QDockWidget):
     nodeSelected = pyqtSignal(['QString'])
+    nodeRemoved = pyqtSignal()
  
     def __init__(self,lux):
         super().__init__()
         self.lux = lux
         self.setWindowTitle("Scene Layout")
+        self.selectedName = None
+        
         frame = QFrame(self)
         self.tabs = QTabWidget()
         self.cameras = QListWidget()
@@ -1656,7 +1662,10 @@ class SceneLayout(QDockWidget):
         self.updateTabs()
 
     def remove(self):
-        pass
+        self.lux.sg.removeNode(self.selectedName)
+        self.selectedName = None
+        self.updateTabs()
+        self.nodeRemoved.emit()
 
     def rename(self):
         pass
@@ -1698,6 +1707,7 @@ class SceneLayout(QDockWidget):
             self.volumes.addItem(v)
 
     def nodeChanged(self,item):
+        self.selectedName = item.text()
         self.nodeSelected.emit(item.text())
 
 
@@ -2176,6 +2186,7 @@ class Example(QMainWindow):
 
         # Connections setup
         self.sceneLayout.nodeSelected.connect(self.nodeSelected)
+        self.sceneLayout.nodeRemoved.connect(self.nodeRemoved)
 
         self.show()
 
@@ -2214,6 +2225,10 @@ class Example(QMainWindow):
     def nodeSelected(self,item):
         print("Node Selected %s"%item)
         self.attributeEditor.setEditor(item)
+
+    def nodeRemoved(self):
+        print("Node Removed")
+        self.attributeEditor.clear()
 
     def updateSceneLayout(self):
         self.sceneLayout.updateTabs()
