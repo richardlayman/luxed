@@ -1485,29 +1485,32 @@ class AddNodeDialog(QDialog):
 # SCENE LAYOUT DOCK
 
 class SceneLayout(QDockWidget):
-    objectSelected = pyqtSignal(['QString'])
-    materialSelected = pyqtSignal(['QString'])
-    textureSelected = pyqtSignal(['QString'])
-    lightSelected = pyqtSignal(['QString'])
-
+    nodeSelected = pyqtSignal(['QString'])
+ 
     def __init__(self,lux):
         super().__init__()
         self.lux = lux
         self.setWindowTitle("Scene Layout")
         frame = QFrame(self)
         self.tabs = QTabWidget()
+        self.cameras = QListWidget()
         self.objects = QListWidget()
+        self.shapes= QListWidget()
         self.materials = QListWidget()
         self.textures = QListWidget()
         self.lights = QListWidget()
+        self.volumes= QListWidget()
         self.addBtn = QPushButton("+")
         self.removeBtn = QPushButton("-")
         self.renameBtn = QPushButton("rename")
 
-        self.tabs.addTab(self.objects,"objects")
-        self.tabs.addTab(self.materials,"materials")
-        self.tabs.addTab(self.textures, "textures")
-        self.tabs.addTab(self.lights, "lights")
+        self.tabs.addTab(self.cameras,"C")
+        self.tabs.addTab(self.objects,"O")
+        self.tabs.addTab(self.shapes,"S")
+        self.tabs.addTab(self.materials,"M")
+        self.tabs.addTab(self.textures, "T")
+        self.tabs.addTab(self.lights, "L")
+        self.tabs.addTab(self.volumes, "V")
         self.tabs.setTabPosition(QTabWidget.North)
 
         hbox = QHBoxLayout()
@@ -1522,12 +1525,16 @@ class SceneLayout(QDockWidget):
 
         self.setWidget(frame)
 
-        self.addNodeDialog = AddNodeDialog(self.tabs.tabText(self.tabs.currentIndex()))
+        self.addNodeDialog = AddNodeDialog(self.getTabName(self.tabs.currentIndex()))
 
-        self.objects.itemClicked.connect(self.objectChanged)
-        self.materials.itemClicked.connect(self.materialChanged)
-        self.textures.itemClicked.connect(self.textureChanged)
-        self.lights.itemClicked.connect(self.lightChanged)
+        self.cameras.itemClicked.connect(self.nodeChanged)
+        self.objects.itemClicked.connect(self.nodeChanged)
+        self.shapes.itemClicked.connect(self.nodeChanged)
+        self.materials.itemClicked.connect(self.nodeChanged)
+        self.textures.itemClicked.connect(self.nodeChanged)
+        self.lights.itemClicked.connect(self.nodeChanged)
+        self.volumes.itemClicked.connect(self.nodeChanged)
+        
         self.renameBtn.clicked.connect(self.rename)
         self.addBtn.clicked.connect(self.add)
         self.removeBtn.clicked.connect(self.remove)
@@ -1538,16 +1545,26 @@ class SceneLayout(QDockWidget):
         self.lux.sg.addSceneNode(name,ntype,vtype)
         self.updateTabs()
 
-    def add(self):
-        #self.lux.sg.addObject()
-        #node = Node(name,ntype)
-        #node.addProperty(Property(ntype,name, attribute, luxprop, vtype, vmin, vmax, vdefault, desc=""))
-        #if ntype is 'objects':
-        #    node.addProperty(Property(node.ntype,'mat_test', 'type', None, 'string', None, None, ["matte"], desc="Test"))
-        #    node.addProperty(Property(node.ntype,'mat_test', 'kd', None, 'texture', None, None, [1,0,0], desc="Test"))
+    def getTabName(self,i):
+        name = None
+        if self.tabs.currentIndex() == 0:
+            name = 'camera'
+        elif self.tabs.currentIndex() == 1:
+            name = 'objects'
+        elif self.tabs.currentIndex() == 2:
+            name = 'shapes'
+        elif self.tabs.currentIndex() == 3:
+            name = 'materials'
+        elif self.tabs.currentIndex() == 4:
+            name = 'textures'
+        elif self.tabs.currentIndex() == 5:
+            name = 'lights'
+        elif self.tabs.currentIndex() == 6:
+            name = 'volumes'
+        return name
 
-        # Open AddDialog
-        self.addNodeDialog.setType(self.tabs.tabText(self.tabs.currentIndex()))
+    def add(self):
+        self.addNodeDialog.setType(self.getTabName(self.tabs.currentIndex()))
         self.addNodeDialog.exec()
         self.updateTabs()
 
@@ -1561,9 +1578,17 @@ class SceneLayout(QDockWidget):
         # Objects
         print("updateTabs")
 
+        self.cameras.clear()
+        for c in self.lux.sg.getNames('cameras'):
+            self.camera.addItem(c)
+
         self.objects.clear()
         for o in self.lux.sg.getNames('objects'):
             self.objects.addItem(o)
+
+        self.shapes.clear()
+        for s in self.lux.sg.getNames('shapes'):
+            self.shapes.addItem(s)
 
         # Materials
         self.materials.clear()
@@ -1580,17 +1605,13 @@ class SceneLayout(QDockWidget):
         for l in self.lux.sg.getNames('lights'):
             self.lights.addItem(l)
 
-    def objectChanged(self,item):
-        self.objectSelected.emit(item.text())
+        # Materials
+        self.volumes.clear()
+        for v in self.lux.sg.getNames('volumes'):
+            self.volumes.addItem(v)
 
-    def materialChanged(self,item):
-        self.materialSelected.emit(item.text())
-
-    def textureChanged(self,item):
-        self.textureSelected.emit(item.text())
-
-    def lightChanged(self,item):
-        self.lightSelected.emit(item.text())
+    def nodeChanged(self,item):
+        self.nodeSelected.emit(item.text())
 
 
 # RENDER SETTINGS
@@ -2068,11 +2089,8 @@ class Example(QMainWindow):
 
 
         # Connections setup
-        self.sceneLayout.objectSelected.connect(self.objectSelected)
-        self.sceneLayout.materialSelected.connect(self.materialSelected)
-        self.sceneLayout.textureSelected.connect(self.textureSelected)
-        self.sceneLayout.lightSelected.connect(self.lightSelected)
-     
+        self.sceneLayout.nodeSelected.connect(self.nodeSelected)
+
         self.show()
 
         self.sceneLayout.updateTabs()
@@ -2107,22 +2125,9 @@ class Example(QMainWindow):
             self.lux.stopRendering()
             self.close()
 
-    def objectSelected(self,item):
-        print("Object Selected %s"%item)
+    def nodeSelected(self,item):
+        print("Node Selected %s"%item)
         self.attributeEditor.setEditor(item)
-
-
-    def materialSelected(self,item):
-        print("Material Selected %s"%item)
-        self.attributeEditor.setEditor(item)
-
-    def textureSelected(self,item):
-        print("Texture Selected %s"%item)
-        self.attributeEditor.setEditor("texture",self.lux.core().getTextureType(item),item)
-
-    def lightSelected(self,item):
-        print("Light Selected %s"%item)
-        #self.attributeEditor.setEditor("object","",item)
 
     def updateSceneLayout(self):
         self.sceneLayout.updateTabs()
