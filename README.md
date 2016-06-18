@@ -64,3 +64,7 @@ Currently Supported Features
   * TODO
 - Volumes
   * TODO
+- Functionality
+  * Add Node
+  * Remove Node
+  * Rename Node

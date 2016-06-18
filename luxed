@@ -679,6 +679,12 @@ class SceneGraph():
     def addNode(self, node):
         self.nodes.append(self.lux.addNode(node))
 
+    def renameNode(self, oldname, newname):
+        node = self.getNode(oldname)
+        self.removeNode(oldname)
+        node.name = newname
+        self.nodes.append(node)
+ 
     def addSceneNode(self,name,ntype,subtype):
         # if the scene node already exist, replace it
         # else add it
@@ -1514,6 +1520,7 @@ class NodeEditor(QDockWidget):
     def clear(self):
         self.attributes.clearPanel()
         self.attributes.node = None
+        self.label.setText('----')
 
     def nodeUpdate(self):
         pass
@@ -1522,6 +1529,46 @@ class NodeEditor(QDockWidget):
         #self.lux.sg.lux.setProperties(self.node.getPropertyString())
         #self.nodeChanged.emit()
  
+
+# RENAM DIALOG
+class RenameNodeDialog(QDialog):
+    nodeRenamed = pyqtSignal(['QString','QString'])
+
+    def __init__(self):
+        super().__init__()
+        #self.setFixedWidth(400)
+        #self.setFixedHeight(400)
+        self.setWindowTitle("Rename Node")
+    
+        self.name = QLabel()
+        self.newname = QLineEdit()
+
+        self.renameBtn = QPushButton("Rename")
+        self.cancelBtn = QPushButton("Cancel")
+        
+        gbox = QGridLayout()
+        gbox.addWidget(QLabel("old:"),0,0)
+        gbox.addWidget(QLabel("new:"),1,0)
+        gbox.addWidget(self.name,0,1)
+        gbox.addWidget(self.newname,1,1)
+        vbox = QVBoxLayout()
+        vbox.addLayout(gbox)
+        vbox.addWidget(self.renameBtn)
+        vbox.addWidget(self.cancelBtn)
+        self.setLayout(vbox)
+
+        self.renameBtn.clicked.connect(self.renameNode)
+        self.cancelBtn.clicked.connect(self.reject)
+        self.hide()
+    
+    def setCurrentName(self,name):
+        self.name.setText(name)
+
+    def renameNode(self):
+        self.nodeRenamed.emit(self.name.text(),self.newname.text())
+        self.hide()
+
+
 # ADD DIALOG
 class AddNodeDialog(QDialog):
     nodeAdded = pyqtSignal(['QString','QString','QString'])
@@ -1619,6 +1666,7 @@ class SceneLayout(QDockWidget):
         self.setWidget(frame)
 
         self.addNodeDialog = AddNodeDialog(self.getTabName(self.tabs.currentIndex()))
+        self.renameNodeDialog = RenameNodeDialog()
 
         self.cameras.itemClicked.connect(self.nodeChanged)
         self.objects.itemClicked.connect(self.nodeChanged)
@@ -1632,6 +1680,7 @@ class SceneLayout(QDockWidget):
         self.addBtn.clicked.connect(self.add)
         self.removeBtn.clicked.connect(self.remove)
         self.addNodeDialog.nodeAdded.connect(self.addNode)
+        self.renameNodeDialog.nodeRenamed.connect(self.renameNode)
 
     def addNode(self,name,ntype,vtype):
         print("%s, %s, %s node to add"%(name,ntype,vtype))
@@ -1668,8 +1717,15 @@ class SceneLayout(QDockWidget):
         self.nodeRemoved.emit()
 
     def rename(self):
-        pass
+        self.renameNodeDialog.setCurrentName(self.selectedName)
+        self.renameNodeDialog.exec()
  
+    def renameNode(self,cname,nname):
+        self.lux.sg.renameNode(cname,nname)
+        self.selectedName = nname
+        self.updateTabs()
+        self.nodeRemoved.emit() 
+
     def updateTabs(self):
         # Objects
         print("updateTabs")
