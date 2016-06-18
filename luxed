@@ -526,6 +526,7 @@ class SceneGraph():
         # METROPOLIS 
         sampler= Node('sampler','sampler')
         sampler.addProperty(Property('sampler','sampler','type','string',None,None,None,['SOBOL'],""))
+
         samplermetropolis = Node('sampler.metropolis','sampler.metropolis')
         samplermetropolis.addProperty(Property('sampler.metropolis','sampler.metropolis','largesteprate','float',None,0.0,1.0,0.4,""))
         samplermetropolis.addProperty(Property('sampler.metropolis','sampler.metropolis','maxconsecutivereject','int',None,0,32768,512,""))
@@ -536,6 +537,48 @@ class SceneGraph():
         film.addProperty(Property('film','film','width','int',None,10,None,720,""))
         film.addProperty(Property('film','film','height','int',None,10,None,480,""))
 
+        # FILTERS
+        filter = Node('filter','filter')
+        filter.addProperty(Property('film.filter','film.filter','type','string',None,None,None,['BLACKMANHARRIS'],""))
+ 
+        # COMMON
+        filtercommon = Node('filterfiler','filterfiler')
+        filtercommon.addProperty(Property('film.filter','film.filter','width','float',None,0.1,3.0,2.0,""))
+        filtercommon.addProperty(Property('film.filter','film.filter','xwidth','float',None,0.1,3.0,2.0,""))
+        filtercommon.addProperty(Property('film.filter','film.filter','ywidth','float',None,0.1,3.0,2.0,""))
+ 
+        # BOX
+        filterbox = Node('filterbox','filterbox')
+        for prop in filtercommon.props:
+            filterbox.props.append(prop)
+
+        # GAUSSIAN
+        filtergaussian = Node('filtergaussian','filtergaussian')
+        filtergaussian.addProperty(Property('film','film','gaussian.alpha','float',None,0.1,10.0,2.0,""))
+        for prop in filtercommon.props:
+            filtergaussian.props.append(prop)
+
+        # MITCHELL
+        filtermitchell = Node('filtermitchell','filtermitchell')
+        filtermitchell.addProperty(Property('film.filter.mitchell','film.filter.mitchell','b','float',None,0.1,1.0,1.0/3.0,""))
+        filtermitchell.addProperty(Property('film.filter.mitchell','film.filter.mitchell','c','float',None,0.1,1.0,1.0/3.0,""))
+        for prop in filtercommon.props:
+            filtermitchell.props.append(prop)
+ 
+        # MITCHELL_SS
+        filtermitchellss = Node('filtermitchellss','filtermitchellss')
+        filtermitchellss.addProperty(Property('film.filter.mitchellss','film.filter.mitchellss','b','float',None,0.1,1.0,1.0/3.0,""))
+        filtermitchellss.addProperty(Property('film.filter.mitchellss','film.filter.mitchellss','c','float',None,0.1,1.0,1.0/3.0,""))
+        for prop in filtercommon.props:
+            filtermitchellss.props.append(prop)
+ 
+        # BLACKMANHARRIS 
+        filterblackmanharris = Node('filterblackmanharris','filterblackmanharris')
+        for prop in filtercommon.props:
+            filterblackmanharris.props.append(prop)
+
+        # ADD TO RENDERNODES
+ 
         # engine
         self.rendernodes.append(renderengine)
         self.rendernodes.append(path)
@@ -549,6 +592,13 @@ class SceneGraph():
         # sampler
         self.rendernodes.append(sampler)
         self.rendernodes.append(samplermetropolis)
+        # filter
+        self.rendernodes.append(filter)
+        self.rendernodes.append(filterbox)
+        self.rendernodes.append(filtergaussian)
+        self.rendernodes.append(filtermitchell)
+        self.rendernodes.append(filtermitchellss)
+        self.rendernodes.append(filterblackmanharris)
         # film
         self.rendernodes.append(film)
 
@@ -1581,21 +1631,24 @@ class RenderSettings(QDockWidget):
 
         # Engine 
         self.engine = QGroupBox('engine')
-        #self.engineType = OptionAttribute(self.lux.sg.getRenderProperty('renderengine','type'),['PATHCPU','BIASPATHCPU','BIDIRCPU','PATHOCL','RTPATHOCL','BIASPATHOCL','RTBIASPATHOCL'])
         self.enginevbox = QVBoxLayout()
-        #self.enginevbox.addWidget(self.engineType)
         self.enginevbox.setContentsMargins(0,0,0,0)
         self.enginevbox.setSpacing(0)
         self.engine.setLayout(self.enginevbox)
  
         # Sampler
         self.sampler = QGroupBox('sampler')
-        self.samplerType = OptionAttribute(self.lux.sg.getRenderProperty('sampler','type'),["SOBOL","METROPOLIS","RANDOM"])
         self.samplervbox = QVBoxLayout()
-        self.samplervbox.addWidget(self.samplerType)
         self.samplervbox.setContentsMargins(0,0,0,0)
         self.samplervbox.setSpacing(0)
         self.sampler.setLayout(self.samplervbox)
+  
+        # Filter 
+        self.filter = QGroupBox('filter')
+        self.filtervbox = QVBoxLayout()
+        self.filtervbox.setContentsMargins(0,0,0,0)
+        self.filtervbox.setSpacing(0)
+        self.filter.setLayout(self.filtervbox)
  
         vbox = QVBoxLayout()
         vbox.addWidget(QLabel("Presets"))
@@ -1604,6 +1657,7 @@ class RenderSettings(QDockWidget):
         vbox.addWidget(self.renderHeight)
         vbox.addWidget(self.engine)
         vbox.addWidget(self.sampler)
+        vbox.addWidget(self.filter)
         vbox.addStretch()
         vbox.setSpacing(0)
 
@@ -1613,11 +1667,11 @@ class RenderSettings(QDockWidget):
 
         self.renderWidth.valueChanged.connect(self.updateSettings)
         self.renderHeight.valueChanged.connect(self.updateSettings)
-        #self.engineType.valueChanged.connect(self.updateEngine)
-        self.samplerType.valueChanged.connect(self.updateSampler)
 
         self.updateEngine()
         self.updateSampler()
+        self.updateFilter()
+
 
     def clearRenderEnginePanel(self):
         for i in reversed(range(self.enginevbox.count())):
@@ -1628,6 +1682,26 @@ class RenderSettings(QDockWidget):
             widget.hide()
             self.enginevbox.update()
         self.enginevbox.invalidate()
+ 
+    def clearRenderSamplerPanel(self):
+        for i in reversed(range(self.samplervbox.count())):
+            item = self.samplervbox.itemAt(i)
+            widget = self.samplervbox.itemAt(i).widget()
+            self.samplervbox.removeItem(item)
+            self.samplervbox.removeWidget(widget)
+            widget.hide()
+            self.samplervbox.update()
+        self.samplervbox.invalidate()
+ 
+    def clearRenderFilterPanel(self):
+        for i in reversed(range(self.filtervbox.count())):
+            item = self.filtervbox.itemAt(i)
+            widget = self.filtervbox.itemAt(i).widget()
+            self.filtervbox.removeItem(item)
+            self.filtervbox.removeWidget(widget)
+            widget.hide()
+            self.filtervbox.update()
+        self.filtervbox.invalidate()
         
     def updateEngine(self):
         self.clearRenderEnginePanel()
@@ -1690,23 +1764,87 @@ class RenderSettings(QDockWidget):
 
  
     def updateSampler(self):
-        for i in reversed(range(self.samplervbox.count())):
-            self.samplervbox.itemAt(i).widget().setParent(None)
-        self.samplervbox.addWidget(self.samplerType)
-        if self.samplerType.getValue() == 'METROPOLIS':
-            largesteprate = FloatAttribute(self.lux.sg.getRenderProperty('sampler.metropolis','largesteprate'))
-            maxconsecutivereject = IntAttribute(self.lux.sg.getRenderProperty('sampler.metropolis','maxconsecutivereject'))
-            imagemutationrate = FloatAttribute(self.lux.sg.getRenderProperty('sampler.metropolis','largesteprate'))
- 
-            largesteprate.valueChanged.connect(self.updateSettings)
-            maxconsecutivereject.valueChanged.connect(self.updateSettings)
-            imagemutationrate.valueChanged.connect(self.updateSettings)
+        self.clearRenderSamplerPanel()
 
-            self.samplervbox.addWidget(largesteprate)
-            self.samplervbox.addWidget(maxconsecutivereject)
-            self.samplervbox.addWidget(imagemutationrate)
+        samplerType = OptionAttribute(self.lux.sg.getRenderProperty('sampler','type'),['SOBOL','METROPOLIS','RANDOM'])
+        samplerType.valueChanged.connect(self.updateSampler)
+        self.samplervbox.addWidget(samplerType)
+
+        node = None
+
+        if samplerType.getValue() == 'METROPOLIS':
+            node = self.lux.sg.getRenderNode('sampler.metropolis')
+
+        if node is None:
+            return 
+
+        for prop in node.props:
+            if prop.vtype is 'string':
+                # is it a type option?
+                if prop.vname is 'type':
+                    attribute = OptionAttribute(prop)
+                    attribute.valueChanged.connect(self.updateSettings)
+                    self.subtype = prop.value[0]
+                    self.samplervbox.addWidget(attribute)
+                else:
+                    attribute = StringAttribute(prop)
+                    attribute.valueChanged.connect(self.updateSettings)
+                    self.samplervbox.addWidget(attribute)
+            if prop.vtype is 'int':
+                attribute = IntAttribute(prop)
+                attribute.valueChanged.connect(self.updateSettings)
+                self.samplervbox.addWidget(attribute)        
+            if prop.vtype is 'float':
+                attribute = FloatAttribute(prop)
+                attribute.valueChanged.connect(self.updateSettings)
+                self.samplervbox.addWidget(attribute)        
  
-        
+  
+    def updateFilter(self):
+        self.clearRenderFilterPanel()
+
+        filterType = OptionAttribute(self.lux.sg.getRenderProperty('filter','type'),['NONE','BOX','GAUSSIAN','MITCHELL','MITCHELL_SS','BLACKMANHARRIS'])
+        filterType.valueChanged.connect(self.updateFilter)
+        self.filtervbox.addWidget(filterType)
+
+        node = None
+
+        if filterType.getValue() == 'BOX':
+            node = self.lux.sg.getRenderNode('filterbox')
+        elif filterType.getValue() == 'GAUSSIAN':
+            node = self.lux.sg.getRenderNode('filtergaussian')
+        elif filterType.getValue() == 'MITCHELL':
+            node = self.lux.sg.getRenderNode('filtermitchell')
+        elif filterType.getValue() == 'MITCHELL_SS':
+            node = self.lux.sg.getRenderNode('filtermitchellss')
+        elif filterType.getValue() == 'BLACKMANHARRIS':
+            node = self.lux.sg.getRenderNode('filterblackmanharris')
+
+        if node is None:
+            return 
+
+        for prop in node.props:
+            if prop.vtype is 'string':
+                # is it a type option?
+                if prop.vname is 'type':
+                    attribute = OptionAttribute(prop)
+                    attribute.valueChanged.connect(self.updateSettings)
+                    self.subtype = prop.value[0]
+                    self.filtervbox.addWidget(attribute)
+                else:
+                    attribute = StringAttribute(prop)
+                    attribute.valueChanged.connect(self.updateSettings)
+                    self.filtervbox.addWidget(attribute)
+            if prop.vtype is 'int':
+                attribute = IntAttribute(prop)
+                attribute.valueChanged.connect(self.updateSettings)
+                self.filtervbox.addWidget(attribute)        
+            if prop.vtype is 'float':
+                attribute = FloatAttribute(prop)
+                attribute.valueChanged.connect(self.updateSettings)
+                self.filtervbox.addWidget(attribute)        
+       
+
     def updateSettings(self):
         print("Updating Render Settings")
         self.lux.setRenderSettings()

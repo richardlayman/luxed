@@ -32,7 +32,12 @@ Currently Supported Features
   * METROPOLIS
   * RANDOM
 - Filter
-  * TODO
+  * NONE
+  * BOX
+  * GAUSSIAN
+  * MITCHELL
+  * MITCHELL\_SS 
+  * BLACKMANHARRIS
 - Light Strategy
   * TODO
 - Film
