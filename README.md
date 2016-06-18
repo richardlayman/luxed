@@ -46,9 +46,14 @@ Currently Supported Features
   * Ply
 - Materials
   * Matte
+  * RoughMatte
   * Glossy2
   * Glass
+  * ArchGlass
+  * RoughGlass
   * MatteTranslucent
+  * CarPaint
+  * Velvet
   * Mirror
   * Metal
   * Mix
