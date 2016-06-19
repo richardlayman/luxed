@@ -38,6 +38,7 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 MaterialsType = ["matte","roughmatte","glossy2","archglass","glass","roughglass","metal2","velvet","carpaint","mattetranslucent","mirror","mix","null"]
 TexturesType = ["imagemap"]
+TexturesMappingType = ["uvmapping2d"]
 
 class Property:
     
@@ -83,7 +84,12 @@ class Property:
         if self.vtype is 'uv':
             out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
         if self.vtype is 'texture':
-            if len(self.value) == 1:
+            print("PROPERTY VALUE")
+            print(type(self.value[0]))
+            print(self.value)
+            if type(self.value[0]) is 'str'.__class__:
+                out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
+            elif len(self.value) == 1:
                 out = "%s = %f" % (self.getCallString(), float(self.value[0]))
             elif len(self.value) == 1:
                 out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
@@ -98,6 +104,8 @@ class Property:
             return "scene.objects.%s.%s"%(self.nname,self.vname)
         elif self.ntype is 'materials':
             return "scene.materials.%s.%s"%(self.nname,self.vname)
+        elif self.ntype is 'textures':
+            return "scene.textures.%s.%s"%(self.nname,self.vname)
         return "%s.%s"%(self.nname,self.vname)
 
 # NODE
@@ -835,7 +843,7 @@ class SceneGraph():
             self.addObjectProperties(node,subtype)
         elif node.ntype == 'materials':
             self.addMaterialProperties(node,subtype)
-        elif node.ntype == 'texture':
+        elif node.ntype == 'textures':
             self.addTextureProperties(node,subtype)
  
     def addObjectProperties(self,node,subtype):
@@ -953,10 +961,17 @@ class SceneGraph():
     def addTextureProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
+        # MAPPING
         if subtype == 'uvmapping2d':
-            node.addProperty(Property('texture',name,'type','string',None,None,None,['uvmapping2d'],""))
-            node.addProperty(Property('texture',name,'uvscale','uv',None,None,None,['1.0','1.0'],""))
-            node.addProperty(Property('texture',name,'uvdelta','uv',None,None,None,['0.0','0.0'],""))
+            node.addProperty(Property('textures',name,'type','string',None,None,None,['uvmapping2d'],""))
+            node.addProperty(Property('textures',name,'uvscale','uv',None,None,None,['1.0','1.0'],""))
+            node.addProperty(Property('textures',name,'uvdelta','uv',None,None,None,['0.0','0.0'],""))
+        
+        if subtype == 'imagemap':
+            node.addProperty(Property('textures',name,'type','string',None,None,None,['imagemap'],""))
+            node.addProperty(Property('textures',name,'file','string',None,None,None,['image.png'],""))
+            node.addProperty(Property('textures',name,'gamma','float',None,None,None,2.2,""))
+            node.addProperty(Property('textures',name,'gain','float',None,None,None,1.0,""))
  
 
     def getSceneString(self):
@@ -1148,9 +1163,9 @@ class TextureAttribute(QWidget):
         self.valueTypeBtn = QPushButton("C") # 'C'=color, 'T'=texture name, '3F'=3 floats, '2F'=2 floats, 'F'=1 float
         self.valueTypeBtn.setFixedWidth(30)
         self.link = None
-        if prop.nname == 'materials':
+        if prop.ntype == 'materials':
             self.link = LinkDialog(self.lux,'textures')
-        if prop.nname == 'objects':
+        if prop.ntype == 'objects':
             self.link = LinkDialog(self.lux,'materials')
 
         self.setToolTip(self.prop.desc)
@@ -1183,9 +1198,11 @@ class TextureAttribute(QWidget):
 
     def toggleValueType(self):
         if self.valueTypeBtn.text() == 'C':
+            self.linkEnabled = 1
             self.stackedValue.setCurrentIndex(1)
             self.valueTypeBtn.setText('T')
         elif self.valueTypeBtn.text() == 'T':
+            self.linkEnabled = 0
             self.stackedValue.setCurrentIndex(2)
             self.valueTypeBtn.setText('3F')
             self.float1Value.show()
@@ -1236,7 +1253,7 @@ class TextureAttribute(QWidget):
         elif(self.stackedValue.currentIndex() == 1):
             self.prop.type = 'string'
             if(self.linkEnabled):
-                self.prop.value = self.linkValue.text()
+                self.prop.value = [self.linkValue.text()]
         elif(self.stackedValue.currentIndex() == 2):
             self.prop.type = 'texture'
             print("PREVALUES: %f %f %f"%(float(self.float1Value.text()),float(self.float2Value.text()),float(self.float3Value.text())))     
@@ -1290,6 +1307,9 @@ class OptionAttribute(QWidget):
         else:
             if self.prop.ntype == 'materials':
                 for item in MaterialsType:
+                    self.value.addItem(item)
+            if self.prop.ntype == 'textures':
+                for item in TexturesType:
                     self.value.addItem(item)
 
         hbox = QHBoxLayout()        
@@ -1504,7 +1524,10 @@ class FileAttribute(QWidget):
         self.value.clicked.connect(self.getFile)
 
     def getFile(self):
-        filename = QFileDialog.getOpenFileName(self,"Open Ply Mesh",".","Ply Files (*.ply)")
+        if self.prop.vname == 'ply':
+            filename = QFileDialog.getOpenFileName(self,"Open Ply Mesh",".","Ply Files (*.ply)")
+        elif self.prop.ntype == 'textures' and self.prop.vname == 'file':
+            filename = QFileDialog.getOpenFileName(self,"Open Image File",".","Image Files (*.png)")
         self.value.setText(filename[0])
         self.prop.value[0] = self.value.text()
         self.valueChanged.emit()
@@ -1548,6 +1571,10 @@ class NodeAttributeLoader(QWidget):
     def load(self,node):
         self.node = node 
 
+        print("LOADING NODE %s"%node.name)
+        for prop in node.props:
+            print("prop name %s"%prop.vname)
+
         self.clearPanel()
 
         for prop in self.node.props:
@@ -1555,7 +1582,7 @@ class NodeAttributeLoader(QWidget):
                 # is it a type option?
                 if prop.vname is 'type':
                     attribute = OptionAttribute(prop)
-                    attribute.valueChanged.connect(self.setMaterialType)
+                    attribute.valueChanged.connect(self.setType)
                     self.subtype = prop.value[0]
                     self.vbox.addWidget(attribute)
                 elif prop.vname is 'material':
@@ -1567,6 +1594,10 @@ class NodeAttributeLoader(QWidget):
                     attribute = FileAttribute(prop)
                     attribute.valueChanged.connect(self.updateNode)
                     self.subtype = 'ply'
+                    self.vbox.addWidget(attribute)
+                elif prop.vname is 'file':
+                    attribute = FileAttribute(prop)
+                    attribute.valueChanged.connect(self.updateNode)
                     self.vbox.addWidget(attribute)
                 else:
                     attribute = StringAttribute(prop)
@@ -1597,7 +1628,7 @@ class NodeAttributeLoader(QWidget):
         #self.node = self.lux.sg.addSceneNode(name,ntype,self.subtype)
         #self.load(self.node)
 
-    def setMaterialType(self):
+    def setType(self):
         self.clearPanel()
         for prop in self.node.props:
             if prop.vname == 'type':
@@ -1605,7 +1636,7 @@ class NodeAttributeLoader(QWidget):
         self.node = self.lux.sg.addSceneNode(self.node.name,self.node.ntype,self.subtype)
         self.updateNode()
         self.load(self.node)
- 
+
 # NODE EDITOR DOCK
 
 class NodeEditor(QDockWidget):
@@ -1865,14 +1896,17 @@ class SceneLayout(QDockWidget):
         # Objects
         print("updateTabs")
 
+        # Cameras
         self.cameras.clear()
         for c in self.lux.sg.getNames('cameras'):
             self.camera.addItem(c)
 
+        # Objects
         self.objects.clear()
         for o in self.lux.sg.getNames('objects'):
             self.objects.addItem(o)
 
+        # Shapes
         self.shapes.clear()
         for s in self.lux.sg.getNames('shapes'):
             self.shapes.addItem(s)
@@ -1882,17 +1916,17 @@ class SceneLayout(QDockWidget):
         for m in self.lux.sg.getNames('materials'):
             self.materials.addItem(m)
 
-        # Materials
+        # Textures 
         self.textures.clear()
         for t in self.lux.sg.getNames('textures'):
             self.textures.addItem(t)
 
-        # Materials
+        # Lights 
         self.lights.clear()
         for l in self.lux.sg.getNames('lights'):
             self.lights.addItem(l)
 
-        # Materials
+        # Volumes 
         self.volumes.clear()
         for v in self.lux.sg.getNames('volumes'):
             self.volumes.addItem(v)
