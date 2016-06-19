@@ -336,9 +336,10 @@ class Lux(QThread):
             self.sceneprops.Clear()
 
         self.session.BeginSceneEdit()
-        #self.scene.Parse(self.sceneprops) 
+        self.scene.Parse(self.sceneprops) 
         self.scene.DeleteObject(node.name) 
-        self.session.EndSceneEdit()
+
+        #self.session.EndSceneEdit()
         names = ""
         names = self.sceneprops.GetAllNames()
         print("Property List AFTER")
@@ -730,6 +731,10 @@ class SceneGraph():
                 del self.nodes[i]
             i += 1
 
+    def clearScene(self):
+        for n in self.nodes:
+            self.lux.removeNode(n)
+        self.nodes.clear()
     # This will parse a input string like 'scene.materials.my_material.kd'
     # and out the string type('object'), name('my_material') and value type('kd')
     def getNodeInfoFromString(self,prefix):
@@ -2179,24 +2184,16 @@ class TimeEditor(QWidget):
 # FILE ACTIONS
 class FileNewAction(QAction):
 
-    def __init__(self,parent):
+    def __init__(self,lux,parent):
         super().__init__("New",parent)
         self.triggered.connect(self.doit)
+        self.lux = lux
 
     def doit(self):
-        print("New")
+        self.lux.sg.clearScene()
+        self.lux.updateScene.emit()
 
-'''
-class FileSaveAction(QAction):
-
-    def __init__(self,parent):
-        super().__init__("Save",parent)
-        self.triggered.connect(self.doit)
-
-    def doit(self):
-        print("Save")
-'''
-
+        
 class FileExitAction(QAction):
 
     def __init__(self,parent):
@@ -2282,7 +2279,7 @@ class FileMenu(QMenu):
 
     def __init__(self,lux,name):
         super().__init__(name)
-        self.addAction(FileNewAction(self))
+        self.addAction(FileNewAction(lux,self))
         self.addSeparator()
         self.addMenu(ImportMenu(lux,self))
         self.addMenu(ExportMenu(lux,self))
