@@ -16,6 +16,7 @@ LuxEd is a single python file that you can run straight from the folder. Current
 Currently Supported Features
 ---------------
 - File IO
+  * Import Scene
   * Export Render Config
   * Export Scene
 - Render Settings

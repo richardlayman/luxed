@@ -615,6 +615,7 @@ class SceneGraph():
        
         for node in self.nodes:
             print("looking at node")
+            print("name=%s, type=%s"%(node.name,node.ntype))
             if node.ntype == ntype:
                 print("adding node " + node.name)
                 nodelist.append(node.name)
@@ -688,7 +689,7 @@ class SceneGraph():
     def addSceneNode(self,name,ntype,subtype):
         # if the scene node already exist, replace it
         # else add it
-        print("addSceneNode() name=%s, ntype=%s, subtype=%s"%(name,ntype,subtype))
+        #print("addSceneNode() name=%s, ntype=%s, subtype=%s"%(name,ntype,subtype))
         node = None
         i = 0
         for n in self.nodes:
@@ -718,6 +719,99 @@ class SceneGraph():
                 del self.nodes[i]
             i += 1
 
+    # This will parse a input string like 'scene.materials.my_material.kd'
+    # and out the string type('object'), name('my_material') and value type('kd')
+    def getNodeInfoFromString(self,prefix):
+        data = []
+        i = 0
+        pi = 0
+        indexs = []
+        while i < len(prefix):
+            try:
+                i = prefix.index('.',i)
+                #data.append(prefix[pi:i])
+                indexs.append(i)
+                pi = i+1
+                i = pi+1
+            except ValueError:
+                pi = i
+                i = pi+1
+        if len(indexs) < 3:
+            return None,None,None
+        name = ''
+        ntype = ''
+        vname = ''
+        # TODO - there might a time when the type is formated as 'name.name' and, in that case
+        # we will need to add extra checking here
+        # For the time being we know that all the lines are formated as scene.[type].[name].[vname]...
+        ntype = prefix[indexs[0]+1:indexs[1]]
+        name = prefix[indexs[1]+1:indexs[2]]
+        vname = prefix[indexs[2]+1:]
+        '''
+        print(data)
+
+        if len(data) < 4:
+            return None,None,None
+        ntype = data[1]
+        name = data[2]
+        for line in data[2]:
+            if vname != '':
+                vname + "."
+            vname + line
+        '''
+        #print("out: %s,%s,%s"%(ntype,name,vname))
+        return ntype,name,vname
+
+    def parseSceneFile(self,lines):
+        #print("SCN FILE START")
+        #print(lines)
+        #print("SCN FILE END\nAFTER CLEANUP")
+        # cleanup
+        setstring = ''
+        cname = '' 
+        nodes = []
+        node = None
+        for line in lines:
+            line = line.strip()
+            # seperate the prefix and value
+            if line is not '':
+                #print(line)
+                setstring += line + '\n'
+                i = line.index('=')
+                pre = line[0:i].strip()
+                val = line[i+1:].strip()
+                ntype,name,vname = self.getNodeInfoFromString(pre)
+                #print("IMPORT NODE %s,%s,%s"%(ntype,name,vname))
+                if ntype != None and name != None and vname != None:
+                    if cname != name:
+                        node = Node(name,ntype)
+                        #print("adding node " + name)
+                        node = Node(name,ntype)
+                        nodes.append(node)
+                        cname = name
+                    if vname == 'ply':
+                        #print("add properties to ply")
+                        self.addProperties(node,'ply')
+                    elif vname == 'type':
+                        val = val.replace('"','')
+                        #print("add properties %s"%val)
+                        self.addProperties(node,val) 
+        # now we should have all our nodes
+        # TODO - we need to add a check to verify all the nodes did import
+        for n in nodes:
+            #print("add node %s to the sg"%n.name)
+            self.nodes.append(n)
+            self.lux.setProperties(n.getPropertyString())
+            #print("NODE CALL STRING")
+            #print(n.getPropertyString())
+        # now set all the values using the data we imported
+        #print("SET CALL STRING")
+        #print(setstring)
+        self.lux.setProperties(setstring)
+        #print("there are %d nodes in the sg"%len(self.nodes))
+        #print("END")
+        return True
+ 
     def addProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
@@ -836,6 +930,7 @@ class SceneGraph():
 
 class LuxWidget(QWidget):
     nodeAdded = pyqtSignal()
+    updateScene = pyqtSignal()
 
     def __init__(self,width,height):
         super().__init__()
@@ -2101,7 +2196,8 @@ class ImportMenu(QMenu):
 
     def __init__(self,lux,parent):
         super().__init__("Import",parent)
-        self.addAction(ImportPlyAction(self))
+        self.addAction(ImportSceneAction(lux,self))
+        self.addAction(ImportPlyAction(lux,self))
 
 class ExportMenu(QMenu):
 
@@ -2112,11 +2208,26 @@ class ExportMenu(QMenu):
 
 
 # IMPORT ACTIONS
+class ImportSceneAction(QAction):
+
+    def __init__(self,lux,parent):
+        super().__init__("Scene",parent)
+        self.triggered.connect(self.doit)
+        self.lux = lux
+
+    def doit(self):
+        filename = QFileDialog.getOpenFileName(None,"Import Scene File",".","Scene Files (*.scn)")
+        file = open(filename[0],'r')
+        self.lux.sg.parseSceneFile(file.readlines())
+        file.close()
+        self.lux.updateScene.emit()
+
 class ImportPlyAction(QAction):
 
-    def __init__(self,parent):
+    def __init__(self,lux,parent):
         super().__init__("Ply",parent)
         self.triggered.connect(self.doit)
+        self.lux = lux
 
     def doit(self):
         print("Ply")
@@ -2192,7 +2303,7 @@ class RenderingAction(QAction):
             self.setText('Paused')
 
  
-class Example(QMainWindow):
+class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
@@ -2261,7 +2372,8 @@ class Example(QMainWindow):
         #self.lux.sg.lux.setProperties(matstring)
 
         self.attributeEditor.nodeChanged.connect(self.updateSceneLayout)
- 
+        self.lux.updateScene.connect(self.updateScene)
+
     def updateLux(self):
         self.lux.sg.write()
         self.lux.repaint()
@@ -2289,8 +2401,12 @@ class Example(QMainWindow):
     def updateSceneLayout(self):
         self.sceneLayout.updateTabs()
 
+    def updateScene(self):
+        self.sceneLayout.updateTabs()
+        self.attributeEditor.clear()
+
 if __name__ == '__main__':
     
     app = QApplication(sys.argv)
-    ex = Example()
+    ex = MainWindow()
     sys.exit(app.exec_())
