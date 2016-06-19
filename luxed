@@ -829,15 +829,27 @@ class SceneGraph():
         #print("there are %d nodes in the sg"%len(self.nodes))
         #print("END")
         return True
- 
+  
     def addProperties(self,node,subtype):
+        if node.ntype == 'objects':
+            self.addObjectProperties(node,subtype)
+        elif node.ntype == 'materials':
+            self.addMaterialProperties(node,subtype)
+        elif node.ntype == 'texture':
+            self.addTextureProperties(node,subtype)
+ 
+    def addObjectProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
-        # OBJECTS
+
         if subtype == 'ply':
             node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
             node.addProperty(Property('objects',name,'ply','string',None,None,None,[''],"mesh path (e.g scenes/luxball/luxball-shell.ply)"))
-        # MATERIALS
+
+    def addMaterialProperties(self,node,subtype):
+        name = node.name
+        node.clearProperties()
+
         if subtype == 'matte':
             node.addProperty(Property('materials',name,'type','string',None,None,None,['matte'],"type of material"))
             node.addProperty(Property('materials',name,'kd','texture',None,None,None,[1,1,1],"texture or constant color of the matte material"))
@@ -937,6 +949,14 @@ class SceneGraph():
             node.addProperty(Property('materials',name,'emission.power','spectrum',None,None,None,0.0,"lamp output power in watts. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
             node.addProperty(Property('materials',name,'emission.efficency','float',None,None,None,0.0,"luminous efficacy in lumens/watt. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
             node.addProperty(Property('materials',name,'emission.samples','int',None,-1,1000,-1,"the number of shadow ray to trace to compute direct light from this material. This property is an hint and the render engine can ignore this information. -1 means use the default global value."))
+ 
+    def addTextureProperties(self,node,subtype):
+        name = node.name
+        node.clearProperties()
+        if subtype == 'uvmapping2d':
+            node.addProperty(Property('texture',name,'type','string',None,None,None,['uvmapping2d'],""))
+            node.addProperty(Property('texture',name,'uvscale','uv',None,None,None,['1.0','1.0'],""))
+            node.addProperty(Property('texture',name,'uvdelta','uv',None,None,None,['0.0','0.0'],""))
  
 
     def getSceneString(self):
