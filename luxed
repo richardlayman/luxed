@@ -330,14 +330,14 @@ class Lux(QThread):
         for name in names:
             print(name)
         print("END")
+
         for prop in node.props:
-            #luxprop = pyluxcore.Property(prop.getCallString(), prop.value)
-            #self.scene.Parse(self.sceneprops.Delete(prop.getCallString()))
             self.sceneprops.Delete(prop.getCallString())
-            #self.sceneprops.Clear()
+            self.sceneprops.Clear()
 
         self.session.BeginSceneEdit()
-        self.scene.Parse(self.sceneprops) 
+        #self.scene.Parse(self.sceneprops) 
+        self.scene.DeleteObject(node.name) 
         self.session.EndSceneEdit()
         names = ""
         names = self.sceneprops.GetAllNames()
@@ -345,10 +345,6 @@ class Lux(QThread):
         for name in names:
             print(name)
         print("END")
-
-        self.config = pyluxcore.RenderConfig(self.props, self.scene)
-        self.session = pyluxcore.RenderSession(self.config)
-        self.writeImage()
             
     def addNode(self,node):
 
@@ -730,6 +726,7 @@ class SceneGraph():
         for n in self.nodes:
             if n.name == name:
                 print("removing %s"%n.name)
+                self.lux.removeNode(n)
                 del self.nodes[i]
             i += 1
 
