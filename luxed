@@ -377,6 +377,20 @@ class Lux(QThread):
             print(n)
         return("DONE")
 
+    def fillInProperties(self,node):
+        for prop in node.props:
+            val = self.sceneprops.Get(prop.getCallString()).Get()
+            if prop.vtype == 'int':
+                prop.value = int(val[0])
+            elif prop.vtype == 'float' or prop.vtype == 'double' or prop.vtype == 'u_longlong' or prop.vtype == 'spectrum':
+                prop.value = float(val[0])
+            elif prop.vtype == 'string':
+                prop.value = val
+            else:
+                prop.value = []
+                for v in val:
+                    prop.value.append(float(v))
+
 # SCENEGRAPH
 
 class SceneGraph():
@@ -795,11 +809,13 @@ class SceneGraph():
                     elif vname == 'type':
                         val = val.replace('"','')
                         #print("add properties %s"%val)
-                        self.addProperties(node,val) 
+                        self.addProperties(node,val)
         # now we should have all our nodes
         # TODO - we need to add a check to verify all the nodes did import
+        self.lux.setProperties(setstring)
         for n in nodes:
             #print("add node %s to the sg"%n.name)
+            self.lux.fillInProperties(n)
             self.nodes.append(n)
             self.lux.setProperties(n.getPropertyString())
             #print("NODE CALL STRING")
@@ -807,7 +823,7 @@ class SceneGraph():
         # now set all the values using the data we imported
         #print("SET CALL STRING")
         #print(setstring)
-        self.lux.setProperties(setstring)
+        
         #print("there are %d nodes in the sg"%len(self.nodes))
         #print("END")
         return True
@@ -1137,7 +1153,8 @@ class TextureAttribute(QWidget):
             self.link.linkSelected.connect(self.setLink)
             self.link.hide()
 
-        self.getValue()
+        #self.getValue()
+        self.setProperty(self.prop)
 
     def enabled(self):
         return self.label.isEnabled()
@@ -1265,7 +1282,8 @@ class OptionAttribute(QWidget):
         self.value.setCurrentText(self.prop.value[0])        
         self.value.currentIndexChanged.connect(self.changed)
 
-        self.prop.value[0] = self.value.currentText()
+        #self.prop.value[0] = self.value.currentText()
+        self.value.setCurrentText(self.prop.value[0]) 
   
     def enabled(self):
         return self.label.isEnabled()
