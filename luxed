@@ -1644,6 +1644,7 @@ class NodeEditor(QDockWidget):
 
     def __init__(self,lux):
         super().__init__()
+        self.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
         self.lux = lux
         self.setWindowTitle("Node Editor")
         self.label = QLabel("----")
@@ -1793,6 +1794,7 @@ class SceneLayout(QDockWidget):
  
     def __init__(self,lux):
         super().__init__()
+        self.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
         self.lux = lux
         self.setWindowTitle("Scene Layout")
         self.selectedName = None
@@ -1936,6 +1938,17 @@ class SceneLayout(QDockWidget):
         self.nodeSelected.emit(item.text())
 
 
+# FILM EDITOR 
+
+class FilmEditor(QDockWidget):
+
+    def __init__(self,lux):
+        super().__init__()
+        self.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
+        self.lux = lux
+        self.setWindowTitle("Film")
+
+
 # RENDER SETTINGS
 
 class RenderSettings(QDockWidget):
@@ -1943,6 +1956,7 @@ class RenderSettings(QDockWidget):
 
     def __init__(self,lux):
         super().__init__()
+        self.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
         self.lux = lux
         self.setWindowTitle("Render Settings")
         #self.setFixedWidth(420)
@@ -2380,6 +2394,7 @@ class MainWindow(QMainWindow):
         self.sceneLayout = SceneLayout(self.lux)
         self.attributeEditor = NodeEditor(self.lux)
         self.renderSettings = RenderSettings(self.lux)
+        self.filmEditor = FilmEditor(self.lux)
         self.toolbar = self.addToolBar("tools")
         self.renderAct = RenderingAction(self.lux,self) 
         self.status = QStatusBar()
@@ -2409,6 +2424,10 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.sceneLayout);
         self.addDockWidget(Qt.RightDockWidgetArea, self.attributeEditor);
         self.addDockWidget(Qt.LeftDockWidgetArea, self.renderSettings);
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.filmEditor);
+        self.tabifyDockWidget(self.renderSettings, self.filmEditor);
+        self.setTabPosition(Qt.LeftDockWidgetArea,QTabWidget.North);
+
         self.setStatusBar(self.status)
 
         # Setup UI widgets
