@@ -130,7 +130,8 @@ class Node:
     def getPropertyString(self):
         out = ""
         for prop in self.props:
-            out += prop.getPropertyString() + "\n"
+            if prop.enabled:
+                out += prop.getPropertyString() + "\n"
         return out
 
 
@@ -388,6 +389,9 @@ class Lux(QThread):
                 val = self.sceneprops.Get(prop.getCallString()).Get()
             except RuntimeError:
                 print("No property %s in sceneprops, skipping the load process for this prop")
+                # disable this property since there was no call string for it
+                # this is usually due to parsing a file with missing props
+                prop.enabled = 0
                 return 
             if prop.vtype == 'int':
                 prop.value = int(val[0])
@@ -399,6 +403,7 @@ class Lux(QThread):
                 prop.value = []
                 for v in val:
                     prop.value.append(float(v))
+            prop.enabled = 1
 
 # SCENEGRAPH
 
@@ -747,6 +752,7 @@ class SceneGraph():
         for n in self.nodes:
             self.lux.removeNode(n)
         self.nodes.clear()
+
     # This will parse a input string like 'scene.materials.my_material.kd'
     # and out the string type('object'), name('my_material') and value type('kd')
     def getNodeInfoFromString(self,prefix):
@@ -1012,7 +1018,7 @@ class SceneGraph():
     def getSceneString(self):
         out = ''
         for node in self.nodes:
-            out += node.getPropertyString() + '\n\n'
+            out += node.getPropertyString() + '\n'
         return out
 
 
@@ -1166,6 +1172,7 @@ class TextureAttribute(QWidget):
         else:
             maxVal = self.prop.max
         validator = QDoubleValidator(minVal,maxVal,4)
+
         self.float3Value = QLineEdit()
         self.float3Value.setValidator(validator)
         self.float3Value.setText('1.0')
@@ -1178,15 +1185,21 @@ class TextureAttribute(QWidget):
         self.float1Value.setText('1.0')
         self.float1Value.setValidator(validator)
         self.float1Value.setFixedHeight(20)
+
         hbox = QHBoxLayout()
         hbox.addWidget(self.float1Value)
         hbox.addWidget(self.float2Value)
         hbox.addWidget(self.float3Value)
         hbox.setSpacing(1)
         hbox.setContentsMargins(0,0,0,0)
+
         floatValue = QFrame()
         floatValue.setLayout(hbox)
+
         self.linkValue = QPushButton("select")
+        self.enableBtn = QPushButton("X")
+        self.enableBtn.setFixedWidth(30)
+
         self.stackedValue = QStackedWidget()
         self.stackedValue.setFixedWidth(80)
         self.stackedValue.setFixedHeight(20)
@@ -1194,10 +1207,12 @@ class TextureAttribute(QWidget):
         self.stackedValue.addWidget(self.linkValue)
         self.stackedValue.addWidget(floatValue)
         self.stackedValue.setCurrentIndex(0)
+
         self.linkEnabled = 0 # use a color value or a texture link
         self.valueTypeBtn = QPushButton("C") # 'C'=color, 'T'=texture name, '3F'=3 floats, '2F'=2 floats, 'F'=1 float
         self.valueTypeBtn.setFixedWidth(30)
         self.link = None
+
         if prop.ntype == 'materials':
             self.link = LinkDialog(self.lux,'textures')
         if prop.ntype == 'objects':
@@ -1210,6 +1225,7 @@ class TextureAttribute(QWidget):
         hbox.addWidget(self.label)
         hbox.addWidget(self.stackedValue)
         hbox.addWidget(self.valueTypeBtn)
+        hbox.addWidget(self.enableBtn)
         hbox.setSpacing(2)
         hbox.setContentsMargins(1,1,1,1)
 
@@ -1221,12 +1237,28 @@ class TextureAttribute(QWidget):
         self.float3Value.editingFinished.connect(self.changed)
         self.linkValue.clicked.connect(self.showLinkDialog)
         self.valueTypeBtn.clicked.connect(self.toggleValueType)
+        self.enableBtn.clicked.connect(self.toggleEnabledState)
+
         if self.link:
             self.link.linkSelected.connect(self.setLink)
             self.link.hide()
 
         #self.getValue()
         self.setProperty(self.prop)
+        
+    def toggleEnabledState(self):
+        if self.enableBtn.text() == 'X':
+            self.enableBtn.setText('O')
+            self.prop.enabled = 1 
+            self.label.setEnabled(1)
+            self.stackedValue.setEnabled(1)
+            self.valueTypeBtn.setEnabled(1)
+        else:
+            self.enableBtn.setText('X')
+            self.prop.enabled = 0
+            self.label.setEnabled(0)
+            self.stackedValue.setEnabled(0)
+            self.valueTypeBtn.setEnabled(0)
 
     def enabled(self):
         return self.label.isEnabled()
@@ -1322,6 +1354,18 @@ class TextureAttribute(QWidget):
                 self.float1Value.setText(self.props.value[0])
                 self.float2Value.setText(self.props.value[1])
                 self.float3Value.setText(self.props.value[2])
+
+        # verify that the enable btn is synced up the enabled state of the property
+        if self.prop.enabled:
+            self.enableBtn.setText('O')
+            self.label.setEnabled(1)
+            self.stackedValue.setEnabled(1)
+            self.valueTypeBtn.setEnabled(1)
+        else:
+            self.enableBtn.setText('X')
+            self.label.setEnabled(0)
+            self.stackedValue.setEnabled(0)
+            self.valueTypeBtn.setEnabled(0)
  
 
 # Option Attribute
