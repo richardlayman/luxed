@@ -384,7 +384,11 @@ class Lux(QThread):
 
     def fillInProperties(self,node):
         for prop in node.props:
-            val = self.sceneprops.Get(prop.getCallString()).Get()
+            try:
+                val = self.sceneprops.Get(prop.getCallString()).Get()
+            except RuntimeError:
+                print("No property %s in sceneprops, skipping the load process for this prop")
+                return 
             if prop.vtype == 'int':
                 prop.value = int(val[0])
             elif prop.vtype == 'float' or prop.vtype == 'double' or prop.vtype == 'u_longlong' or prop.vtype == 'spectrum':
@@ -953,11 +957,19 @@ class SceneGraph():
 
         if node.ntype == 'materials':
             node.addProperty(Property('materials',name,'emission','texture',None,None,None,[0,0,0],"color of the emitted light"))
+            # why is gain not in the SDL and why is that lights won't work without it?
             node.addProperty(Property('materials',name,'emission.gain','texture',None,None,None,[0,0,0],""))
             node.addProperty(Property('materials',name,'emission.power','spectrum',None,None,None,0.0,"lamp output power in watts. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
             node.addProperty(Property('materials',name,'emission.efficency','float',None,None,None,0.0,"luminous efficacy in lumens/watt. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
+            node.addProperty(Property('materials',name,'emission.mapfile','string',None,None,None,[''],""))
+            node.addProperty(Property('materials',name,'emission.gamma','float',None,None,None,2.2,""))
+            node.addProperty(Property('materials',name,'emission.iesfile','string',None,None,None,[''],""))
+            node.addProperty(Property('materials',name,'emission.flipz','int',None,0,1,0,""))
             node.addProperty(Property('materials',name,'emission.samples','int',None,-1,1000,-1,"the number of shadow ray to trace to compute direct light from this material. This property is an hint and the render engine can ignore this information. -1 means use the default global value."))
- 
+            node.addProperty(Property('materials',name,'emission.map.width','int',None,0,None,0,""))
+            node.addProperty(Property('materials',name,'emission.map.height','int',None,0,None,0,""))
+            node.addProperty(Property('materials',name,'emission.id','int',None,0,None,0,""))
+
     def addTextureProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
@@ -1533,6 +1545,10 @@ class FileAttribute(QWidget):
     def getFile(self):
         if self.prop.vname == 'ply':
             filename = QFileDialog.getOpenFileName(self,"Open Ply Mesh",".","Ply Files (*.ply)")
+        elif self.prop.vname == 'mapfile':
+            filename = QFileDialog.getOpenFileName(self,"Open Light Map",".","Map Files (*.map)")
+        elif self.prop.vname == 'iesfile':
+            filename = QFileDialog.getOpenFileName(self,"Open IES Profile",".","IES Files (*.ies)")
         elif self.prop.ntype == 'textures' and self.prop.vname == 'file':
             filename = QFileDialog.getOpenFileName(self,"Open Image File",".","Image Files (*.png)")
         self.value.setText(filename[0])
@@ -1561,6 +1577,8 @@ class NodeAttributeLoader(QWidget):
     def __init__(self,lux,node):
         super().__init__()
         self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
+        self.vbox.setSpacing(0)
         self.lux = lux
         self.setLayout(self.vbox)
         self.node = None
@@ -1602,7 +1620,7 @@ class NodeAttributeLoader(QWidget):
                     attribute.valueChanged.connect(self.updateNode)
                     self.subtype = 'ply'
                     self.vbox.addWidget(attribute)
-                elif prop.vname is 'file':
+                elif prop.vname is 'file' or prop.vname is 'iesfile' or prop.vname is 'mapfile':
                     attribute = FileAttribute(prop)
                     attribute.valueChanged.connect(self.updateNode)
                     self.vbox.addWidget(attribute)
@@ -1626,7 +1644,6 @@ class NodeAttributeLoader(QWidget):
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-
 
     def updateNode(self):
         name = self.node.name
