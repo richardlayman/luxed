@@ -956,6 +956,22 @@ class SceneGraph():
             node.addProperty(Property('materials',name,'repeat_v','float',None,None,None,100.0,"thread count in the v direction"))
 
         if node.ntype == 'materials':
+            # Common
+            node.addProperty(Property('materials',name,'bumptex','texture',None,None,None,[0,0,0],""))
+            node.addProperty(Property('materials',name,'normaltex','texture',None,None,None,[0,0,0],""))
+            node.addProperty(Property('materials',name,'samples','int',None,-1,None,-1,""))
+            node.addProperty(Property('materials',name,'visibility.indirect.diffuse.enable','int',None,0,1,1,""))
+            node.addProperty(Property('materials',name,'visibility.indirect.glossy.enable','int',None,0,1,1,""))
+            node.addProperty(Property('materials',name,'visibility.indirect.specular.enable','int',None,0,1,1,""))
+            node.addProperty(Property('materials',name,'bumpsamplingdistance','float',None,0.0,None,0.001,""))
+            # this fail the material because you can't use '' with these properties
+            #node.addProperty(Property('materials',name,'volume.interior','string',None,None,None,[''],""))
+            #node.addProperty(Property('materials',name,'volume.exterior','string',None,None,None,[''],""))
+            node.addProperty(Property('materials',name,'id','int',None,0,None,0,""))
+            node.addProperty(Property('materials',name,'transparency','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('materials',name,'shadowcatcher.enable','int',None,0,1,0,""))
+ 
+            # Light Emission
             node.addProperty(Property('materials',name,'emission','texture',None,None,None,[0,0,0],"color of the emitted light"))
             # why is gain not in the SDL and why is that lights won't work without it?
             node.addProperty(Property('materials',name,'emission.gain','texture',None,None,None,[0,0,0],""))
@@ -1139,7 +1155,7 @@ class TextureAttribute(QWidget):
         self.prop = prop
         self.label = QLabel(self.prop.vname)
         self.colorValue = ColorWidget()
-        self.colorValue.setColor(QColor(255.0*prop.value[0],255.0*prop.value[1],255.0*prop.value[2]))
+        #self.colorValue.setColor(QColor(255.0*prop.value[0],255.0*prop.value[1],255.0*prop.value[2]))
         self.colorValue.setFixedWidth(80)
         if self.prop.min is None:
             minVal = -10000000000.0
@@ -2449,8 +2465,10 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.attributeEditor);
         self.addDockWidget(Qt.LeftDockWidgetArea, self.renderSettings);
         self.addDockWidget(Qt.LeftDockWidgetArea, self.filmEditor);
+        self.tabifyDockWidget(self.sceneLayout, self.attributeEditor);
         self.tabifyDockWidget(self.renderSettings, self.filmEditor);
         self.setTabPosition(Qt.LeftDockWidgetArea,QTabWidget.North);
+        self.setTabPosition(Qt.RightDockWidgetArea,QTabWidget.North);
 
         self.setStatusBar(self.status)
 
