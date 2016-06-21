@@ -37,7 +37,7 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 # PROPERTIES CONTAINERS
 
 MaterialsType = ["matte","roughmatte","glossy2","archglass","glass","roughglass","metal2","velvet","carpaint","mattetranslucent","mirror","mix","null"]
-TexturesType = ["imagemap"]
+TexturesType = ["imagemap","marble"]
 TexturesMappingType = ["uvmapping2d"]
 
 class Property:
@@ -972,6 +972,13 @@ class SceneGraph():
             node.addProperty(Property('textures',name,'file','string',None,None,None,['image.png'],""))
             node.addProperty(Property('textures',name,'gamma','float',None,None,None,2.2,""))
             node.addProperty(Property('textures',name,'gain','float',None,None,None,1.0,""))
+         
+        if subtype == 'marble':
+            node.addProperty(Property('textures',name,'type','string',None,None,None,['marble'],""))
+            node.addProperty(Property('textures',name,'octaves','int',None,None,None,8,""))
+            node.addProperty(Property('textures',name,'roughness','float',None,None,None,0.5,""))
+            node.addProperty(Property('textures',name,'scale','float',None,None,None,1.0,""))
+            node.addProperty(Property('textures',name,'variation','float',None,None,None,0.2,""))
  
 
     def getSceneString(self):
@@ -1778,8 +1785,8 @@ class AddNodeDialog(QDialog):
             for m in MaterialsType:
                 self.vtype.addItem(m)
         if self.ntype == 'textures':
-            self.vtype.addItem('imagemap')
-
+            for m in TexturesType:
+                self.vtype.addItem(m)
 
     def setNode(self):
         self.nodeAdded.emit(self.name.text(),self.ntype,self.vtype.currentText())
