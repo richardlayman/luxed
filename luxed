@@ -272,11 +272,11 @@ class Lux(QThread):
         self.session.Start()
 
     def setProperties(self,propstring):
-        names = self.sceneprops.GetAllNames()
-        print("setProperties() List BEFORE")
-        for name in names:
-            print(name)
-        print("END")
+        #names = self.sceneprops.GetAllNames()
+        #print("setProperties() List BEFORE")
+        #for name in names:
+        #    print(name)
+        #print("END")
         print("PROP CALL STRING")
         print(propstring)
         self.session.BeginSceneEdit()
@@ -286,7 +286,7 @@ class Lux(QThread):
         except RuntimeError:
             pass
         self.session.EndSceneEdit()
-        #self.writeImage()
+        self.writeImage()
    
     def setRenderSettings(self,propstring):
         # Stop the rendering
@@ -387,23 +387,27 @@ class Lux(QThread):
         for prop in node.props:
             try:
                 val = self.sceneprops.Get(prop.getCallString()).Get()
+                valpass = True
             except RuntimeError:
                 print("No property %s in sceneprops, skipping the load process for this prop")
                 # disable this property since there was no call string for it
                 # this is usually due to parsing a file with missing props
                 prop.enabled = 0
-                return 
-            if prop.vtype == 'int':
-                prop.value = int(val[0])
-            elif prop.vtype == 'float' or prop.vtype == 'double' or prop.vtype == 'u_longlong' or prop.vtype == 'spectrum':
-                prop.value = float(val[0])
-            elif prop.vtype == 'string':
-                prop.value = val
-            else:
-                prop.value = []
-                for v in val:
-                    prop.value.append(float(v))
-            prop.enabled = 1
+                valpass = False
+            if valpass:
+                if prop.vtype == 'int':
+                    prop.value = int(val[0])
+                elif prop.vtype == 'float' or prop.vtype == 'double' or prop.vtype == 'u_longlong' or prop.vtype == 'spectrum':
+                    prop.value = float(val[0])
+                elif prop.vtype == 'string':
+                    prop.value = val
+                else:
+                    print("FILLING IN PROP %s for node %s with:"%(prop.vname,node.name))
+                    print(val)
+                    prop.value = []
+                    for v in val:
+                        prop.value.append(float(v))
+                prop.enabled = 1
 
 # SCENEGRAPH
 
@@ -836,8 +840,8 @@ class SceneGraph():
         for n in nodes:
             #print("add node %s to the sg"%n.name)
             self.lux.fillInProperties(n)
-            self.nodes.append(n)
             self.lux.setProperties(n.getPropertyString())
+            self.nodes.append(n)
             #print("NODE CALL STRING")
             #print(n.getPropertyString())
         # now set all the values using the data we imported
@@ -971,8 +975,8 @@ class SceneGraph():
             node.addProperty(Property('materials',name,'visibility.indirect.specular.enable','int',None,0,1,1,""))
             node.addProperty(Property('materials',name,'bumpsamplingdistance','float',None,0.0,None,0.001,""))
             # this fail the material because you can't use '' with these properties
-            #node.addProperty(Property('materials',name,'volume.interior','string',None,None,None,[''],""))
-            #node.addProperty(Property('materials',name,'volume.exterior','string',None,None,None,[''],""))
+            node.addProperty(Property('materials',name,'volume.interior','string',None,None,None,[''],""))
+            node.addProperty(Property('materials',name,'volume.exterior','string',None,None,None,[''],""))
             node.addProperty(Property('materials',name,'id','int',None,0,None,0,""))
             node.addProperty(Property('materials',name,'transparency','texture',None,None,None,[1,1,1],""))
             node.addProperty(Property('materials',name,'shadowcatcher.enable','int',None,0,1,0,""))
@@ -1268,6 +1272,10 @@ class TextureAttribute(QWidget):
             self.linkEnabled = 1
             self.stackedValue.setCurrentIndex(1)
             self.valueTypeBtn.setText('T')
+            if(self.linkEnabled):
+                self.prop.value = [self.linkValue.text()]
+            else:
+                self.prop.value = [''] 
         elif self.valueTypeBtn.text() == 'T':
             self.linkEnabled = 0
             self.stackedValue.setCurrentIndex(2)
@@ -1275,18 +1283,27 @@ class TextureAttribute(QWidget):
             self.float1Value.show()
             self.float2Value.show()
             self.float3Value.show()
+            self.props.value[0] = self.float1Value.text().toFloat()
+            self.props.value[1] = self.float2Value.text().toFloat()
+            self.props.value[2] = self.float3Value.text().toFloat()
         elif self.valueTypeBtn.text() == '3F':
             self.valueTypeBtn.setText('2F')
             self.float3Value.hide()
+            self.props.value[0] = self.float1Value.text().toFloat()
+            self.props.value[1] = self.float2Value.text().toFloat()
         elif self.valueTypeBtn.text() == '2F':
             self.valueTypeBtn.setText('F')
             self.float2Value.hide()
+            self.props.value[0] = self.float1Value.text().toFloat()
         elif self.valueTypeBtn.text() == 'F':
             self.stackedValue.setCurrentIndex(0)
             self.valueTypeBtn.setText('C')
             self.float1Value.hide()
-        self.getValue()
+            color = self.colorValue.getColor()
+            self.prop.value = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
 
+        self.getValue()
+        
     def showLinkDialog(self):
         self.link.show()
 
@@ -1321,6 +1338,8 @@ class TextureAttribute(QWidget):
             self.prop.type = 'string'
             if(self.linkEnabled):
                 self.prop.value = [self.linkValue.text()]
+            else:
+                self.prop.enabled = 0
         elif(self.stackedValue.currentIndex() == 2):
             self.prop.type = 'texture'
             print("PREVALUES: %f %f %f"%(float(self.float1Value.text()),float(self.float2Value.text()),float(self.float3Value.text())))     
@@ -1340,7 +1359,9 @@ class TextureAttribute(QWidget):
 
     def setProperty(self,prop):
         self.prop = prop
+        print("SETTING VALUE FOR %s"%prop.vname)
         if(self.stackedValue.currentIndex() == 0):
+            print("colorValue = %f %f %f"%(self.prop.value[0],self.prop.value[1],self.prop.value[2]))
             self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
         elif(self.stackedValue.currentIndex() == 1):
             self.linkValue.setText(self.prop.value[0])
