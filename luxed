@@ -1213,7 +1213,7 @@ class TextureAttribute(QWidget):
         self.linkValue = QPushButton("select")
         self.enableBtn = QPushButton("X")
         self.enableBtn.setFixedWidth(30)
-
+ 
         self.stackedValue = QStackedWidget()
         self.stackedValue.setFixedWidth(80)
         self.stackedValue.setFixedHeight(20)

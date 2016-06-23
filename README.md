@@ -11,7 +11,7 @@ LuxEd is a GUI editor for Lux scene and config files. It's intended for 3d artis
 
 Installation
 ---------------
-LuxEd is a single python file that you can run straight from the folder. Currently you manually add your objects and materials to the scene. LuxEd was developed and tested on Linux but should work fine on any other operating system.
+LuxEd is a single python file that you can run straight from the folder. LuxEd was developed and tested on Linux but should work fine on any other operating system.
 
 Currently Supported Features
 ---------------
@@ -61,7 +61,10 @@ Currently Supported Features
   * Mix
   * Null
 - Textures
-  * TODO
+  * ImageMap
+  * Marble
+  * Mix
+  * Scale 
 - Lights
   * TODO
 - Volumes
