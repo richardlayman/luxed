@@ -975,12 +975,12 @@ class SceneGraph():
             node.addProperty(Property('materials',name,'visibility.indirect.specular.enable','int',None,0,1,1,""))
             node.addProperty(Property('materials',name,'bumpsamplingdistance','float',None,0.0,None,0.001,""))
             # this fail the material because you can't use '' with these properties
-            node.addProperty(Property('materials',name,'volume.interior','string',None,None,None,[''],""))
-            node.addProperty(Property('materials',name,'volume.exterior','string',None,None,None,[''],""))
+            #node.addProperty(Property('materials',name,'volume.interior','string',None,None,None,[''],""))
+            #node.addProperty(Property('materials',name,'volume.exterior','string',None,None,None,[''],""))
             node.addProperty(Property('materials',name,'id','int',None,0,None,0,""))
             node.addProperty(Property('materials',name,'transparency','texture',None,None,None,[1,1,1],""))
             node.addProperty(Property('materials',name,'shadowcatcher.enable','int',None,0,1,0,""))
- 
+
             # Light Emission
             node.addProperty(Property('materials',name,'emission','texture',None,None,None,[0,0,0],"color of the emitted light"))
             # why is gain not in the SDL and why is that lights won't work without it?
