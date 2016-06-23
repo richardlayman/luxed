@@ -37,7 +37,7 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 # PROPERTIES CONTAINERS
 
 MaterialsType = ["matte","roughmatte","glossy2","archglass","glass","roughglass","metal2","velvet","carpaint","mattetranslucent","mirror","mix","null"]
-TexturesType = ["imagemap","marble","mix"]
+TexturesType = ["imagemap","marble","mix","scale"]
 TexturesMappingType = ["uvmapping2d"]
 
 class Property:
@@ -1023,7 +1023,11 @@ class SceneGraph():
             node.addProperty(Property('textures',name,'amount','texture',None,None,None,[0.5,0.5,0.5],""))
             node.addProperty(Property('textures',name,'texture1','texture',None,None,None,[0,0,0],""))
             node.addProperty(Property('textures',name,'texture2','texture',None,None,None,[1,1,1],""))
- 
+           
+        if subtype == 'scale':
+            node.addProperty(Property('textures',name,'type','string',None,None,None,['scale'],""))
+            node.addProperty(Property('textures',name,'texture1','texture',None,None,None,[1,1,1],""))
+            node.addProperty(Property('textures',name,'texture2','texture',None,None,None,[1,1,1],""))
 
     def getSceneString(self):
         out = ''
@@ -1731,7 +1735,7 @@ class NodeAttributeLoader(QWidget):
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-
+ 
     def updateNode(self):
         name = self.node.name
         ntype = self.node.ntype
