@@ -191,9 +191,6 @@ class Lux(QThread):
         self.config = pyluxcore.RenderConfig(self.props, self.scene)
         self.session = pyluxcore.RenderSession(self.config)
       
-        # PROPERTIES
-        self.fov = 65
-
     def load(self):
         val = 0
         print("Object Count:%d"%(self.scene.GetObjectCount()))
@@ -439,7 +436,7 @@ class SceneGraph():
         self.rendernodes = []
         self.nodes = []
 
-        camera = Node('default_cam','camera')
+        camera = Node('default_camera','camera')
         self.addCameraProperties(camera)
         camera.getProperty('lookat.orig').value = [0.64, 0.27, 0.14]
         camera.getProperty('lookat.target').value = [0.10, 1.04, -0.18]
@@ -1085,7 +1082,6 @@ class LuxWidget(QWidget):
     def __init__(self,width,height):
         super().__init__()
         self.sg = SceneGraph()
-        self.fov = 65
         self.setFixedWidth(self.sg.lux.getWidth())
         self.setFixedHeight(self.sg.lux.getHeight())
         
@@ -1132,13 +1128,12 @@ class LuxWidget(QWidget):
         self.setFixedHeight(self.sg.lux.getHeight())
 
     def wheelEvent(self,e):
-        self.fov = self.fov + (e.angleDelta().y() * 0.1)
-        if self.fov > 1000.0:
-            self.fov = 1000.0
-        if self.fov < 5.0:
-            self.fov = 5.0
-        print("fov = %.1f, x = %d" % (self.fov,e.angleDelta().y()))
-        self.lux.setProperty("scene.camera.fieldofview",self.fov)
+        camera = self.sg.getNode('default_camera')
+        fov = camera.getProperty('fieldofview')
+        fov.value = fov.value + (e.angleDelta().y() * 0.01)
+        print("fov=%f"%fov.value)
+        self.sg.updateNode(camera)
+        self.updateScene.emit()        
         self.repaint()
 
 
@@ -2744,7 +2739,7 @@ class MainWindow(QMainWindow):
 
     def updateScene(self):
         self.sceneLayout.updateTabs()
-        self.attributeEditor.clear()
+        #self.attributeEditor.clear()
 
 if __name__ == '__main__':
     
