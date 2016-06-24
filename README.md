@@ -11,7 +11,7 @@ LuxEd is a GUI editor for Lux scene and config files. It's intended for 3d artis
 
 Installation
 ---------------
-LuxEd is a single python file that you can run straight from the folder. LuxEd was developed and tested on Linux but should work fine on any other operating system.
+LuxEd is a single python file that you can run straight from the folder. You will need to have the LuxRays 1.6, Python 3.5, Qt 5.6 and PyQt5 installed. You might be able to get by with lower versions of Python and Qt but you should have the latest LuxRays since the API is changing constantly. LuxEd was developed and tested on Linux but should work fine on any other operating systems.
 
 Currently Supported Features
 ---------------
@@ -43,7 +43,9 @@ Currently Supported Features
 - Light Strategy
   * TODO
 - Film
-  * TODO 
+  * TODO
+- Camera
+  * Perspective
 - Objects/Shapes
   * Ply
 - Materials
@@ -73,3 +75,4 @@ Currently Supported Features
   * Add Node
   * Remove Node
   * Rename Node
+  * Can change the rotation and field-of-view of the viewport camera with the mouse

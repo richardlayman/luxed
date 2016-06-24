@@ -1302,6 +1302,8 @@ class TextureAttribute(QWidget):
 
         if prop.ntype == 'materials':
             self.link = LinkDialog(self.lux,'textures')
+        if prop.ntype == 'textures':
+            self.link = LinkDialog(self.lux,'textures')
         if prop.ntype == 'objects':
             self.link = LinkDialog(self.lux,'materials')
 
@@ -1412,19 +1414,18 @@ class TextureAttribute(QWidget):
         return self.prop.value
 
     def getValue(self):
-
         if(self.stackedValue.currentIndex() == 0):
-            self.prop.type = 'texture'
+            #self.prop.vtype = 'texture'
             color = self.colorValue.getColor()
             self.prop.value = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
         elif(self.stackedValue.currentIndex() == 1):
-            self.prop.type = 'string'
+            #self.prop.vtype = 'string'
             if(self.linkEnabled):
                 self.prop.value = [self.linkValue.text()]
             else:
                 self.prop.enabled = 0
         elif(self.stackedValue.currentIndex() == 2):
-            self.prop.type = 'texture'
+            #self.prop.vtype = 'texture'
             print("PREVALUES: %f %f %f"%(float(self.float1Value.text()),float(self.float2Value.text()),float(self.float3Value.text())))     
             print(self.prop.value)
             if len(self.prop.value) == 1:
@@ -1443,6 +1444,9 @@ class TextureAttribute(QWidget):
     def setProperty(self,prop):
         self.prop = prop
         print("SETTING VALUE FOR %s"%prop.vname)
+        if self.linkEnabled:
+            self.stackedValue.setCurrentIndex(1)
+            
         if(self.stackedValue.currentIndex() == 0):
             print("colorValue = %f %f %f"%(self.prop.value[0],self.prop.value[1],self.prop.value[2]))
             self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
