@@ -213,6 +213,11 @@ class Lux(QThread):
         self.session.GetFilm().Save()
         self.session.Stop()
 
+    def rotateCamera(self,angle,vector):
+        self.session.BeginSceneEdit()
+        self.scene.GetCamera().Rotate(angle,vector)
+        self.session.EndSceneEdit()
+ 
     def getTime(self):
         stats = self.session.GetStats();
         return stats.Get("stats.renderengine.time").GetFloat()
@@ -654,6 +659,11 @@ class SceneGraph():
  
     def endEdit(self):
         self.lux.endEdit()
+
+    # Camera Controls
+    def rotateCamera(self,angle,vector):
+        self.lux.rotateCamera(angle,vector)
+        # TODO - update camera properties
     
     def getRenderProperty(self,ntype,pname):
         for node in self.rendernodes:
@@ -1084,7 +1094,12 @@ class LuxWidget(QWidget):
         self.sg = SceneGraph()
         self.setFixedWidth(self.sg.lux.getWidth())
         self.setFixedHeight(self.sg.lux.getHeight())
-        
+        self.enableCameraRotate = False
+        self.enableCameraZoom = False
+        self.enableCameraMove = False
+        self.mouseX = 0.0
+        self.mouseY = 0.0
+ 
     def paintEvent(self,e):
         qp = QPainter()
         qp.begin(self)
@@ -1135,6 +1150,27 @@ class LuxWidget(QWidget):
         self.sg.updateNode(camera)
         self.updateScene.emit()        
         self.repaint()
+
+    def mousePressEvent(self,e):
+        self.enableCameraRotate = True 
+        self.mouseX = e.x()
+        self.mouseY = e.y()
+
+    def mouseReleaseEvent(self,e):
+        self.enableCameraRotate = False
+        self.enableCameraZoom = False
+        self.enableCameraMove = False
+        self.mouseX = 0
+        self.mouseY = 0
+
+    def mouseMoveEvent(self,e):
+        if self.enableCameraRotate:
+            dx = self.mouseX - e.x()
+            dy = self.mouseY - e.y()
+            self.mouseX = e.x()
+            self.mouseY = e.y()
+            angle = dx*0.1
+            self.sg.rotateCamera(angle,(0,0,1)) 
 
 
 # EDITOR WIDGETS
