@@ -83,6 +83,10 @@ class Property:
             out = "%s = %f" % (self.getCallString(), float(self.value))
         if self.vtype is 'uv':
             out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
+        if self.vtype is 'point':
+            out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
+        if self.vtype is 'vector':
+            out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
         if self.vtype is 'texture':
             print("PROPERTY VALUE")
             print(type(self.value[0]))
@@ -100,6 +104,8 @@ class Property:
     def getCallString(self):
         if self.nname is None or self.ntype is None:
             return ''
+        elif self.ntype is 'camera':
+            return "scene.camera.%s"%self.vname
         elif self.ntype is 'objects':
             return "scene.objects.%s.%s"%(self.nname,self.vname)
         elif self.ntype is 'materials':
@@ -113,7 +119,7 @@ class Node:
 
     def __init__(self,name=None,ntype=None):
         self.name = name
-        self.ntype = ntype # 'camera','light','texture','material','object' 
+        self.ntype = ntype # 'camera','lights','textures','materials','objects','shapes','volumes' 
         self.props = []
 
     def clear(self):
@@ -126,6 +132,14 @@ class Node:
 
     def clearProperties(self):
         self.props = []
+
+    def getProperty(self,name):
+        print("looking for %s"%name)
+        for prop in self.props:
+            if name == prop.vname:
+                print("found prop %s"%name)
+                return prop
+        return None
 
     def getPropertyString(self):
         out = ""
@@ -250,6 +264,10 @@ class Lux(QThread):
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
             if prop.type is 'uv':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]]))
+            if prop.type is 'point':
+                self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
+            if prop.type is 'vector':
+                self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]],prop.value[2]))
             if prop.type is 'texture':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
 
@@ -420,6 +438,12 @@ class SceneGraph():
         #self.render = RenderProps()
         self.rendernodes = []
         self.nodes = []
+
+        camera = Node('default_cam','camera')
+        self.addCameraProperties(camera)
+        camera.getProperty('lookat.orig').value = [0.64, 0.27, 0.14]
+        camera.getProperty('lookat.target').value = [0.10, 1.04, -0.18]
+        self.nodes.append(camera)
 
         self.initRenderNodes()
         #self.lux.setRenderSettings(self.render.getPropertyString)
@@ -644,7 +668,7 @@ class SceneGraph():
  
     def getNames(self, ntype):
         nodelist = []
-       
+        print("get names for %s"%ntype) 
         for node in self.nodes:
             print("looking at node")
             print("name=%s, type=%s"%(node.name,node.ntype))
@@ -753,9 +777,15 @@ class SceneGraph():
             i += 1
 
     def clearScene(self):
+        camera = None
         for n in self.nodes:
-            self.lux.removeNode(n)
+            # don't delete the camera
+            if n.ntype == 'camera':
+                camera = n 
+            else:
+                self.lux.removeNode(n)
         self.nodes.clear()
+        self.nodes.append(camera)
 
     # This will parse a input string like 'scene.materials.my_material.kd'
     # and out the string type('object'), name('my_material') and value type('kd')
@@ -859,7 +889,19 @@ class SceneGraph():
             self.addMaterialProperties(node,subtype)
         elif node.ntype == 'textures':
             self.addTextureProperties(node,subtype)
- 
+  
+    def addCameraProperties(self,node):
+        name = node.name
+        node.clearProperties()
+        node.addProperty(Property('camera',name,'lookat.orig','point',None,None,None,[0,1,-1],""))
+        node.addProperty(Property('camera',name,'lookat.target','point',None,None,None,[0,0,0],""))
+        node.addProperty(Property('camera',name,'up','vector',None,None,None,[0,0,1],""))
+        node.addProperty(Property('camera',name,'cliphither','float',None,None,None,0.001,""))
+        node.addProperty(Property('camera',name,'clipyon','float',None,None,None,1.0,""))
+        node.addProperty(Property('camera',name,'lensradius','float',None,None,None,0.0,""))
+        node.addProperty(Property('camera',name,'focaldistance','float',None,None,None,0.28,""))
+        node.addProperty(Property('camera',name,'fieldofview','float',None,None,None,49.0,""))
+
     def addObjectProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
@@ -1520,10 +1562,14 @@ class FloatAttribute(QWidget):
         self.label = QLabel(self.prop.vname)
         self.value = QLineEdit()
         self.value.setFixedWidth(80)
+        self.validator = QDoubleValidator()
         if self.prop.min is not None and self.prop.max is not None:
-            self.validator = QDoubleValidator(self.prop.min,self.prop.max,4)
-            self.value.setValidator(self.validator)
-        self.value.setText("%f"%self.prop.value)
+            self.validator.setRange(self.prop.min,self.prop.max,4)
+        else:
+            self.validator.setDecimals(4)
+        self.value.setValidator(self.validator)
+ 
+        self.value.setText("%.4f"%self.prop.value)
 
         self.setToolTip(self.prop.desc)
        
@@ -1551,7 +1597,7 @@ class FloatAttribute(QWidget):
 
     def setValue(self,val):
         self.prop.value = val
-        self.value.setText("%f"%val)
+        self.value.setText("%.4f"%val)
 
     def loadProperty(self):
         self.value.setText(self.prop.value[0])
@@ -1559,6 +1605,83 @@ class FloatAttribute(QWidget):
     def setProperty(self,prop):
         self.prop = prop
         self.value.setText(self.prop.value[0])
+
+
+# Point Attribute
+class PointAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+
+    def __init__(self,prop):
+        super().__init__()
+        self.prop = prop
+        self.label = QLabel(self.prop.vname)
+        self.xvalue = QLineEdit()
+        self.yvalue = QLineEdit()
+        self.zvalue = QLineEdit()
+        self.xvalue.setFixedWidth(60)
+        self.yvalue.setFixedWidth(60)
+        self.zvalue.setFixedWidth(60)
+
+        self.validator = QDoubleValidator()
+        if self.prop.min is not None and self.prop.max is not None:
+            self.validator.setRange(self.prop.min,self.prop.max,4)
+        else:
+            self.validator.setDecimals(4)
+        self.xvalue.setValidator(self.validator)
+        self.yvalue.setValidator(self.validator)
+        self.zvalue.setValidator(self.validator)
+ 
+        self.xvalue.setText("%.4f"%self.prop.value[0])
+        self.yvalue.setText("%.4f"%self.prop.value[1])
+        self.zvalue.setText("%.4f"%self.prop.value[2])
+
+        self.setToolTip(self.prop.desc)
+       
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.xvalue)
+        hbox.addWidget(self.yvalue)
+        hbox.addWidget(self.zvalue)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        # connections
+        self.xvalue.editingFinished.connect(self.changed)
+        self.yvalue.editingFinished.connect(self.changed)
+        self.zvalue.editingFinished.connect(self.changed)
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+    def changed(self):
+        self.prop.value[0] = float(self.xvalue.text())
+        self.prop.value[1] = float(self.yvalue.text())
+        self.prop.value[2] = float(self.zvalue.text())
+        self.valueChanged.emit()
+
+    def getValue(self):
+        return [float(self.prop.value[0]), float(self.prop.value[1]), float(self.prop.value[2])]
+
+    def setValue(self,val):
+        self.prop.value = val
+        self.xvalue.setText("%.4f"%val[0])
+        self.yvalue.setText("%.4f"%val[1])
+        self.zvalue.setText("%.4f"%val[2])
+
+    def loadProperty(self):
+        self.xvalue.setText(self.prop.value[0])
+        self.yvalue.setText(self.prop.value[1])
+        self.zvalue.setText(self.prop.value[2])
+
+    def setProperty(self,prop):
+        self.prop = prop
+        self.xvalue.setText(self.prop.value[0])
+        self.yvalue.setText(self.prop.value[1])
+        self.zvalue.setText(self.prop.value[2])
 
 
 # String Attribute
@@ -1727,6 +1850,18 @@ class NodeAttributeLoader(QWidget):
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
+            #if prop.vtype is 'uv':
+            #    attribute = FloatAttribute(prop)
+            #    attribute.valueChanged.connect(self.updateNode)
+            #    self.vbox.addWidget(attribute)        
+            if prop.vtype is 'point':
+                attribute = PointAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)        
+            if prop.vtype is 'vector':
+                attribute = PointAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)        
             if prop.vtype is 'texture':
                 attribute = TextureAttribute(prop,self.lux)
                 attribute.valueChanged.connect(self.updateNode)
@@ -1886,6 +2021,8 @@ class AddNodeDialog(QDialog):
     def setType(self,ntype):
         self.ntype = ntype
         self.vtype.clear() 
+        if self.ntype == 'camera':
+            pass
         if self.ntype == 'objects':
             self.vtype.addItem('ply')
             self.vtype.addItem('stl')
@@ -1964,6 +2101,8 @@ class SceneLayout(QDockWidget):
         self.removeBtn.clicked.connect(self.remove)
         self.addNodeDialog.nodeAdded.connect(self.addNode)
         self.renameNodeDialog.nodeRenamed.connect(self.renameNode)
+        
+        self.updateTabs()
 
     def addNode(self,name,ntype,vtype):
         print("%s, %s, %s node to add"%(name,ntype,vtype))
@@ -2015,8 +2154,8 @@ class SceneLayout(QDockWidget):
 
         # Cameras
         self.cameras.clear()
-        for c in self.lux.sg.getNames('cameras'):
-            self.camera.addItem(c)
+        for c in self.lux.sg.getNames('camera'):
+            self.cameras.addItem(c)
 
         # Objects
         self.objects.clear()
