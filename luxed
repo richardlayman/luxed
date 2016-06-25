@@ -38,7 +38,7 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass','metal2','velvet','carpaint','mattetranslucent','mirror','mix','null']
 TexturesType = ['imagemap','marble','mix','scale','uv','windy']
-TexturesMappingType = ['uvmapping2d']
+TexturesMappingType = ['uvmapping2d','uvmapping3d','globalmapping3d']
 
 class Property:
     
@@ -114,19 +114,35 @@ class Property:
             return "scene.textures.%s.%s"%(self.nname,self.vname)
         return "%s.%s"%(self.nname,self.vname)
 
-'''
+
 # PROPERTY GROUP
 class PropertyGroup:
 
-    def __init__(self,gtype=None):
-        self.gtype=None
+    def __init__(self,nname,ntype,gname,default,description):
+        self.ntype = ntype
+        self.name = gname 
+        self.prop = Property(ntype,nname,gname,'string',None,None,None,default,description)
+        self.props = []
 
-    def addType(self,gtype):
-        pass
+    def getPropertyString(self):
+        out = self.prop.getPropertyString() 
+        for prop in self.props:
+            out += prop + '\n'
+        return out
 
-    def changeType(self,gtype):
-        pass
-'''
+
+# PROPERTY GROUP MARKER
+class PropertyGroupMarker:
+
+    def __init__(self,types):
+        self.types = types
+
+    def match(self,gtype):
+        if gtype in self.types:
+            return True
+        else:
+            return False
+
 
 # NODE
 class Node:
@@ -1064,6 +1080,7 @@ class SceneGraph():
     def addTextureProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
+
         # MAPPING
         if subtype == 'uvmapping2d':
             node.addProperty(Property('textures',name,'type','string',None,None,None,['uvmapping2d'],""))
@@ -1075,7 +1092,7 @@ class SceneGraph():
             node.addProperty(Property('textures',name,'file','string',None,None,None,['image.png'],""))
             node.addProperty(Property('textures',name,'gamma','float',None,None,None,2.2,""))
             node.addProperty(Property('textures',name,'gain','float',None,None,None,1.0,""))
-         
+             
         if subtype == 'marble':
             node.addProperty(Property('textures',name,'type','string',None,None,None,['marble'],""))
             node.addProperty(Property('textures',name,'octaves','int',None,None,None,8,""))
