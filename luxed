@@ -36,9 +36,9 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 # PROPERTIES CONTAINERS
 
-MaterialsType = ["matte","roughmatte","glossy2","archglass","glass","roughglass","metal2","velvet","carpaint","mattetranslucent","mirror","mix","null"]
-TexturesType = ["imagemap","marble","mix","scale"]
-TexturesMappingType = ["uvmapping2d"]
+MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass','metal2','velvet','carpaint','mattetranslucent','mirror','mix','null']
+TexturesType = ['imagemap','marble','mix','scale','uv','windy']
+TexturesMappingType = ['uvmapping2d']
 
 class Property:
     
@@ -1094,6 +1094,12 @@ class SceneGraph():
             node.addProperty(Property('textures',name,'texture1','texture',None,None,None,[1,1,1],""))
             node.addProperty(Property('textures',name,'texture2','texture',None,None,None,[1,1,1],""))
 
+        if subtype == 'uv':
+            node.addProperty(Property('textures',name,'type','string',None,None,None,['uv'],""))
+ 
+        if subtype == 'windy':
+            node.addProperty(Property('textures',name,'type','string',None,None,None,['windy'],""))
+ 
     def getSceneString(self):
         out = ''
         for node in self.nodes:
