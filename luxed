@@ -54,19 +54,8 @@ class Property:
         self.enabled = 1
         self.desc = desc
         self.luxprop = luxprop
+        self.props = [] # children properties
  
-    def setType(self, vtype):
-        self.vtype = vtype
-
-    def getType(self):
-        return self.vtype
-    
-    def setName(self, name):
-        self.name = name
-    
-    def getName(self):
-        return self.name
-
     def setValue(self, val):
         self.value = val
 
@@ -113,35 +102,6 @@ class Property:
         elif self.ntype is 'textures':
             return "scene.textures.%s.%s"%(self.nname,self.vname)
         return "%s.%s"%(self.nname,self.vname)
-
-
-# PROPERTY GROUP
-class PropertyGroup:
-
-    def __init__(self,nname,ntype,gname,default,description):
-        self.ntype = ntype
-        self.name = gname 
-        self.prop = Property(ntype,nname,gname,'string',None,None,None,default,description)
-        self.props = []
-
-    def getPropertyString(self):
-        out = self.prop.getPropertyString() 
-        for prop in self.props:
-            out += prop + '\n'
-        return out
-
-
-# PROPERTY GROUP MARKER
-class PropertyGroupMarker:
-
-    def __init__(self,types):
-        self.types = types
-
-    def match(self,gtype):
-        if gtype in self.types:
-            return True
-        else:
-            return False
 
 
 # NODE
@@ -419,11 +379,11 @@ class Lux(QThread):
         return node
 
     def getName(self,prop):
-        print("PASSED PROP NAME " + prop.GetName())
+        print("PASSED PROP NAME " + prop.vname)
 
         self.session.BeginSceneEdit()
         self.scene.Parse(pyluxcore.Properties().
-            Set(pyluxcore.Property(prop.GetName(), [1,0,0]))
+            Set(pyluxcore.Property(prop.vname, [1,0,0]))
         ) 
         self.session.EndSceneEdit()
         #self.writeImage()
@@ -1567,7 +1527,6 @@ class OptionAttribute(QWidget):
         return self.label.isEnabled()
 
     def changed(self,index):
-        #self.prop.setValue(self.value.currentText())
         self.prop.value[0] = self.value.currentText()
         self.valueChanged.emit()
 
