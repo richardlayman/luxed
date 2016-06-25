@@ -1375,9 +1375,7 @@ class TextureAttribute(QWidget):
         return self.label.isEnabled()
 
     def toggleValueType(self,target=None):
-        print("toggle text = %s"%self.valueTypeBtn.text())
         if (self.valueTypeBtn.text() == 'C' and target is False) or target == 'T':
-            print("setting color")
             self.linkEnabled = 1
             self.stackedValue.setCurrentIndex(1)
             self.valueTypeBtn.setText('T')
