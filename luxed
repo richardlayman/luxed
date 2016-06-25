@@ -2553,12 +2553,14 @@ class FileNewAction(QAction):
         
 class FileExitAction(QAction):
 
-    def __init__(self,parent):
+    def __init__(self,lux,parent):
         super().__init__("Exit",parent)
         self.triggered.connect(self.doit)
+        self.lux = lux
 
     def doit(self):
-        print("Exit")
+        self.lux.stopRendering()
+        app.quit()
 
  
 class ImportMenu(QMenu):
@@ -2566,7 +2568,7 @@ class ImportMenu(QMenu):
     def __init__(self,lux,parent):
         super().__init__("Import",parent)
         self.addAction(ImportSceneAction(lux,self))
-        self.addAction(ImportPlyAction(lux,self))
+        #self.addAction(ImportPlyAction(lux,self))
 
 class ExportMenu(QMenu):
 
@@ -2641,7 +2643,7 @@ class FileMenu(QMenu):
         self.addMenu(ImportMenu(lux,self))
         self.addMenu(ExportMenu(lux,self))
         self.addSeparator()
-        self.addAction(FileExitAction(self))
+        self.addAction(FileExitAction(lux,self))
  
 
 class MainMenu(QMenuBar):
