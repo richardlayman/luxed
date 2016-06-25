@@ -1374,8 +1374,10 @@ class TextureAttribute(QWidget):
     def enabled(self):
         return self.label.isEnabled()
 
-    def toggleValueType(self):
-        if self.valueTypeBtn.text() == 'C':
+    def toggleValueType(self,target=None):
+        print("toggle text = %s"%self.valueTypeBtn.text())
+        if (self.valueTypeBtn.text() == 'C' and target is False) or target == 'T':
+            print("setting color")
             self.linkEnabled = 1
             self.stackedValue.setCurrentIndex(1)
             self.valueTypeBtn.setText('T')
@@ -1383,26 +1385,26 @@ class TextureAttribute(QWidget):
                 self.prop.value = [self.linkValue.text()]
             else:
                 self.prop.value = [''] 
-        elif self.valueTypeBtn.text() == 'T':
+        elif (self.valueTypeBtn.text() == 'T' and target is False) or target == '3F':
             self.linkEnabled = 0
             self.stackedValue.setCurrentIndex(2)
             self.valueTypeBtn.setText('3F')
             self.float1Value.show()
             self.float2Value.show()
             self.float3Value.show()
-            self.props.value[0] = self.float1Value.text().toFloat()
-            self.props.value[1] = self.float2Value.text().toFloat()
-            self.props.value[2] = self.float3Value.text().toFloat()
-        elif self.valueTypeBtn.text() == '3F':
+            self.prop.value.insert(0,float(self.float1Value.text()))
+            self.prop.value.insert(1,float(self.float2Value.text()))
+            self.prop.value.insert(2,float(self.float3Value.text()))
+        elif (self.valueTypeBtn.text() == '3F' and target is False) or target == '2F':
             self.valueTypeBtn.setText('2F')
             self.float3Value.hide()
-            self.props.value[0] = self.float1Value.text().toFloat()
-            self.props.value[1] = self.float2Value.text().toFloat()
-        elif self.valueTypeBtn.text() == '2F':
+            self.prop.value.insert(0,float(self.float1Value.text()))
+            self.prop.value.insert(1,float(self.float2Value.text()))
+        elif (self.valueTypeBtn.text() == '2F' and target is False) or target == 'F':
             self.valueTypeBtn.setText('F')
             self.float2Value.hide()
-            self.props.value[0] = self.float1Value.text().toFloat()
-        elif self.valueTypeBtn.text() == 'F':
+            self.prop.value.insert(0,float(self.float1Value.text()))
+        elif (self.valueTypeBtn.text() == 'F' and target is False) or target == 'C':
             self.stackedValue.setCurrentIndex(0)
             self.valueTypeBtn.setText('C')
             self.float1Value.hide()
@@ -1466,9 +1468,11 @@ class TextureAttribute(QWidget):
     def setProperty(self,prop):
         self.prop = prop
         print("SETTING VALUE FOR %s"%prop.vname)
-        if self.linkEnabled:
-            self.stackedValue.setCurrentIndex(1)
-            
+        if type(self.prop.value[0]) is 'str'.__class__:
+            self.linkEnabled = 1
+            self.linkValue.setText(self.prop.value[0])
+            self.toggleValueType('T')
+    
         if(self.stackedValue.currentIndex() == 0):
             print("colorValue = %f %f %f"%(self.prop.value[0],self.prop.value[1],self.prop.value[2]))
             self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
