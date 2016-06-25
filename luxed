@@ -1859,7 +1859,7 @@ class NodeAttributeLoader(QWidget):
                     attribute.valueChanged.connect(self.setType)
                     self.subtype = prop.value[0]
                     self.vbox.addWidget(attribute)
-                elif prop.vname is 'material':
+                elif 'material' in prop.vname:
                     matlist = self.lux.sg.getNames('materials')
                     attribute = OptionAttribute(prop,matlist)
                     attribute.valueChanged.connect(self.updateNode)
@@ -1877,31 +1877,31 @@ class NodeAttributeLoader(QWidget):
                     attribute = StringAttribute(prop)
                     attribute.valueChanged.connect(self.updateNode)
                     self.vbox.addWidget(attribute)
-            if prop.vtype is 'int':
+            elif prop.vtype is 'int':
                 attribute = IntAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-            if prop.vtype is 'float':
+            elif prop.vtype is 'float':
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-            #if prop.vtype is 'uv':
+            #elif prop.vtype is 'uv':
             #    attribute = FloatAttribute(prop)
             #    attribute.valueChanged.connect(self.updateNode)
             #    self.vbox.addWidget(attribute)        
-            if prop.vtype is 'point':
+            elif prop.vtype is 'point':
                 attribute = PointAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-            if prop.vtype is 'vector':
+            elif prop.vtype is 'vector':
                 attribute = PointAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-            if prop.vtype is 'texture':
+            elif prop.vtype is 'texture':
                 attribute = TextureAttribute(prop,self.lux)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-            if prop.vtype is 'spectrum':
+            elif prop.vtype is 'spectrum':
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
