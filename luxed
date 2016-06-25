@@ -114,6 +114,20 @@ class Property:
             return "scene.textures.%s.%s"%(self.nname,self.vname)
         return "%s.%s"%(self.nname,self.vname)
 
+'''
+# PROPERTY GROUP
+class PropertyGroup:
+
+    def __init__(self,gtype=None):
+        self.gtype=None
+
+    def addType(self,gtype):
+        pass
+
+    def changeType(self,gtype):
+        pass
+'''
+
 # NODE
 class Node:
 
@@ -441,6 +455,7 @@ class SceneGraph():
         self.rendernodes = []
         self.nodes = []
 
+        # default camera
         camera = Node('default_camera','camera')
         self.addCameraProperties(camera)
         camera.getProperty('lookat.orig').value = [0.64, 0.27, 0.14]
@@ -754,7 +769,7 @@ class SceneGraph():
         # else add it
         #print("addSceneNode() name=%s, ntype=%s, subtype=%s"%(name,ntype,subtype))
         node = None
-        i = 0
+
         for n in self.nodes:
             if n.name == name and n.ntype == ntype:
                 # clear out old properties
@@ -765,7 +780,7 @@ class SceneGraph():
                 self.lux.setProperties(node.getPropertyString())
             elif n.name == name:    
                 print("node with name already exist but not of the same type")
-            i += 1
+
         if node is None:
                 node = Node(name,ntype)
                 self.addProperties(node,subtype)
@@ -788,11 +803,12 @@ class SceneGraph():
         for n in self.nodes:
             # don't delete the camera
             if n.ntype == 'camera':
-                camera = n 
+                camera = n
             else:
                 self.lux.removeNode(n)
         self.nodes.clear()
-        self.nodes.append(camera)
+        if camera is not None:
+            self.nodes.append(camera)
 
     # This will parse a input string like 'scene.materials.my_material.kd'
     # and out the string type('object'), name('my_material') and value type('kd')
@@ -1488,9 +1504,17 @@ class OptionAttribute(QWidget):
 
         self.setToolTip(self.prop.desc)
 
+        match = False
         if options is not None: 
             for item in options:
                 self.value.addItem(item)
+                if self.prop.value[0] == item:
+                    self.value.setCurrentText(item)
+                    match = True
+            # set the default to the first item in the list
+            if match is not True:
+                self.prop.value[0] = self.value.currentText()
+
         else:
             if self.prop.ntype == 'materials':
                 for item in MaterialsType:
