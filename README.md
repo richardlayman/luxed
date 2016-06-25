@@ -76,3 +76,9 @@ Currently Supported Features
   * Remove Node
   * Rename Node
   * Can change the rotation and field-of-view of the viewport camera with the mouse
+
+Known Issues
+---------------
+When making scenes you may notice that objects are not showing up when loaded. This will happen when due to Lux render errors since the objects are being called with no mesh assigned yet. This is common if you add objects in the SceneLayout and then add the meshes later; lux will not show any of the objects until they have all been loaded. Currently LuxEd does not have a way of telling the user that Lux is failing so this can be a little confusing at first. I plan to add a feature in the future to let the user know that there are render errors.
+
+
