@@ -42,7 +42,7 @@ ShapesType = ['mesh']
 # MATERIALS
 MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass','metal2','velvet','carpaint','mattetranslucent','mirror','mix','null']
 # TEXTURES
-TexturesType = ['imagemap','marble','mix','scale','uv','windy','wood']
+TexturesType = ['imagemap','marble','mix','scale','uv','hitpointalpha','hitpointcolor','hitpointgrey','hsv','windy','wood']
 TexturesWoodType = ['bands','rings','bandnoise','ringnoise']
 TexturesWoodNoiseBasis2 = ['sin','saw','tri']
 TexturesWoodNoiseType = ['soft_noise','hard_noise']
@@ -354,6 +354,23 @@ class Property:
             self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
 
         if self.value[0] == 'uv':
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+
+        if self.value[0] == 'hitpointalpha':
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+
+        if self.value[0] == 'hitpointcolor':
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+
+        if self.value[0] == 'hitpointgrey':
+            self.props.append(Property('textures',self.nname,'channel','int',None,-1,None,-1,"the index of the RGB channel to use. -1 means the luminance of the RGB value"))
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+
+        if self.value[0] == 'hsv':
+            self.props.append(Property('textures',self.nname,'texture','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('textures',self.nname,'hue','texture',None,None,None,[0.5,0.5,0.5],""))
+            self.props.append(Property('textures',self.nname,'saturation','texture',None,None,None,[1.0,1.0,1.0],""))
+            self.props.append(Property('textures',self.nname,'value','texture',None,None,None,[1.0,1.0,1.0],""))
             self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
 
         if self.value[0] == 'windy':

@@ -69,6 +69,10 @@ Currently Supported Features
   * Mix
   * Scale
   * UV
+  * HitPointAlpha
+  * HitPointColor
+  * HitPointGrey
+  * HSV
   * Windy
   * Wood (bugged)
 - Lights
