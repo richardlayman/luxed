@@ -917,7 +917,8 @@ class SceneGraph():
 
     def start(self):
         self.lux.startRendering() 
-        
+        self.updateAllNodes()
+
     def stop(self):
         self.lux.stopRendering()
 
@@ -1010,6 +1011,10 @@ class SceneGraph():
 
     def updateNode(self,node):
         self.lux.setProperties(node.getPropertyString())
+
+    def updateAllNodes(self):
+        for node in self.nodes:
+            self.updateNode(node)
 
     def getNode(self, name):
         for node in self.nodes:

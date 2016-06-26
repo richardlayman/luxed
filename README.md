@@ -67,7 +67,10 @@ Currently Supported Features
   * ImageMap
   * Marble
   * Mix
-  * Scale 
+  * Scale
+  * UV
+  * Windy
+  * Wood (bugged)
 - Lights
   * TODO
 - Volumes
