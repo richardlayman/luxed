@@ -26,6 +26,7 @@ import time
 import sys
 from array import *
 sys.path.append("./lib")
+from types import *
 
 import pyluxcore
 
@@ -42,7 +43,7 @@ TexturesMappingType = ['uvmapping2d','uvmapping3d','globalmapping3d']
 
 class Property:
     
-    def __init__(self, ntype, nname, vname, vtype, luxprop, vmin, vmax, vdefault, desc=""):
+    def __init__(self, ntype, nname, vname, vtype, luxprop, vmin, vmax, vdefault, desc="", types=[]):
         self.ntype = ntype
         self.nname = nname
         self.vname = vname
@@ -53,14 +54,51 @@ class Property:
         self.max = vmax 
         self.enabled = 1
         self.desc = desc
+        self.types = types
         self.luxprop = luxprop
         self.props = [] # children properties
+        if len(types) > 0:
+            self.initProperties() # fill in the child properties
  
     def setValue(self, val):
         self.value = val
 
     def getValue(self):
         return self.value
+    
+    def addProperty(self,prop):
+        self.props.append(prop)
+
+    def clearChildren(self):
+        for prop in self.props:
+            prop.clearChildren()
+            del(prop)
+        self.props = []
+
+    def count(self):
+        return len(self.props)
+
+    def changeType(self,name):
+        if name in self.types:
+            self.value = [name]
+            # whip out the the children properties and re-make them
+            self.clearChildren()
+            self.initProperties()
+        else:
+            for prop in self.props:
+                prop.changeType(name)
+
+    def getProperty(self, name):
+        if name == vname:
+            return self
+
+        outprop = None        
+        for prop in self.props:
+            outprop = prop.getProperty(name)
+            if outprop is not None:
+                return outprop
+
+        return None
 
     def getPropertyString(self):
         out=""
@@ -88,6 +126,11 @@ class Property:
                 out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
             else: 
                 out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
+
+        # get children property strings
+        for prop in self.props:
+            out += '\n' + prop.getPropertyString()
+
         return out
 
     def getCallString(self):
@@ -103,7 +146,188 @@ class Property:
             return "scene.textures.%s.%s"%(self.nname,self.vname)
         return "%s.%s"%(self.nname,self.vname)
 
+    def getProperties(self):
+        props = []
+        props.append(self)
+        for prop in self.props:
+            props += prop.getProperties()
+        return props
 
+    def initProperties(self):
+        self.clearChildren()
+
+        print("initProperties")
+        print(type(self.value))        
+
+        if type(self.value) is float or type(self.value) is int:
+            print("FOUND")
+            return
+
+        print("ADDING PROP %s"%self.value[0])
+
+        # MATERIALS
+
+        if self.value[0] == 'matte':
+            self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[1,1,1],"texture or constant color of the matte material"))
+        if self.value[0] == 'glossy2':
+            self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[1,1,1],"texture or constant diffuse color of the material"))
+            self.props.append(Property('materials',self.nname,'ks','texture',None,None,None,[1,1,1],"texture or constant specular color of the material"))
+            self.props.append(Property('materials',self.nname,'uroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along u coordinate of the material"))
+            self.props.append(Property('materials',self.nname,'vroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along v coordinate of the material"))
+            self.props.append(Property('materials',self.nname,'ka','texture',None,None,None,[0.0,0.0,0.0],"texture or constant value of coefficient of absorption of the coating layer"))
+            self.props.append(Property('materials',self.nname,'d','texture',None,None,None,[0.0,0.0,0.0],"texture or constant value of the depth (thickness) of the coating layer for absorption effects. (0 = disables)"))
+            self.props.append(Property('materials',self.nname,'index','texture',None,None,None,[0.0,0.0,0.0],"IOR of the coating. IOR overrides color Ks if both are specified"))
+
+        if self.value[0] == 'glass':
+            self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
+            self.props.append(Property('materials',self.nname,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
+            self.props.append(Property('materials',self.nname,'interiorior','texture',None,None,None,[1,1,1],"inside texture or constant index of refraction (only for volume-less rendering)"))
+            self.props.append(Property('materials',self.nname,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
+ 
+        if self.value[0] == 'metal2':
+            self.props.append(Property('materials',self.nname,'fresnel','texture',None,None,None,[1,1,1],""))
+            self.props.append(Property('materials',self.nname,'uroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along u coordinate of the material"))
+            self.props.append(Property('materials',self.nname,'vroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along v coordinate of the material"))
+ 
+        if self.value[0] == 'mattetranslucent':
+            self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[0.5,0.5,0.5],"texture or constant reflected color of the material"))
+            self.props.append(Property('materials',self.nname,'kt','texture',None,None,None,[0.5,0.5,0.5],"texture or constant transmitted color of the material"))
+  
+        if self.value[0] == 'mirror':
+            self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
+  
+        if self.value[0] == 'mix':
+            self.props.append(Property('materials',self.nname,'material1','string',None,None,None,[''],"name of another material"))
+            self.props.append(Property('materials',self.nname,'material2','string',None,None,None,[''],"name of another material"))
+            self.props.append(Property('materials',self.nname,'amount','texture',None,None,None,[1,1,1],"texture or constant value used to mix the materials"))
+        if self.value[0] == 'null':
+            pass
+        if self.value[0] == 'roughglass':
+            self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
+            self.props.append(Property('materials',self.nname,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
+            self.props.append(Property('materials',self.nname,'interiorior','texture',None,None,None,[1.5,1.5,1.5],"inside texture or constant index of refraction (only for volume-less rendering)"))
+            self.props.append(Property('materials',self.nname,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
+            self.props.append(Property('materials',self.nname,'uroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along u coordinate of the material"))
+            self.props.append(Property('materials',self.nname,'vroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along v coordinate of the material"))
+        if self.value[0] == 'roughmatte':
+            self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[0.75,0.75,0.75],"texture or constant color of the matte material"))
+            self.props.append(Property('materials',self.nname,'sigma','texture',None,None,None,[0,0,0],"texture or constant color of the matte material"))
+        if self.value[0] == 'velvet':
+            self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[0.5,0.5,0.5],"color of the material's fuzz"))
+            self.props.append(Property('materials',self.nname,'p1','texture',None,None,None,[-2.0],"texture or constant color of the matte material"))
+            self.props.append(Property('materials',self.nname,'p2','texture',None,None,None,[20.0],"texture or constant color of the matte material"))
+            self.props.append(Property('materials',self.nname,'p3','texture',None,None,None,[2.0],"texture or constant color of the matte material"))
+            self.props.append(Property('materials',self.nname,'p1','texture',None,None,None,[0.1],"texture or constant color of the matte material"))
+        if self.value[0] == 'archglass':
+            self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
+            self.props.append(Property('materials',self.nname,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
+            self.props.append(Property('materials',self.nname,'interiorior','texture',None,None,None,[1.5,1.5,1.5],"inside texture or constant index of refraction (only for volume-less rendering)"))
+            self.props.append(Property('materials',self.nname,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
+        if self.value[0] == 'carpaint':
+            self.props.append(Property('materials',self.nname,'preset','string',None,None,None,['ford f8'],"one of the avilable presets"))
+            self.props.append(Property('materials',self.nname,'ka','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'d','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'ks1','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'ks2','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'ks3','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'r1','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'r2','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'r3','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'m1','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'m2','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'m3','texture',None,None,None,[0,0,0],""))
+        if self.value[0] == 'cloth':
+            self.props.append(Property('materials',self.nname,'preset','string',None,None,None,['denim'],"denim, silk_charmeuse, silk_shantung, cotton_twill, wool_garbardine or polyester_lining_cloth"))
+            self.props.append(Property('materials',self.nname,'weft_kd','texture',None,None,None,[0.5,0.5,0.5],"coefficient of diffuse reflection in one weave direction"))
+            self.props.append(Property('materials',self.nname,'weft_ks','texture',None,None,None,[0.5,0.5,0.5],"coefficient of specular reflection in one weave direction"))
+            self.props.append(Property('materials',self.nname,'wrap_kd','texture',None,None,None,[0.5,0.5,0.5],"coefficient of diffuse reflection in the opposite weave direction"))
+            self.props.append(Property('materials',self.nname,'wrap_ks','texture',None,None,None,[0.5,0.5,0.5],"coefficient of specular reflection in the opposite weave direction"))
+            self.props.append(Property('materials',self.nname,'repeat_u','float',None,None,None,100.0,"thread count in the u direction"))
+            self.props.append(Property('materials',self.nname,'repeat_v','float',None,None,None,100.0,"thread count in the v direction"))
+
+        if self.ntype == 'materials':
+            # Common
+            self.props.append(Property('materials',self.nname,'bumptex','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'normaltex','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'samples','int',None,-1,None,-1,""))
+            self.props.append(Property('materials',self.nname,'visibility.indirect.diffuse.enable','int',None,0,1,1,""))
+            self.props.append(Property('materials',self.nname,'visibility.indirect.glossy.enable','int',None,0,1,1,""))
+            self.props.append(Property('materials',self.nname,'visibility.indirect.specular.enable','int',None,0,1,1,""))
+            self.props.append(Property('materials',self.nname,'bumpsamplingdistance','float',None,0.0,None,0.001,""))
+            # this fail the material because you can't use '' with these properties
+            #self.props.append(Property('materials',self.nname,'volume.interior','string',None,None,None,[''],""))
+            #self.props.append(Property('materials',self.nname,'volume.exterior','string',None,None,None,[''],""))
+            self.props.append(Property('materials',self.nname,'id','int',None,0,None,0,""))
+            self.props.append(Property('materials',self.nname,'transparency','texture',None,None,None,[1,1,1],""))
+            self.props.append(Property('materials',self.nname,'shadowcatcher.enable','int',None,0,1,0,""))
+
+            # Light Emission
+            self.props.append(Property('materials',self.nname,'emission','texture',None,None,None,[0,0,0],"color of the emitted light"))
+            # why is gain not in the SDL and why is that lights won't work without it?
+            self.props.append(Property('materials',self.nname,'emission.gain','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('materials',self.nname,'emission.power','spectrum',None,None,None,0.0,"lamp output power in watts. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
+            self.props.append(Property('materials',self.nname,'emission.efficency','float',None,None,None,0.0,"luminous efficacy in lumens/watt. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
+            self.props.append(Property('materials',self.nname,'emission.mapfile','string',None,None,None,[''],""))
+            self.props.append(Property('materials',self.nname,'emission.gamma','float',None,None,None,2.2,""))
+            self.props.append(Property('materials',self.nname,'emission.iesfile','string',None,None,None,[''],""))
+            self.props.append(Property('materials',self.nname,'emission.flipz','int',None,0,1,0,""))
+            self.props.append(Property('materials',self.nname,'emission.samples','int',None,-1,1000,-1,"the number of shadow ray to trace to compute direct light from this material. This property is an hint and the render engine can ignore this information. -1 means use the default global value."))
+            self.props.append(Property('materials',self.nname,'emission.map.width','int',None,0,None,0,""))
+            self.props.append(Property('materials',self.nname,'emission.map.height','int',None,0,None,0,""))
+            self.props.append(Property('materials',self.nname,'emission.id','int',None,0,None,0,""))
+
+
+        # Textures
+
+        # TODO - need to figure out a way to get the correct mapping type when it's changed
+
+        if self.value[0] == 'imagemap':
+            self.props.append(Property('textures',self.nname,'file','string',None,None,None,['image.png'],""))
+            self.props.append(Property('textures',self.nname,'gamma','float',None,None,None,2.2,""))
+            self.props.append(Property('textures',self.nname,'gain','float',None,None,None,1.0,""))
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+
+        if self.value[0] == 'marble':
+            self.props.append(Property('textures',self.nname,'octaves','int',None,None,None,8,""))
+            self.props.append(Property('textures',self.nname,'roughness','float',None,None,None,0.5,""))
+            self.props.append(Property('textures',self.nname,'scale','float',None,None,None,1.0,""))
+            self.props.append(Property('textures',self.nname,'variation','float',None,None,None,0.2,""))
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+         
+        if self.value[0] == 'mix':
+            self.props.append(Property('textures',self.nname,'amount','texture',None,None,None,[0.5,0.5,0.5],""))
+            self.props.append(Property('textures',self.nname,'texture1','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('textures',self.nname,'texture2','texture',None,None,None,[1,1,1],""))
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+          
+        if self.value[0] == 'scale':
+            self.props.append(Property('textures',self.nname,'texture1','texture',None,None,None,[1,1,1],""))
+            self.props.append(Property('textures',self.nname,'texture2','texture',None,None,None,[1,1,1],""))
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+
+        if self.value[0] == 'uv':
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+
+        if self.value[0] == 'windy':
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+
+        # Texture Mapping 
+        if self.value[0] == 'uvmapping2d':
+            self.props.append(Property('textures',self.nname,'mapping.uvscale','uv',None,None,None,[1.0,1.0],""))
+            self.props.append(Property('textures',self.nname,'mapping.uvdelta','uv',None,None,None,[0.0,0.0],""))
+
+        if self.value[0] == 'uvmapping3d':
+            pass
+            #self.props.append(Property('textures',self.nname,'mapping.uvscale','uv',None,None,None,[1.0,1.0],""))
+            #self.props.append(Property('textures',self.nname,'mapping.uvdelta','uv',None,None,None,[0.0,0.0],""))
+
+        if self.value[0] == 'globalmapping3d':
+            pass
+            #self.props.append(Property('textures',self.nname,'mapping.uvscale','uv',None,None,None,[1.0,1.0],""))
+            #self.props.append(Property('textures',self.nname,'mapping.uvdelta','uv',None,None,None,[0.0,0.0],""))
+
+ 
 # NODE
 class Node:
 
@@ -121,6 +345,9 @@ class Node:
         self.props.append(prop)
 
     def clearProperties(self):
+        for prop in self.props:
+            prop.clearChildren()
+            del(prop)
         self.props = []
 
     def getProperty(self,name):
@@ -131,11 +358,20 @@ class Node:
                 return prop
         return None
 
+    def getProperties(self):
+        props = []
+        for prop in self.props:
+            props += prop.getProperties()
+        return props
+ 
     def getPropertyString(self):
         out = ""
         for prop in self.props:
             if prop.enabled:
                 out += prop.getPropertyString() + "\n"
+        print("getPropertyString()")
+        print(out)
+        print("END")
         return out
 
 
@@ -282,16 +518,10 @@ class Lux(QThread):
         self.session.Start()
 
     def setProperties(self,propstring):
-        #names = self.sceneprops.GetAllNames()
-        #print("setProperties() List BEFORE")
-        #for name in names:
-        #    print(name)
-        #print("END")
         print("PROP CALL STRING")
         print(propstring)
         self.session.BeginSceneEdit()
         try:
-            #self.scene.Parse(pyluxcore.Properties().SetFromString(propstring))
             self.scene.Parse(self.sceneprops.SetFromString(propstring))
         except RuntimeError:
             pass
@@ -394,7 +624,9 @@ class Lux(QThread):
         return("DONE")
 
     def fillInProperties(self,node):
-        for prop in node.props:
+        props = node.getProperties()
+
+        for prop in props:
             try:
                 val = self.sceneprops.Get(prop.getCallString()).Get()
                 valpass = True
@@ -749,8 +981,7 @@ class SceneGraph():
         for n in self.nodes:
             if n.name == name and n.ntype == ntype:
                 # clear out old properties
-                for prop in n.props:
-                    del(prop)
+                n.clearProperties()
                 self.addProperties(n,subtype)
                 node = n
                 self.lux.setProperties(node.getPropertyString())
@@ -852,16 +1083,12 @@ class SceneGraph():
                 if ntype != None and name != None and vname != None:
                     if cname != name:
                         node = Node(name,ntype)
-                        #print("adding node " + name)
-                        node = Node(name,ntype)
                         nodes.append(node)
                         cname = name
                     if vname == 'ply':
-                        #print("add properties to ply")
                         self.addProperties(node,'ply')
                     elif vname == 'type':
                         val = val.replace('"','')
-                        #print("add properties %s"%val)
                         self.addProperties(node,val)
         # now we should have all our nodes
         # TODO - we need to add a check to verify all the nodes did import
@@ -871,14 +1098,7 @@ class SceneGraph():
             self.lux.fillInProperties(n)
             self.lux.setProperties(n.getPropertyString())
             self.nodes.append(n)
-            #print("NODE CALL STRING")
-            #print(n.getPropertyString())
-        # now set all the values using the data we imported
-        #print("SET CALL STRING")
-        #print(setstring)
-        
-        #print("there are %d nodes in the sg"%len(self.nodes))
-        #print("END")
+
         return True
   
     def addProperties(self,node,subtype):
@@ -912,170 +1132,12 @@ class SceneGraph():
     def addMaterialProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
-
-        if subtype == 'matte':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['matte'],"type of material"))
-            node.addProperty(Property('materials',name,'kd','texture',None,None,None,[1,1,1],"texture or constant color of the matte material"))
-        if subtype == 'glossy2':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['glossy2'],"type of material"))
-            node.addProperty(Property('materials',name,'kd','texture',None,None,None,[1,1,1],"texture or constant diffuse color of the material"))
-            node.addProperty(Property('materials',name,'ks','texture',None,None,None,[1,1,1],"texture or constant specular color of the material"))
-            node.addProperty(Property('materials',name,'uroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along u coordinate of the material"))
-            node.addProperty(Property('materials',name,'vroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along v coordinate of the material"))
-            node.addProperty(Property('materials',name,'ka','texture',None,None,None,[0.0,0.0,0.0],"texture or constant value of coefficient of absorption of the coating layer"))
-            node.addProperty(Property('materials',name,'d','texture',None,None,None,[0.0,0.0,0.0],"texture or constant value of the depth (thickness) of the coating layer for absorption effects. (0 = disables)"))
-            node.addProperty(Property('materials',name,'index','texture',None,None,None,[0.0,0.0,0.0],"IOR of the coating. IOR overrides color Ks if both are specified"))
-
-        if subtype == 'glass':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['glass'],"type of material"))
-            node.addProperty(Property('materials',name,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
-            node.addProperty(Property('materials',name,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
-            node.addProperty(Property('materials',name,'interiorior','texture',None,None,None,[1,1,1],"inside texture or constant index of refraction (only for volume-less rendering)"))
-            node.addProperty(Property('materials',name,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
+        node.props.append(Property('materials',name,'type','string',None,None,None,[subtype],"",MaterialsType))
  
-        if subtype == 'metal2':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['metal2'],"type of material"))
-            node.addProperty(Property('materials',name,'fresnel','texture',None,None,None,[1,1,1],""))
-            node.addProperty(Property('materials',name,'uroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along u coordinate of the material"))
-            node.addProperty(Property('materials',name,'vroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along v coordinate of the material"))
- 
- 
-        if subtype == 'mattetranslucent':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['mattetranslucent'],"type of material"))
-            node.addProperty(Property('materials',name,'kr','texture',None,None,None,[0.5,0.5,0.5],"texture or constant reflected color of the material"))
-            node.addProperty(Property('materials',name,'kt','texture',None,None,None,[0.5,0.5,0.5],"texture or constant transmitted color of the material"))
-  
-        if subtype == 'mirror':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['mirror'],"type of material"))
-            node.addProperty(Property('materials',name,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
-  
-        if subtype == 'mix':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['mix'],"type of material"))
-            node.addProperty(Property('materials',name,'material1','string',None,None,None,[''],"name of another material"))
-            node.addProperty(Property('materials',name,'material2','string',None,None,None,[''],"name of another material"))
-            node.addProperty(Property('materials',name,'amount','texture',None,None,None,[1,1,1],"texture or constant value used to mix the materials"))
-        if subtype == 'null':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['null'],"type of material"))
-        if subtype == 'roughglass':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['roughglass'],"type of material"))
-            node.addProperty(Property('materials',name,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
-            node.addProperty(Property('materials',name,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
-            node.addProperty(Property('materials',name,'interiorior','texture',None,None,None,[1.5,1.5,1.5],"inside texture or constant index of refraction (only for volume-less rendering)"))
-            node.addProperty(Property('materials',name,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
-            node.addProperty(Property('materials',name,'uroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along u coordinate of the material"))
-            node.addProperty(Property('materials',name,'vroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along v coordinate of the material"))
-        if subtype == 'roughmatte':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['roughmatte'],"type of material"))
-            node.addProperty(Property('materials',name,'kd','texture',None,None,None,[0.75,0.75,0.75],"texture or constant color of the matte material"))
-            node.addProperty(Property('materials',name,'sigma','texture',None,None,None,[0,0,0],"texture or constant color of the matte material"))
-        if subtype == 'velvet':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['velvet'],"type of material"))
-            node.addProperty(Property('materials',name,'kd','texture',None,None,None,[0.5,0.5,0.5],"color of the material's fuzz"))
-            node.addProperty(Property('materials',name,'p1','texture',None,None,None,[-2.0],"texture or constant color of the matte material"))
-            node.addProperty(Property('materials',name,'p2','texture',None,None,None,[20.0],"texture or constant color of the matte material"))
-            node.addProperty(Property('materials',name,'p3','texture',None,None,None,[2.0],"texture or constant color of the matte material"))
-            node.addProperty(Property('materials',name,'p1','texture',None,None,None,[0.1],"texture or constant color of the matte material"))
-        if subtype == 'archglass':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['archglass'],"type of material"))
-            node.addProperty(Property('materials',name,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
-            node.addProperty(Property('materials',name,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
-            node.addProperty(Property('materials',name,'interiorior','texture',None,None,None,[1.5,1.5,1.5],"inside texture or constant index of refraction (only for volume-less rendering)"))
-            node.addProperty(Property('materials',name,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
-        if subtype == 'carpaint':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['carpaint'],"type of material"))
-            node.addProperty(Property('materials',name,'preset','string',None,None,None,['ford f8'],"one of the avilable presets"))
-            node.addProperty(Property('materials',name,'ka','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'d','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'kd','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'ks1','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'ks2','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'ks3','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'r1','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'r2','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'r3','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'m1','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'m2','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'m3','texture',None,None,None,[0,0,0],""))
-        if subtype == 'cloth':
-            node.addProperty(Property('materials',name,'type','string',None,None,None,['cloth'],"type of material"))
-            node.addProperty(Property('materials',name,'preset','string',None,None,None,['denim'],"denim, silk_charmeuse, silk_shantung, cotton_twill, wool_garbardine or polyester_lining_cloth"))
-            node.addProperty(Property('materials',name,'weft_kd','texture',None,None,None,[0.5,0.5,0.5],"coefficient of diffuse reflection in one weave direction"))
-            node.addProperty(Property('materials',name,'weft_ks','texture',None,None,None,[0.5,0.5,0.5],"coefficient of specular reflection in one weave direction"))
-            node.addProperty(Property('materials',name,'wrap_kd','texture',None,None,None,[0.5,0.5,0.5],"coefficient of diffuse reflection in the opposite weave direction"))
-            node.addProperty(Property('materials',name,'wrap_ks','texture',None,None,None,[0.5,0.5,0.5],"coefficient of specular reflection in the opposite weave direction"))
-            node.addProperty(Property('materials',name,'repeat_u','float',None,None,None,100.0,"thread count in the u direction"))
-            node.addProperty(Property('materials',name,'repeat_v','float',None,None,None,100.0,"thread count in the v direction"))
-
-        if node.ntype == 'materials':
-            # Common
-            node.addProperty(Property('materials',name,'bumptex','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'normaltex','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'samples','int',None,-1,None,-1,""))
-            node.addProperty(Property('materials',name,'visibility.indirect.diffuse.enable','int',None,0,1,1,""))
-            node.addProperty(Property('materials',name,'visibility.indirect.glossy.enable','int',None,0,1,1,""))
-            node.addProperty(Property('materials',name,'visibility.indirect.specular.enable','int',None,0,1,1,""))
-            node.addProperty(Property('materials',name,'bumpsamplingdistance','float',None,0.0,None,0.001,""))
-            # this fail the material because you can't use '' with these properties
-            #node.addProperty(Property('materials',name,'volume.interior','string',None,None,None,[''],""))
-            #node.addProperty(Property('materials',name,'volume.exterior','string',None,None,None,[''],""))
-            node.addProperty(Property('materials',name,'id','int',None,0,None,0,""))
-            node.addProperty(Property('materials',name,'transparency','texture',None,None,None,[1,1,1],""))
-            node.addProperty(Property('materials',name,'shadowcatcher.enable','int',None,0,1,0,""))
-
-            # Light Emission
-            node.addProperty(Property('materials',name,'emission','texture',None,None,None,[0,0,0],"color of the emitted light"))
-            # why is gain not in the SDL and why is that lights won't work without it?
-            node.addProperty(Property('materials',name,'emission.gain','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('materials',name,'emission.power','spectrum',None,None,None,0.0,"lamp output power in watts. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
-            node.addProperty(Property('materials',name,'emission.efficency','float',None,None,None,0.0,"luminous efficacy in lumens/watt. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
-            node.addProperty(Property('materials',name,'emission.mapfile','string',None,None,None,[''],""))
-            node.addProperty(Property('materials',name,'emission.gamma','float',None,None,None,2.2,""))
-            node.addProperty(Property('materials',name,'emission.iesfile','string',None,None,None,[''],""))
-            node.addProperty(Property('materials',name,'emission.flipz','int',None,0,1,0,""))
-            node.addProperty(Property('materials',name,'emission.samples','int',None,-1,1000,-1,"the number of shadow ray to trace to compute direct light from this material. This property is an hint and the render engine can ignore this information. -1 means use the default global value."))
-            node.addProperty(Property('materials',name,'emission.map.width','int',None,0,None,0,""))
-            node.addProperty(Property('materials',name,'emission.map.height','int',None,0,None,0,""))
-            node.addProperty(Property('materials',name,'emission.id','int',None,0,None,0,""))
-
     def addTextureProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
-
-        # MAPPING
-        if subtype == 'uvmapping2d':
-            node.addProperty(Property('textures',name,'type','string',None,None,None,['uvmapping2d'],""))
-            node.addProperty(Property('textures',name,'uvscale','uv',None,None,None,['1.0','1.0'],""))
-            node.addProperty(Property('textures',name,'uvdelta','uv',None,None,None,['0.0','0.0'],""))
-        
-        if subtype == 'imagemap':
-            node.addProperty(Property('textures',name,'type','string',None,None,None,['imagemap'],""))
-            node.addProperty(Property('textures',name,'file','string',None,None,None,['image.png'],""))
-            node.addProperty(Property('textures',name,'gamma','float',None,None,None,2.2,""))
-            node.addProperty(Property('textures',name,'gain','float',None,None,None,1.0,""))
-             
-        if subtype == 'marble':
-            node.addProperty(Property('textures',name,'type','string',None,None,None,['marble'],""))
-            node.addProperty(Property('textures',name,'octaves','int',None,None,None,8,""))
-            node.addProperty(Property('textures',name,'roughness','float',None,None,None,0.5,""))
-            node.addProperty(Property('textures',name,'scale','float',None,None,None,1.0,""))
-            node.addProperty(Property('textures',name,'variation','float',None,None,None,0.2,""))
-          
-        if subtype == 'mix':
-            node.addProperty(Property('textures',name,'type','string',None,None,None,['mix'],""))
-            node.addProperty(Property('textures',name,'amount','texture',None,None,None,[0.5,0.5,0.5],""))
-            node.addProperty(Property('textures',name,'texture1','texture',None,None,None,[0,0,0],""))
-            node.addProperty(Property('textures',name,'texture2','texture',None,None,None,[1,1,1],""))
-           
-        if subtype == 'scale':
-            node.addProperty(Property('textures',name,'type','string',None,None,None,['scale'],""))
-            node.addProperty(Property('textures',name,'texture1','texture',None,None,None,[1,1,1],""))
-            node.addProperty(Property('textures',name,'texture2','texture',None,None,None,[1,1,1],""))
-
-        if subtype == 'uv':
-            node.addProperty(Property('textures',name,'type','string',None,None,None,['uv'],""))
- 
-        if subtype == 'windy':
-            node.addProperty(Property('textures',name,'type','string',None,None,None,['windy'],""))
+        node.props.append(Property('textures',name,'type','string',None,None,None,[subtype],"",TexturesType))
  
     def getSceneString(self):
         out = ''
@@ -1247,7 +1309,6 @@ class TextureAttribute(QWidget):
         self.prop = prop
         self.label = QLabel(self.prop.vname)
         self.colorValue = ColorWidget()
-        #self.colorValue.setColor(QColor(255.0*prop.value[0],255.0*prop.value[1],255.0*prop.value[2]))
         self.colorValue.setFixedWidth(80)
         if self.prop.min is None:
             minVal = -10000000000.0
@@ -1499,13 +1560,12 @@ class OptionAttribute(QWidget):
             # set the default to the first item in the list
             if match is not True:
                 self.prop.value[0] = self.value.currentText()
-
         else:
             if self.prop.ntype == 'materials':
                 for item in MaterialsType:
                     self.value.addItem(item)
             if self.prop.ntype == 'textures':
-                for item in TexturesType:
+                for item in self.prop.types:
                     self.value.addItem(item)
 
         hbox = QHBoxLayout()        
@@ -1648,6 +1708,72 @@ class FloatAttribute(QWidget):
     def setProperty(self,prop):
         self.prop = prop
         self.value.setText(self.prop.value[0])
+
+
+# Point Attribute
+class UVAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,prop):
+        super().__init__()
+        self.prop = prop
+        self.label = QLabel(self.prop.vname)
+        self.uvalue = QLineEdit()
+        self.vvalue = QLineEdit()
+        self.uvalue.setFixedWidth(60)
+        self.vvalue.setFixedWidth(60)
+
+        self.validator = QDoubleValidator()
+        if self.prop.min is not None and self.prop.max is not None:
+            self.validator.setRange(self.prop.min,self.prop.max,4)
+        else:
+            self.validator.setDecimals(4)
+        self.uvalue.setValidator(self.validator)
+        self.vvalue.setValidator(self.validator)
+ 
+        self.uvalue.setText("%.4f"%self.prop.value[0])
+        self.vvalue.setText("%.4f"%self.prop.value[1])
+
+        self.setToolTip(self.prop.desc)
+       
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.uvalue)
+        hbox.addWidget(self.vvalue)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        # connections
+        self.uvalue.editingFinished.connect(self.changed)
+        self.vvalue.editingFinished.connect(self.changed)
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+    def changed(self):
+        self.prop.value[0] = float(self.uvalue.text())
+        self.prop.value[1] = float(self.vvalue.text())
+        self.valueChanged.emit()
+
+    def getValue(self):
+        return [float(self.prop.value[0]), float(self.prop.value[1])]
+
+    def setValue(self,val):
+        self.prop.value = val
+        self.uvalue.setText("%.4f"%val[0])
+        self.vvalue.setText("%.4f"%val[1])
+
+    def loadProperty(self):
+        self.uvalue.setText(self.prop.value[0])
+        self.vvalue.setText(self.prop.value[1])
+
+    def setProperty(self,prop):
+        self.prop = prop
+        self.uvalue.setText(self.prop.value[0])
+        self.vvalue.setText(self.prop.value[1])
 
 
 # Point Attribute
@@ -1859,10 +1985,11 @@ class NodeAttributeLoader(QWidget):
 
         self.clearPanel()
 
-        for prop in self.node.props:
+        props = self.node.getProperties()
+        for prop in props:
             if prop.vtype is 'string':
                 # is it a type option?
-                if prop.vname is 'type':
+                if 'type' in prop.vname:
                     attribute = OptionAttribute(prop)
                     attribute.valueChanged.connect(self.setType)
                     self.subtype = prop.value[0]
@@ -1893,10 +2020,10 @@ class NodeAttributeLoader(QWidget):
                 attribute = FloatAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
-            #elif prop.vtype is 'uv':
-            #    attribute = FloatAttribute(prop)
-            #    attribute.valueChanged.connect(self.updateNode)
-            #    self.vbox.addWidget(attribute)        
+            elif prop.vtype is 'uv':
+                attribute = UVAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)        
             elif prop.vtype is 'point':
                 attribute = PointAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
@@ -1923,7 +2050,8 @@ class NodeAttributeLoader(QWidget):
 
     def setType(self):
         self.clearPanel()
-        for prop in self.node.props:
+        props = self.node.getProperties()
+        for prop in props:
             if prop.vname == 'type':
                 self.subtype = prop.value[0]
         self.node = self.lux.sg.addSceneNode(self.node.name,self.node.ntype,self.subtype)
