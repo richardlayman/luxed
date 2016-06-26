@@ -120,29 +120,40 @@ class Property:
             out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
         if self.vtype is 'string':
             out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
-        if self.vtype is 'bool' or self.vtype is'int' or self.vtype is'u_int':
+        if self.vtype == 'bool' or self.vtype == 'int' or self.vtype == 'u_int':
             out = "%s = %d" % (self.getCallString(), int(self.value))
-        if self.vtype is 'float' or self.vtype is 'double' or self.vtype is 'u_longlong' or self.vtype is 'spectrum':
+        if self.vtype == 'float' or self.vtype == 'double' or self.vtype == 'u_longlong' or self.vtype == 'spectrum':
             out = "%s = %f" % (self.getCallString(), float(self.value))
-        if self.vtype is 'uv':
+        if self.vtype == 'uv':
             out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
-        if self.vtype is 'point':
+        if self.vtype == 'point':
             out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
-        if self.vtype is 'vector':
+        if self.vtype == 'vector':
             out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
-        if self.vtype is 'texture':
+        if self.vtype == 'texture':
             print("PROPERTY VALUE")
             print(type(self.value[0]))
             print(self.value)
             if type(self.value[0]) is 'str'.__class__:
                 out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
             elif len(self.value) == 1:
-                out = "%s = %f" % (self.getCallString(), float(self.value[0]))
-            elif len(self.value) == 1:
-                out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
+                if type(self.value[0]) is int:
+                    out = "%s = %f" % (self.getCallString(), int(self.value[0]))
+                elif type(self.value[0]) is int:
+                    out = "%s = %f" % (self.getCallString(), float(self.value[0]))
+                else:
+                    out = "%s = %s" % (self.getCallString(), self.value[0])
+            elif len(self.value) == 2:
+                if type(self.value[0]) is int:
+                    out = "%s = %d %d" % (self.getCallString(), int(self.value[0]), int(self.value[1]))
+                else:
+                    out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
             else: 
-                out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
-
+                if type(self.value[0]) is int:
+                    out = "%s = %d %d %d" % (self.getCallString(), int(self.value[0]), int(self.value[1]), int(self.value[2]))
+                else:
+                    out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
+ 
         # get children property strings
         for prop in self.props:
             out += '\n' + prop.getPropertyString()
@@ -710,12 +721,31 @@ class Lux(QThread):
                     prop.value = float(val[0])
                 elif prop.vtype == 'string' or prop.vtype == 'option' or prop.vtype == 'link' or prop.vtype == 'file':
                     prop.value = val
-                else:
-                    print("FILLING IN PROP %s for node %s with:"%(prop.vname,node.name))
-                    print(val)
+                elif prop.vtype == 'uv':
                     prop.value = []
                     for v in val:
                         prop.value.append(float(v))
+                elif prop.vtype == 'point' or prop.vtype == 'vector':
+                    prop.value = []
+                    for v in val:
+                        prop.value.append(float(v))
+                elif prop.vtype == 'matrix':
+                    pass
+                else:
+                    # it's a texture if it makes it this far
+                    print("FILLING IN PROP %s for node %s with:"%(prop.vname,node.name))
+                    print(val)
+                    # check to see if it's a string
+                    prop.value = []
+                    if len(val) == 1:
+                        try:
+                            for v in val:
+                                prop.value.append(int(v))
+                        except ValueError:
+                            prop.value.append(val)     
+                    else: 
+                        for v in val:
+                            prop.value.append(float(v))
                 prop.enabled = 1
 
 # SCENEGRAPH

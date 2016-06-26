@@ -45,9 +45,9 @@ Currently Supported Features
 - Film
   * TODO
 - Camera
-  * Perspective
-- Objects/Shapes
-  * Ply
+- Objects
+- Shapes
+  * Mesh
 - Materials
   * Matte
   * RoughMatte
