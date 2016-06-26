@@ -112,6 +112,9 @@ class Property:
 
     def getPropertyString(self):
         out=""
+        print("getPropertyString() for %s"%self.getCallString())
+        print(self.value)
+        print(type(self.value))
         if self.vtype is 'file':
             out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
         if self.vtype is 'option':
@@ -139,7 +142,7 @@ class Property:
             elif len(self.value) == 1:
                 if type(self.value[0]) is int:
                     out = "%s = %f" % (self.getCallString(), int(self.value[0]))
-                elif type(self.value[0]) is int:
+                elif type(self.value[0]) is float:
                     out = "%s = %f" % (self.getCallString(), float(self.value[0]))
                 else:
                     out = "%s = %s" % (self.getCallString(), self.value[0])
@@ -742,7 +745,8 @@ class Lux(QThread):
                             for v in val:
                                 prop.value.append(int(v))
                         except ValueError:
-                            prop.value.append(val)     
+                            prop.value = val
+                            #prop.value.append(val)     
                     else: 
                         for v in val:
                             prop.value.append(float(v))
@@ -1620,6 +1624,7 @@ class TextureAttribute(QWidget):
     def changeColorValue(self,e):
         pass
 
+    '''
     def getColorValue(self):
         if(self.linkEnabled):
             self.prop.type = 'string'
@@ -1629,8 +1634,12 @@ class TextureAttribute(QWidget):
             self.prop.type = 'texture'
             self.prop.value = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
         return self.prop.value
+    '''
 
     def getValue(self):
+        print("GET VALUE")
+        print(self.prop.value)
+        print(self.linkValue.text())
         if(self.stackedValue.currentIndex() == 0):
             #self.prop.vtype = 'texture'
             color = self.colorValue.getColor()
@@ -1661,11 +1670,15 @@ class TextureAttribute(QWidget):
     def setProperty(self,prop):
         self.prop = prop
         print("SETTING VALUE FOR %s"%prop.vname)
-        if type(self.prop.value[0]) is 'str'.__class__:
+        print(prop.value)
+        print(prop.value[0])
+        if type(self.prop.value[0]) is 'str'.__class__ and len(self.prop.value) == 1:
             self.linkEnabled = 1
             self.linkValue.setText(self.prop.value[0])
             self.toggleValueType('T')
-    
+            self.stackedValue.setCurrentIndex(1)
+            return
+ 
         if(self.stackedValue.currentIndex() == 0):
             print("colorValue = %f %f %f"%(self.prop.value[0],self.prop.value[1],self.prop.value[2]))
             self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
