@@ -63,6 +63,7 @@ Currently Supported Features
   * Mix
   * Null
 - Textures
+  * UVMapping2D
   * ImageMap
   * Marble
   * Mix
