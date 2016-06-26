@@ -37,9 +37,15 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 # PROPERTIES CONTAINERS
 
+# MATERIALS
 MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass','metal2','velvet','carpaint','mattetranslucent','mirror','mix','null']
-TexturesType = ['imagemap','marble','mix','scale','uv','windy']
+# TEXTURES
+TexturesType = ['imagemap','marble','mix','scale','uv','windy','wood']
+TexturesWoodType = ['bands','rings','bandnoise','ringnoise']
+TexturesWoodNoiseBasis2 = ['sin','saw','tri']
+TexturesWoodNoiseType = ['soft_noise','hard_noise']
 TexturesMappingType = ['uvmapping2d','uvmapping3d','globalmapping3d']
+# VOLUMES
 VolumesType = ['clear','homogeneous','heterogeneous']
 
 class Property:
@@ -48,7 +54,7 @@ class Property:
         self.ntype = ntype
         self.nname = nname
         self.vname = vname
-        self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, link, texture, uv, vector, normal, point, matrix4x4, spectrum
+        self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, option, link, texture, uv, vector, normal, point, matrix4x4, spectrum
         self.value = vdefault
         self.default = vdefault 
         self.min = vmin 
@@ -103,6 +109,8 @@ class Property:
 
     def getPropertyString(self):
         out=""
+        if self.vtype is 'option':
+            out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
         if self.vtype is 'link':
             out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
         if self.vtype is 'string':
@@ -321,7 +329,17 @@ class Property:
             self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
 
         if self.value[0] == 'windy':
-            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['globalmapping3d'],"",TexturesMappingType)) 
+
+        if self.value[0] == 'wood':
+            self.props.append(Property('textures',self.nname,'woodtype','option',None,None,None,['bands'],"",TexturesWoodType)) 
+            self.props.append(Property('textures',self.nname,'noisebasis2','option',None,None,None,['sin'],"",TexturesWoodNoiseBasis2)) 
+            self.props.append(Property('textures',self.nname,'noisetype','option',None,None,None,['soft_noise'],"",TexturesWoodNoiseType)) 
+            self.props.append(Property('textures',self.nname,'noisesize','float',None,None,None,0.25,"")) 
+            self.props.append(Property('textures',self.nname,'turbulence','float',None,None,None,5.0,"")) 
+            self.props.append(Property('textures',self.nname,'bright','float',None,None,None,1.0,"")) 
+            self.props.append(Property('textures',self.nname,'contrast','float',None,None,None,1.0,"")) 
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['globalmapping3d'],"",TexturesMappingType)) 
 
         # Texture Mapping 
         if self.value[0] == 'uvmapping2d':
@@ -519,19 +537,19 @@ class Lux(QThread):
     def verifyProperty(self,name,prop):
         if self.scnprops.IsDefined(name) is False:
             print(name + " is missing. Adding it")
-            if prop.type is 'string':
+            if prop.type == 'string' or prop.type == 'link' or prop.type == 'option':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
-            if prop.type is 'bool' or prop.type is'int' or prop.type is'u_int':
+            if prop.type == 'bool' or prop.type == 'int' or prop.type == 'u_int':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
-            if prop.type is 'float' or prop.type is 'double' or prop.type is 'u_longlong' or prop.type is 'spectrum':
+            if prop.type == 'float' or prop.type == 'double' or prop.type == 'u_longlong' or prop.type == 'spectrum':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
-            if prop.type is 'uv':
+            if prop.type == 'uv':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]]))
-            if prop.type is 'point':
+            if prop.type == 'point':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
-            if prop.type is 'vector':
+            if prop.type == 'vector':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]],prop.value[2]))
-            if prop.type is 'texture':
+            if prop.type == 'texture':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
 
     def changeSize(self,width,height):
@@ -1614,6 +1632,7 @@ class OptionAttribute(QWidget):
         self.setToolTip(self.prop.desc)
 
         match = False
+
         if options is not None: 
             for item in options:
                 self.value.addItem(item)
@@ -2117,6 +2136,10 @@ class NodeAttributeLoader(QWidget):
 
         props = self.node.getProperties()
         for prop in props:
+            if prop.vtype is 'option':
+                attribute = OptionAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)
             if prop.vtype is 'link':
                 attribute = LinkAttribute(prop,self.lux)
                 attribute.valueChanged.connect(self.updateNode)
