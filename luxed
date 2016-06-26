@@ -37,6 +37,8 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 # PROPERTIES CONTAINERS
 
+# SHAPES 
+ShapesType = ['mesh']
 # MATERIALS
 MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass','metal2','velvet','carpaint','mattetranslucent','mirror','mix','null']
 # TEXTURES
@@ -54,7 +56,8 @@ class Property:
         self.ntype = ntype
         self.nname = nname
         self.vname = vname
-        self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, option, link, texture, uv, vector, normal, point, matrix4x4, spectrum
+        # file, option and link are all types not in lux but created to make it easier on luxed - they are all 'strings' in lux
+        self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, file, option, link, texture, uv, vector, normal, point, matrix4x4, spectrum
         self.value = vdefault
         self.default = vdefault 
         self.min = vmin 
@@ -109,6 +112,8 @@ class Property:
 
     def getPropertyString(self):
         out=""
+        if self.vtype is 'file':
+            out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
         if self.vtype is 'option':
             out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
         if self.vtype is 'link':
@@ -149,6 +154,8 @@ class Property:
             return ''
         elif self.ntype is 'camera':
             return "scene.camera.%s"%self.vname
+        elif self.ntype is 'shapes':
+            return "scene.shapes.%s.%s"%(self.nname,self.vname)
         elif self.ntype is 'objects':
             return "scene.objects.%s.%s"%(self.nname,self.vname)
         elif self.ntype is 'materials':
@@ -178,13 +185,20 @@ class Property:
 
         print("ADDING PROP %s"%self.value[0])
 
-        if self.ntype == 'materials':
+        if self.ntype == 'shapes':
+            self.initShapesProperties()
+        elif self.ntype == 'materials':
             self.initMaterialsProperties()
         elif self.ntype == 'textures':
             self.initTexturesProperties()
         elif self.ntype == 'volumes':
             self.initVolumesProperties()
 
+    def initShapesProperties(self):
+
+        if self.value[0] == 'mesh':
+            self.props.append(Property('shapes',self.nname,'ply','file',None,None,None,[""],""))
+ 
     def initMaterialsProperties(self):
 
         if self.value[0] == 'matte':
@@ -694,7 +708,7 @@ class Lux(QThread):
                     prop.value = int(val[0])
                 elif prop.vtype == 'float' or prop.vtype == 'double' or prop.vtype == 'u_longlong' or prop.vtype == 'spectrum':
                     prop.value = float(val[0])
-                elif prop.vtype == 'string':
+                elif prop.vtype == 'string' or prop.vtype == 'option' or prop.vtype == 'link' or prop.vtype == 'file':
                     prop.value = val
                 else:
                     print("FILLING IN PROP %s for node %s with:"%(prop.vname,node.name))
@@ -1153,11 +1167,18 @@ class SceneGraph():
                         node = Node(name,ntype)
                         nodes.append(node)
                         cname = name
+                        if vname == 'ply':
+                            self.addProperties(node,'ply')
+                        else:
+                            val = val.replace('"','')
+                            self.addProperties(node,val)
+                    '''
                     if vname == 'ply':
                         self.addProperties(node,'ply')
                     elif vname == 'type':
                         val = val.replace('"','')
                         self.addProperties(node,val)
+                    '''
         # now we should have all our nodes
         # TODO - we need to add a check to verify all the nodes did import
         self.lux.setProperties(setstring)
@@ -1170,7 +1191,9 @@ class SceneGraph():
         return True
   
     def addProperties(self,node,subtype):
-        if node.ntype == 'objects':
+        if node.ntype == 'shapes':
+            self.addShapeProperties(node,subtype)
+        elif node.ntype == 'objects':
             self.addObjectProperties(node,subtype)
         elif node.ntype == 'materials':
             self.addMaterialProperties(node,subtype)
@@ -1191,6 +1214,7 @@ class SceneGraph():
         node.addProperty(Property('camera',name,'focaldistance','float',None,None,None,0.28,""))
         node.addProperty(Property('camera',name,'fieldofview','float',None,None,None,49.0,""))
 
+    '''
     def addObjectProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
@@ -1198,21 +1222,33 @@ class SceneGraph():
         if subtype == 'ply':
             node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
             node.addProperty(Property('objects',name,'ply','string',None,None,None,[''],"mesh path (e.g scenes/luxball/luxball-shell.ply)"))
+    '''
+
+    def addObjectProperties(self,node,subtype):
+        name = node.name
+        node.clearProperties()
+        node.props.append(Property('objects',name,'material','link',None,None,None,[''],""))
+        node.props.append(Property('objects',name,'shape','link',None,None,None,[''],""))
+
+    def addShapeProperties(self,node,subtype):
+        name = node.name
+        node.clearProperties()
+        node.props.append(Property('shapes',name,'type','option',None,None,None,[subtype],"",ShapesType))
 
     def addMaterialProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
-        node.props.append(Property('materials',name,'type','string',None,None,None,[subtype],"",MaterialsType))
+        node.props.append(Property('materials',name,'type','option',None,None,None,[subtype],"",MaterialsType))
  
     def addTextureProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
-        node.props.append(Property('textures',name,'type','string',None,None,None,[subtype],"",TexturesType))
+        node.props.append(Property('textures',name,'type','option',None,None,None,[subtype],"",TexturesType))
  
     def addVolumeProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
-        node.props.append(Property('volumes',name,'type','string',None,None,None,[subtype],"",VolumesType))
+        node.props.append(Property('volumes',name,'type','option',None,None,None,[subtype],"",VolumesType))
  
     def getSceneString(self):
         out = ''
@@ -1353,6 +1389,11 @@ class LinkDialog(QDialog):
         vbox = QVBoxLayout()
         vbox.addWidget(self.list)
         self.setLayout(vbox)
+
+        if(ltype == 'shapes'):
+            self.list.clear()
+            for t in self.lux.sg.getNames('shapes'):
+                self.list.addItem(t)
 
         if(ltype == 'materials'):
             self.list.clear()
@@ -2005,7 +2046,10 @@ class LinkAttribute(QWidget):
         if prop.ntype == 'textures':
             self.link = LinkDialog(self.lux,'textures')
         if prop.ntype == 'objects':
-            self.link = LinkDialog(self.lux,'materials')
+            if 'material' in prop.vname:
+                self.link = LinkDialog(self.lux,'materials')
+            else:
+                self.link = LinkDialog(self.lux,'shapes')
 
         self.setToolTip(self.prop.desc)
        
@@ -2081,7 +2125,7 @@ class FileAttribute(QWidget):
 
     def getFile(self):
         if self.prop.vname == 'ply':
-            filename = QFileDialog.getOpenFileName(self,"Open Ply Mesh",".","Ply Files (*.ply)")
+            filename = QFileDialog.getOpenFileName(self,"Open Mesh",".","Mesh Files (*.ply *.stl)")
         elif self.prop.vname == 'mapfile':
             filename = QFileDialog.getOpenFileName(self,"Open Light Map",".","Map Files (*.map)")
         elif self.prop.vname == 'iesfile':
@@ -2141,9 +2185,16 @@ class NodeAttributeLoader(QWidget):
 
         props = self.node.getProperties()
         for prop in props:
+            if prop.vtype is 'file':
+                attribute = FileAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)
             if prop.vtype is 'option':
                 attribute = OptionAttribute(prop)
-                attribute.valueChanged.connect(self.updateNode)
+                if prop.vname == 'type':
+                    attribute.valueChanged.connect(self.setType)
+                else: 
+                    attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)
             if prop.vtype is 'link':
                 attribute = LinkAttribute(prop,self.lux)
@@ -2356,16 +2407,22 @@ class AddNodeDialog(QDialog):
         self.vtype.clear() 
         if self.ntype == 'camera':
             pass
+        if self.ntype == 'shapes':
+            self.vtype.show()
+            for s in ShapesType:
+                self.vtype.addItem(s)
         if self.ntype == 'objects':
-            self.vtype.addItem('ply')
-            self.vtype.addItem('stl')
+            self.vtype.hide()
         if self.ntype == 'materials':
+            self.vtype.show()
             for m in MaterialsType:
                 self.vtype.addItem(m)
         if self.ntype == 'textures':
+            self.vtype.show()
             for t in TexturesType:
                 self.vtype.addItem(t)
         if self.ntype == 'volumes':
+            self.vtype.show()
             for v in VolumesType:
                 self.vtype.addItem(v)
 
