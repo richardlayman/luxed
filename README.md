@@ -57,6 +57,7 @@ Currently Supported Features
   * RoughGlass
   * MatteTranslucent
   * CarPaint
+  * Cloth
   * Velvet
   * Mirror
   * Metal

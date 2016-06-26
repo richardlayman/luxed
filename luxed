@@ -40,7 +40,9 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 # SHAPES 
 ShapesType = ['mesh']
 # MATERIALS
-MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass','metal2','velvet','carpaint','mattetranslucent','mirror','mix','null']
+MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass','metal2','velvet','carpaint','cloth','mattetranslucent','mirror','mix','null']
+MaterialsCarPaintType = ['ford f8','polaris silber','opel titan','bmw339','2k acrylack','white','blue','blue matte']
+MaterialsClothType = ['denimdenim','silk_charmeuse','silk_shantung','cotton_twill','wool_garbardine','polyester_lining_cloth']
 # TEXTURES
 TexturesType = ['imagemap','marble','mix','scale','uv','hitpointalpha','hitpointcolor','hitpointgrey','hsv','windy','wood']
 TexturesWoodType = ['bands','rings','bandnoise','ringnoise']
@@ -99,7 +101,7 @@ class Property:
                 prop.changeType(name)
 
     def getProperty(self, name):
-        if name == vname:
+        if name == self.vname:
             return self
 
         outprop = None        
@@ -214,9 +216,12 @@ class Property:
             self.props.append(Property('shapes',self.nname,'ply','file',None,None,None,[""],""))
  
     def initMaterialsProperties(self):
+        addcommon = False
 
         if self.value[0] == 'matte':
             self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[1,1,1],"texture or constant color of the matte material"))
+            addcommon = True
+
         if self.value[0] == 'glossy2':
             self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[1,1,1],"texture or constant diffuse color of the material"))
             self.props.append(Property('materials',self.nname,'ks','texture',None,None,None,[1,1,1],"texture or constant specular color of the material"))
@@ -225,31 +230,39 @@ class Property:
             self.props.append(Property('materials',self.nname,'ka','texture',None,None,None,[0.0,0.0,0.0],"texture or constant value of coefficient of absorption of the coating layer"))
             self.props.append(Property('materials',self.nname,'d','texture',None,None,None,[0.0,0.0,0.0],"texture or constant value of the depth (thickness) of the coating layer for absorption effects. (0 = disables)"))
             self.props.append(Property('materials',self.nname,'index','texture',None,None,None,[0.0,0.0,0.0],"IOR of the coating. IOR overrides color Ks if both are specified"))
+            addcommon = True
 
         if self.value[0] == 'glass':
             self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
             self.props.append(Property('materials',self.nname,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
             self.props.append(Property('materials',self.nname,'interiorior','texture',None,None,None,[1,1,1],"inside texture or constant index of refraction (only for volume-less rendering)"))
             self.props.append(Property('materials',self.nname,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
- 
+            addcommon = True
+
         if self.value[0] == 'metal2':
             self.props.append(Property('materials',self.nname,'fresnel','texture',None,None,None,[1,1,1],""))
             self.props.append(Property('materials',self.nname,'uroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along u coordinate of the material"))
             self.props.append(Property('materials',self.nname,'vroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along v coordinate of the material"))
- 
+            addcommon = True
+
         if self.value[0] == 'mattetranslucent':
             self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[0.5,0.5,0.5],"texture or constant reflected color of the material"))
             self.props.append(Property('materials',self.nname,'kt','texture',None,None,None,[0.5,0.5,0.5],"texture or constant transmitted color of the material"))
-  
+            addcommon = True
+ 
         if self.value[0] == 'mirror':
             self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
-  
+            addcommon = True
+ 
         if self.value[0] == 'mix':
             self.props.append(Property('materials',self.nname,'material1','string',None,None,None,[''],"name of another material"))
             self.props.append(Property('materials',self.nname,'material2','string',None,None,None,[''],"name of another material"))
             self.props.append(Property('materials',self.nname,'amount','texture',None,None,None,[1,1,1],"texture or constant value used to mix the materials"))
+            addcommon = True
+
         if self.value[0] == 'null':
-            pass
+            addcommon = True
+
         if self.value[0] == 'roughglass':
             self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
             self.props.append(Property('materials',self.nname,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
@@ -257,22 +270,30 @@ class Property:
             self.props.append(Property('materials',self.nname,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
             self.props.append(Property('materials',self.nname,'uroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along u coordinate of the material"))
             self.props.append(Property('materials',self.nname,'vroughness','texture',None,None,None,[0.1,0.1,0.1],"texture or constant roughness value along v coordinate of the material"))
+            addcommon = True
+
         if self.value[0] == 'roughmatte':
             self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[0.75,0.75,0.75],"texture or constant color of the matte material"))
             self.props.append(Property('materials',self.nname,'sigma','texture',None,None,None,[0,0,0],"texture or constant color of the matte material"))
+            addcommon = True
+
         if self.value[0] == 'velvet':
             self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[0.5,0.5,0.5],"color of the material's fuzz"))
             self.props.append(Property('materials',self.nname,'p1','texture',None,None,None,[-2.0],"texture or constant color of the matte material"))
             self.props.append(Property('materials',self.nname,'p2','texture',None,None,None,[20.0],"texture or constant color of the matte material"))
             self.props.append(Property('materials',self.nname,'p3','texture',None,None,None,[2.0],"texture or constant color of the matte material"))
             self.props.append(Property('materials',self.nname,'p1','texture',None,None,None,[0.1],"texture or constant color of the matte material"))
+            addcommon = True
+
         if self.value[0] == 'archglass':
             self.props.append(Property('materials',self.nname,'kr','texture',None,None,None,[1,1,1],"texture or constant reflected color of the material"))
             self.props.append(Property('materials',self.nname,'kt','texture',None,None,None,[1,1,1],"texture or constant transmitted color of the material"))
             self.props.append(Property('materials',self.nname,'interiorior','texture',None,None,None,[1.5,1.5,1.5],"inside texture or constant index of refraction (only for volume-less rendering)"))
             self.props.append(Property('materials',self.nname,'exteriorior','texture',None,None,None,[1,1,1],"outside texture or constant index of refraction (only for volume-less rendering)"))
+            addcommon = True
+
         if self.value[0] == 'carpaint':
-            self.props.append(Property('materials',self.nname,'preset','string',None,None,None,['ford f8'],"one of the avilable presets"))
+            self.props.append(Property('materials',self.nname,'preset','option',None,None,None,['ford f8'],"one of the avilable presets",MaterialsCarPaintType))
             self.props.append(Property('materials',self.nname,'ka','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('materials',self.nname,'d','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[0,0,0],""))
@@ -285,16 +306,19 @@ class Property:
             self.props.append(Property('materials',self.nname,'m1','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('materials',self.nname,'m2','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('materials',self.nname,'m3','texture',None,None,None,[0,0,0],""))
+            addcommon = True
+
         if self.value[0] == 'cloth':
-            self.props.append(Property('materials',self.nname,'preset','string',None,None,None,['denim'],"denim, silk_charmeuse, silk_shantung, cotton_twill, wool_garbardine or polyester_lining_cloth"))
+            self.props.append(Property('materials',self.nname,'preset','option',None,None,None,['denim'],"denim, silk_charmeuse, silk_shantung, cotton_twill, wool_garbardine or polyester_lining_cloth",MaterialsClothType))
             self.props.append(Property('materials',self.nname,'weft_kd','texture',None,None,None,[0.5,0.5,0.5],"coefficient of diffuse reflection in one weave direction"))
             self.props.append(Property('materials',self.nname,'weft_ks','texture',None,None,None,[0.5,0.5,0.5],"coefficient of specular reflection in one weave direction"))
             self.props.append(Property('materials',self.nname,'wrap_kd','texture',None,None,None,[0.5,0.5,0.5],"coefficient of diffuse reflection in the opposite weave direction"))
             self.props.append(Property('materials',self.nname,'wrap_ks','texture',None,None,None,[0.5,0.5,0.5],"coefficient of specular reflection in the opposite weave direction"))
             self.props.append(Property('materials',self.nname,'repeat_u','float',None,None,None,100.0,"thread count in the u direction"))
             self.props.append(Property('materials',self.nname,'repeat_v','float',None,None,None,100.0,"thread count in the v direction"))
+            addcommon = True
 
-        if self.ntype == 'materials':
+        if addcommon:
             # Common
             self.props.append(Property('materials',self.nname,'bumptex','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('materials',self.nname,'normaltex','texture',None,None,None,[0,0,0],""))
@@ -324,6 +348,7 @@ class Property:
             self.props.append(Property('materials',self.nname,'emission.map.width','int',None,0,None,0,""))
             self.props.append(Property('materials',self.nname,'emission.map.height','int',None,0,None,0,""))
             self.props.append(Property('materials',self.nname,'emission.id','int',None,0,None,0,""))
+
 
     def initTexturesProperties(self):
 
@@ -402,23 +427,26 @@ class Property:
             #self.props.append(Property('textures',self.nname,'mapping.uvdelta','uv',None,None,None,[0.0,0.0],""))
 
     def initVolumesProperties(self):
+        addcommon = False
 
         if self.value[0] == 'clear':
-            pass
+            addcommon = False
 
         if self.value[0] == 'homogeneous':
             self.props.append(Property('volumes',self.nname,'scattering','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('volumes',self.nname,'asymmetry','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('volumes',self.nname,'multiscattering','int',None,0,1,1,""))
- 
+            addcommon = False
+            
         if self.value[0] == 'heterogeneous':
             self.props.append(Property('volumes',self.nname,'scattering','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('volumes',self.nname,'asymmetry','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('volumes',self.nname,'multiscattering','int',None,0,1,1,""))
             self.props.append(Property('volumes',self.nname,'steps.size','float',None,0,None,1.0,""))
             self.props.append(Property('volumes',self.nname,'steps.maxcount','int',None,0,None,1,""))
- 
-        if self.ntype == 'volumes':
+            addcommon = False
+
+        if addcommon:
             # Common
             self.props.append(Property('volumes',self.nname,'priority','int',None,0,None,0,""))
             self.props.append(Property('volumes',self.nname,'ior','texture',None,None,None,[0,0,0],""))
@@ -2249,18 +2277,18 @@ class NodeAttributeLoader(QWidget):
                 attribute = FileAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)
-            if prop.vtype is 'option':
+            elif prop.vtype is 'option':
                 attribute = OptionAttribute(prop)
                 if prop.vname == 'type':
                     attribute.valueChanged.connect(self.setType)
-                else: 
+                else:
                     attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)
-            if prop.vtype is 'link':
+            elif prop.vtype is 'link':
                 attribute = LinkAttribute(prop,self.lux)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)
-            if prop.vtype is 'string':
+            elif prop.vtype is 'string':
                 # is it a type option?
                 if 'type' in prop.vname:
                     attribute = OptionAttribute(prop)
