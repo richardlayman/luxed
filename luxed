@@ -170,7 +170,14 @@ class Property:
 
         print("ADDING PROP %s"%self.value[0])
 
-        # MATERIALS
+        if self.ntype == 'materials':
+            self.initMaterialsProperties()
+        elif self.ntype == 'textures':
+            self.initTexturesProperties()
+        elif self.ntype == 'volumes':
+            self.initVolumesProperties()
+
+    def initMaterialsProperties(self):
 
         if self.value[0] == 'matte':
             self.props.append(Property('materials',self.nname,'kd','texture',None,None,None,[1,1,1],"texture or constant color of the matte material"))
@@ -282,8 +289,7 @@ class Property:
             self.props.append(Property('materials',self.nname,'emission.map.height','int',None,0,None,0,""))
             self.props.append(Property('materials',self.nname,'emission.id','int',None,0,None,0,""))
 
-
-        # Textures
+    def initTexturesProperties(self):
 
         # TODO - need to figure out a way to get the correct mapping type when it's changed
 
@@ -332,8 +338,7 @@ class Property:
             #self.props.append(Property('textures',self.nname,'mapping.uvscale','uv',None,None,None,[1.0,1.0],""))
             #self.props.append(Property('textures',self.nname,'mapping.uvdelta','uv',None,None,None,[0.0,0.0],""))
 
-
-        # VOLUMES
+    def initVolumesProperties(self):
 
         if self.value[0] == 'clear':
             pass
