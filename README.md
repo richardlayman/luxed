@@ -71,7 +71,9 @@ Currently Supported Features
 - Lights
   * TODO
 - Volumes
-  * TODO
+  * Clear
+  * Homogeneous
+  * Heterogeneous 
 - Functionality
   * Add Node
   * Remove Node

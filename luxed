@@ -40,19 +40,20 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass','metal2','velvet','carpaint','mattetranslucent','mirror','mix','null']
 TexturesType = ['imagemap','marble','mix','scale','uv','windy']
 TexturesMappingType = ['uvmapping2d','uvmapping3d','globalmapping3d']
+VolumesType = ['clear','homogeneous','heterogeneous']
 
 class Property:
     
-    def __init__(self, ntype, nname, vname, vtype, luxprop, vmin, vmax, vdefault, desc="", types=[]):
+    def __init__(self, ntype, nname, vname, vtype, luxprop, vmin, vmax, vdefault, desc="", types=[], enabled=1):
         self.ntype = ntype
         self.nname = nname
         self.vname = vname
-        self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, texture, uv, vector, normal, point, matrix4x4, spectrum
+        self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, link, texture, uv, vector, normal, point, matrix4x4, spectrum
         self.value = vdefault
         self.default = vdefault 
         self.min = vmin 
         self.max = vmax 
-        self.enabled = 1
+        self.enabled = enabled
         self.desc = desc
         self.types = types
         self.luxprop = luxprop
@@ -102,6 +103,8 @@ class Property:
 
     def getPropertyString(self):
         out=""
+        if self.vtype is 'link':
+            out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
         if self.vtype is 'string':
             out = "%s = \"%s\"" % (self.getCallString(), self.value[0])
         if self.vtype is 'bool' or self.vtype is'int' or self.vtype is'u_int':
@@ -144,6 +147,8 @@ class Property:
             return "scene.materials.%s.%s"%(self.nname,self.vname)
         elif self.ntype is 'textures':
             return "scene.textures.%s.%s"%(self.nname,self.vname)
+        elif self.ntype is 'volumes':
+            return "scene.volumes.%s.%s"%(self.nname,self.vname)
         return "%s.%s"%(self.nname,self.vname)
 
     def getProperties(self):
@@ -256,8 +261,8 @@ class Property:
             self.props.append(Property('materials',self.nname,'visibility.indirect.specular.enable','int',None,0,1,1,""))
             self.props.append(Property('materials',self.nname,'bumpsamplingdistance','float',None,0.0,None,0.001,""))
             # this fail the material because you can't use '' with these properties
-            #self.props.append(Property('materials',self.nname,'volume.interior','string',None,None,None,[''],""))
-            #self.props.append(Property('materials',self.nname,'volume.exterior','string',None,None,None,[''],""))
+            self.props.append(Property('materials',self.nname,'volume.interior','link',None,None,None,['default_volume'],""))
+            self.props.append(Property('materials',self.nname,'volume.exterior','link',None,None,None,['default_volume'],""))
             self.props.append(Property('materials',self.nname,'id','int',None,0,None,0,""))
             self.props.append(Property('materials',self.nname,'transparency','texture',None,None,None,[1,1,1],""))
             self.props.append(Property('materials',self.nname,'shadowcatcher.enable','int',None,0,1,0,""))
@@ -327,6 +332,31 @@ class Property:
             #self.props.append(Property('textures',self.nname,'mapping.uvscale','uv',None,None,None,[1.0,1.0],""))
             #self.props.append(Property('textures',self.nname,'mapping.uvdelta','uv',None,None,None,[0.0,0.0],""))
 
+
+        # VOLUMES
+
+        if self.value[0] == 'clear':
+            pass
+
+        if self.value[0] == 'homogeneous':
+            self.props.append(Property('volumes',self.nname,'scattering','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('volumes',self.nname,'asymmetry','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('volumes',self.nname,'multiscattering','int',None,0,1,1,""))
+ 
+        if self.value[0] == 'heterogeneous':
+            self.props.append(Property('volumes',self.nname,'scattering','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('volumes',self.nname,'asymmetry','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('volumes',self.nname,'multiscattering','int',None,0,1,1,""))
+            self.props.append(Property('volumes',self.nname,'steps.size','float',None,0,None,1.0,""))
+            self.props.append(Property('volumes',self.nname,'steps.maxcount','int',None,0,None,1,""))
+ 
+        if self.ntype == 'volumes':
+            # Common
+            self.props.append(Property('volumes',self.nname,'priority','int',None,0,None,0,""))
+            self.props.append(Property('volumes',self.nname,'ior','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('volumes',self.nname,'absorption','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('volumes',self.nname,'emission','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('volumes',self.nname,'emission.id','int',None,0,None,0,""))
  
 # NODE
 class Node:
@@ -670,6 +700,11 @@ class SceneGraph():
         camera.getProperty('lookat.target').value = [0.10, 1.04, -0.18]
         self.nodes.append(camera)
 
+        # default volume
+        volume = Node('default_volume','volumes')
+        self.addVolumeProperties(volume,'clear')
+        self.nodes.append(volume)
+
         self.initRenderNodes()
         #self.lux.setRenderSettings(self.render.getPropertyString)
 
@@ -1007,15 +1042,20 @@ class SceneGraph():
 
     def clearScene(self):
         camera = None
+        volume = None
         for n in self.nodes:
             # don't delete the camera
-            if n.ntype == 'camera':
+            if n.name == 'default_camera':
                 camera = n
+            if n.name == 'default_volume':
+                volume = n
             else:
                 self.lux.removeNode(n)
         self.nodes.clear()
         if camera is not None:
             self.nodes.append(camera)
+        if volume is not None:
+            self.nodes.append(volume)
 
     # This will parse a input string like 'scene.materials.my_material.kd'
     # and out the string type('object'), name('my_material') and value type('kd')
@@ -1108,6 +1148,8 @@ class SceneGraph():
             self.addMaterialProperties(node,subtype)
         elif node.ntype == 'textures':
             self.addTextureProperties(node,subtype)
+        elif node.ntype == 'volumes':
+            self.addVolumeProperties(node,subtype)
   
     def addCameraProperties(self,node):
         name = node.name
@@ -1138,6 +1180,11 @@ class SceneGraph():
         name = node.name
         node.clearProperties()
         node.props.append(Property('textures',name,'type','string',None,None,None,[subtype],"",TexturesType))
+ 
+    def addVolumeProperties(self,node,subtype):
+        name = node.name
+        node.clearProperties()
+        node.props.append(Property('volumes',name,'type','string',None,None,None,[subtype],"",VolumesType))
  
     def getSceneString(self):
         out = ''
@@ -1289,6 +1336,10 @@ class LinkDialog(QDialog):
             for t in self.lux.sg.getNames('textures'):
                 self.list.addItem(t)
 
+        if(ltype == 'volumes'):
+            self.list.clear()
+            for t in self.lux.sg.getNames('volumes'):
+                self.list.addItem(t)
 
         self.show()
         self.list.itemClicked.connect(self.setCurrentLink)
@@ -1361,7 +1412,10 @@ class TextureAttribute(QWidget):
         self.link = None
 
         if prop.ntype == 'materials':
-            self.link = LinkDialog(self.lux,'textures')
+            if 'vol' in prop.vname:
+                self.link = LinkDialog(self.lux,'volumes')
+            else:
+                self.link = LinkDialog(self.lux,'textures')
         if prop.ntype == 'textures':
             self.link = LinkDialog(self.lux,'textures')
         if prop.ntype == 'objects':
@@ -1428,23 +1482,27 @@ class TextureAttribute(QWidget):
             self.float1Value.show()
             self.float2Value.show()
             self.float3Value.show()
+            self.prop.value = []
             self.prop.value.insert(0,float(self.float1Value.text()))
             self.prop.value.insert(1,float(self.float2Value.text()))
             self.prop.value.insert(2,float(self.float3Value.text()))
         elif (self.valueTypeBtn.text() == '3F' and target is False) or target == '2F':
             self.valueTypeBtn.setText('2F')
             self.float3Value.hide()
+            self.prop.value = []
             self.prop.value.insert(0,float(self.float1Value.text()))
             self.prop.value.insert(1,float(self.float2Value.text()))
         elif (self.valueTypeBtn.text() == '2F' and target is False) or target == 'F':
             self.valueTypeBtn.setText('F')
             self.float2Value.hide()
+            self.prop.value = []
             self.prop.value.insert(0,float(self.float1Value.text()))
         elif (self.valueTypeBtn.text() == 'F' and target is False) or target == 'C':
             self.stackedValue.setCurrentIndex(0)
             self.valueTypeBtn.setText('C')
             self.float1Value.hide()
             color = self.colorValue.getColor()
+            self.prop.value = []
             self.prop.value = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
 
         self.getValue()
@@ -1561,10 +1619,7 @@ class OptionAttribute(QWidget):
             if match is not True:
                 self.prop.value[0] = self.value.currentText()
         else:
-            if self.prop.ntype == 'materials':
-                for item in MaterialsType:
-                    self.value.addItem(item)
-            if self.prop.ntype == 'textures':
+            if self.prop.ntype == 'materials' or self.prop.ntype == 'textures' or self.prop.ntype == 'volumes':
                 for item in self.prop.types:
                     self.value.addItem(item)
 
@@ -1897,6 +1952,76 @@ class StringAttribute(QWidget):
         self.prop = prop
         self.value.setText(self.prop.value[0])
 
+
+# Link Attribute
+class LinkAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,prop,lux):
+        super().__init__()
+        self.prop = prop
+        self.lux = lux
+        self.label = QLabel(self.prop.vname)
+        self.value = QPushButton()
+        self.value.setFixedWidth(180)
+        self.value.setText(self.prop.value[0])
+
+        self.link = None
+
+        if prop.ntype == 'materials':
+            if 'vol' in prop.vname:
+                self.link = LinkDialog(self.lux,'volumes')
+            else:
+                self.link = LinkDialog(self.lux,'textures')
+        if prop.ntype == 'textures':
+            self.link = LinkDialog(self.lux,'textures')
+        if prop.ntype == 'objects':
+            self.link = LinkDialog(self.lux,'materials')
+
+        self.setToolTip(self.prop.desc)
+       
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.value)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        # connections
+        self.value.clicked.connect(self.showLinkDialog)
+
+        if self.link:
+            self.link.linkSelected.connect(self.setLink)
+            self.link.hide()
+
+    def showLinkDialog(self):
+        self.link.show()
+
+    def setLink(self,link):
+        self.setValue(link)
+        self.changed()
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+    def changed(self):
+        #self.prop.value = self.value.text()
+        self.valueChanged.emit()
+
+    def getValue(self):
+        return self.prop.value
+
+    def setValue(self,val):
+        self.prop.value[0] = val
+        self.value.setText(val)
+
+    def setProperty(self,prop):
+        self.prop = prop
+        self.value.setText(self.prop.value[0])
+
+
 # File Attribute
 class FileAttribute(QWidget):
     valueChanged = pyqtSignal()
@@ -1987,6 +2112,10 @@ class NodeAttributeLoader(QWidget):
 
         props = self.node.getProperties()
         for prop in props:
+            if prop.vtype is 'link':
+                attribute = LinkAttribute(prop,self.lux)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)
             if prop.vtype is 'string':
                 # is it a type option?
                 if 'type' in prop.vname:
@@ -2201,8 +2330,12 @@ class AddNodeDialog(QDialog):
             for m in MaterialsType:
                 self.vtype.addItem(m)
         if self.ntype == 'textures':
-            for m in TexturesType:
-                self.vtype.addItem(m)
+            for t in TexturesType:
+                self.vtype.addItem(t)
+        if self.ntype == 'volumes':
+            for v in VolumesType:
+                self.vtype.addItem(v)
+
 
     def setNode(self):
         self.nodeAdded.emit(self.name.text(),self.ntype,self.vtype.currentText())
