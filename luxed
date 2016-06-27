@@ -1738,8 +1738,11 @@ class TextureAttribute(QWidget):
             return
  
         if(self.stackedValue.currentIndex() == 0):
-            print("colorValue = %f %f %f"%(self.prop.value[0],self.prop.value[1],self.prop.value[2]))
-            self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
+            if len(prop.value) != 3:
+                self.stackedValue.setCurrentIndex(2)
+            else:
+                print("colorValue = %f %f %f"%(self.prop.value[0],self.prop.value[1],self.prop.value[2]))
+                self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
         elif(self.stackedValue.currentIndex() == 1):
             self.linkValue.setText(self.prop.value[0])
         elif(self.stackedValue.currentIndex() == 2):
