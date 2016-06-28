@@ -68,6 +68,9 @@ Currently Supported Features
   * ImageMap
   * Marble
   * Mix
+  * Add
+  * Substract
+  * Band (bugged)
   * Scale
   * UV
   * HitPointAlpha

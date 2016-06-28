@@ -1,57 +1,258 @@
-scene.objects.room.material = "room_mat"
-scene.objects.room.ply = "/home/richard/programs/luxed/mesh/room.ply"
+scene.camera.lookat.orig = 0.640000 0.270000 0.140000
+scene.camera.lookat.target = 0.100000 1.040000 -0.180000
+scene.camera.up = 0.000000 0.000000 1.000000
+scene.camera.cliphither = 0.001000
+scene.camera.clipyon = 1.000000
+scene.camera.lensradius = 0.000000
+scene.camera.focaldistance = 0.280000
+scene.camera.fieldofview = 49.000000
 
-
-scene.objects.floor.material = "room_mat"
-scene.objects.floor.ply = "/home/richard/programs/luxed/mesh/floor.ply"
-
-
-scene.objects.inner_ball.material = "room_mat"
-scene.objects.inner_ball.ply = "/home/richard/programs/luxed/mesh/inner_ball.ply"
-
-
-scene.objects.outer_ball.material = "outer_ball_mat"
-scene.objects.outer_ball.ply = "/home/richard/programs/luxed/mesh/outer_ball.ply"
-
+scene.volumes.default_volume.type = "clear"
+scene.volumes.default_volume.priority = 0
+scene.volumes.default_volume.ior = 0.000000 0.000000 0.000000
+scene.volumes.default_volume.absorption = 0.000000 0.000000 0.000000
+scene.volumes.default_volume.emission = 0.000000 0.000000 0.000000
+scene.volumes.default_volume.emission.id = 0
 
 scene.objects.light_left.material = "light_mat"
-scene.objects.light_left.ply = "/home/richard/programs/luxed/mesh/light_left.ply"
-
+scene.objects.light_left.shape = "light_left_shape"
 
 scene.objects.light_right.material = "light_mat"
-scene.objects.light_right.ply = "/home/richard/programs/luxed/mesh/light_right.ply"
+scene.objects.light_right.shape = "light_right_shape"
 
+scene.objects.light_back.material = "light_mat"
+scene.objects.light_back.shape = "light_back_shape"
 
-scene.materials.room_mat.type = "matte"
-scene.materials.room_mat.kd = 0.862745 1.000000 0.862745
-scene.materials.room_mat.emission = 0.000000 0.000000 0.000000
-scene.materials.room_mat.emission.gain = 0.000000 0.000000 0.000000
-scene.materials.room_mat.emission.power = 0.000000
-scene.materials.room_mat.emission.efficency = 0.000000
-scene.materials.room_mat.emission.samples = -1
+scene.objects.floor.material = "floor_mat"
+scene.objects.floor.shape = "floor_shape"
 
+scene.shapes.light_left_shape.type = "mesh"
+scene.shapes.light_left_shape.ply = "/home/richard/programs/luxed/mesh/light_left.ply"
 
-scene.materials.outer_ball_mat.type = "glossy2"
-scene.materials.outer_ball_mat.kd = 0.866667 0.972549 1.000000
-scene.materials.outer_ball_mat.ks = 0.929412 0.937255 0.752941
-scene.materials.outer_ball_mat.uroughness = 0.098039 0.098039 0.098039
-scene.materials.outer_ball_mat.vroughness = 0.098039 0.098039 0.098039
-scene.materials.outer_ball_mat.ka = 0.000000 0.000000 0.000000
-scene.materials.outer_ball_mat.d = 0.000000 0.000000 0.000000
-scene.materials.outer_ball_mat.index = 0.000000 0.000000 0.000000
-scene.materials.outer_ball_mat.emission = 0.000000 0.000000 0.000000
-scene.materials.outer_ball_mat.emission.gain = 0.000000 0.000000 0.000000
-scene.materials.outer_ball_mat.emission.power = 0.000000
-scene.materials.outer_ball_mat.emission.efficency = 0.000000
-scene.materials.outer_ball_mat.emission.samples = -1
+scene.shapes.light_right_shape.type = "mesh"
+scene.shapes.light_right_shape.ply = "/home/richard/programs/luxed/mesh/light_right.ply"
 
+scene.shapes.light_back_shape.type = "mesh"
+scene.shapes.light_back_shape.ply = "/home/richard/programs/luxed/mesh/light_back.ply"
 
 scene.materials.light_mat.type = "matte"
 scene.materials.light_mat.kd = 1.000000 1.000000 1.000000
+scene.materials.light_mat.bumptex = 0.000000 0.000000 0.000000
+scene.materials.light_mat.normaltex = 0.000000 0.000000 0.000000
+scene.materials.light_mat.samples = -1
+scene.materials.light_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.light_mat.visibility.indirect.glossy.enable = 1
+scene.materials.light_mat.visibility.indirect.specular.enable = 1
+scene.materials.light_mat.bumpsamplingdistance = 0.001000
+scene.materials.light_mat.volume.interior = "default_volume"
+scene.materials.light_mat.volume.exterior = "default_volume"
+scene.materials.light_mat.id = 0
+scene.materials.light_mat.transparency = 1.000000 1.000000 1.000000
+scene.materials.light_mat.shadowcatcher.enable = 0
 scene.materials.light_mat.emission = 1.000000 1.000000 1.000000
 scene.materials.light_mat.emission.gain = 1.000000 1.000000 1.000000
 scene.materials.light_mat.emission.power = 0.000000
 scene.materials.light_mat.emission.efficency = 0.000000
+scene.materials.light_mat.emission.mapfile = ""
+scene.materials.light_mat.emission.gamma = 2.200000
+scene.materials.light_mat.emission.iesfile = ""
+scene.materials.light_mat.emission.flipz = 0
 scene.materials.light_mat.emission.samples = -1
+scene.materials.light_mat.emission.map.width = 0
+scene.materials.light_mat.emission.map.height = 0
+scene.materials.light_mat.emission.id = 0
 
+scene.materials.room_mat.type = "matte"
+scene.materials.room_mat.kd = 1.000000 1.000000 1.000000
+scene.materials.room_mat.bumptex = 0.000000 0.000000 0.000000
+scene.materials.room_mat.normaltex = 0.000000 0.000000 0.000000
+scene.materials.room_mat.samples = -1
+scene.materials.room_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.room_mat.visibility.indirect.glossy.enable = 1
+scene.materials.room_mat.visibility.indirect.specular.enable = 1
+scene.materials.room_mat.bumpsamplingdistance = 0.001000
+scene.materials.room_mat.volume.interior = "default_volume"
+scene.materials.room_mat.volume.exterior = "default_volume"
+scene.materials.room_mat.id = 0
+scene.materials.room_mat.transparency = 1.000000 1.000000 1.000000
+scene.materials.room_mat.shadowcatcher.enable = 0
+scene.materials.room_mat.emission = 0.000000 0.000000 0.000000
+scene.materials.room_mat.emission.gain = 0.000000 0.000000 0.000000
+scene.materials.room_mat.emission.power = 0.000000
+scene.materials.room_mat.emission.efficency = 0.000000
+scene.materials.room_mat.emission.mapfile = ""
+scene.materials.room_mat.emission.gamma = 2.200000
+scene.materials.room_mat.emission.iesfile = ""
+scene.materials.room_mat.emission.flipz = 0
+scene.materials.room_mat.emission.samples = -1
+scene.materials.room_mat.emission.map.width = 0
+scene.materials.room_mat.emission.map.height = 0
+scene.materials.room_mat.emission.id = 0
+
+scene.shapes.floor_shape.type = "mesh"
+scene.shapes.floor_shape.ply = "/home/richard/programs/luxed/mesh/floor.ply"
+
+scene.objects.room.material = "room_mat"
+scene.objects.room.shape = "room_shape"
+
+scene.shapes.room_shape.type = "mesh"
+scene.shapes.room_shape.ply = "/home/richard/programs/luxed/mesh/room.ply"
+
+scene.objects.stand.material = "inner_ball_mat"
+scene.objects.stand.shape = "stand_shape"
+
+scene.objects.lux_text.material = "lux_mat"
+scene.objects.lux_text.shape = "lux_text_shape"
+
+scene.objects.lux_logo.material = "lux_mat"
+scene.objects.lux_logo.shape = "lux_logo_shape"
+
+scene.objects.outer_ball.material = "outer_ball_mat"
+scene.objects.outer_ball.shape = "outer_ball_shape"
+
+scene.shapes.stand_shape.type = "mesh"
+scene.shapes.stand_shape.ply = "/home/richard/programs/luxed/mesh/stand.ply"
+
+scene.shapes.lux_text_shape.type = "mesh"
+scene.shapes.lux_text_shape.ply = "/home/richard/programs/luxed/mesh/luxrender_text.ply"
+
+scene.shapes.lux_logo_shape.type = "mesh"
+scene.shapes.lux_logo_shape.ply = "/home/richard/programs/luxed/mesh/luxrender_logo.ply"
+
+scene.objects.inner_ball.material = "inner_ball_mat"
+scene.objects.inner_ball.shape = "inner_ball_shape"
+
+scene.objects.outer_trim.material = "outer_ball_mat"
+scene.objects.outer_trim.shape = "outer_trim_shape"
+
+scene.shapes.inner_ball_shape.type = "mesh"
+scene.shapes.inner_ball_shape.ply = "/home/richard/programs/luxed/mesh/inner_ball.ply"
+
+scene.shapes.outer_ball_shape.type = "mesh"
+scene.shapes.outer_ball_shape.ply = "/home/richard/programs/luxed/mesh/outer_ball.ply"
+
+scene.shapes.outer_trim_shape.type = "mesh"
+scene.shapes.outer_trim_shape.ply = "/home/richard/programs/luxed/mesh/outer_trim.ply"
+
+scene.materials.inner_ball_mat.type = "matte"
+scene.materials.inner_ball_mat.kd = 1.000000 1.000000 1.000000
+scene.materials.inner_ball_mat.bumptex = 0.000000 0.000000 0.000000
+scene.materials.inner_ball_mat.normaltex = 0.000000 0.000000 0.000000
+scene.materials.inner_ball_mat.samples = -1
+scene.materials.inner_ball_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.inner_ball_mat.visibility.indirect.glossy.enable = 1
+scene.materials.inner_ball_mat.visibility.indirect.specular.enable = 1
+scene.materials.inner_ball_mat.bumpsamplingdistance = 0.001000
+scene.materials.inner_ball_mat.volume.interior = "default_volume"
+scene.materials.inner_ball_mat.volume.exterior = "default_volume"
+scene.materials.inner_ball_mat.id = 0
+scene.materials.inner_ball_mat.transparency = 1.000000 1.000000 1.000000
+scene.materials.inner_ball_mat.shadowcatcher.enable = 0
+scene.materials.inner_ball_mat.emission = 0.000000 0.000000 0.000000
+scene.materials.inner_ball_mat.emission.gain = 0.000000 0.000000 0.000000
+scene.materials.inner_ball_mat.emission.power = 0.000000
+scene.materials.inner_ball_mat.emission.efficency = 0.000000
+scene.materials.inner_ball_mat.emission.mapfile = ""
+scene.materials.inner_ball_mat.emission.gamma = 2.200000
+scene.materials.inner_ball_mat.emission.iesfile = ""
+scene.materials.inner_ball_mat.emission.flipz = 0
+scene.materials.inner_ball_mat.emission.samples = -1
+scene.materials.inner_ball_mat.emission.map.width = 0
+scene.materials.inner_ball_mat.emission.map.height = 0
+scene.materials.inner_ball_mat.emission.id = 0
+
+scene.materials.lux_mat.type = "glossy2"
+scene.materials.lux_mat.kd = 1.000000 0.827451 0.298039
+scene.materials.lux_mat.ks = 1.000000 1.000000 1.000000
+scene.materials.lux_mat.uroughness = 0.100000 0.100000 0.100000
+scene.materials.lux_mat.vroughness = 0.100000 0.100000 0.100000
+scene.materials.lux_mat.ka = 0.000000 0.000000 0.000000
+scene.materials.lux_mat.d = 0.000000 0.000000 0.000000
+scene.materials.lux_mat.index = 0.000000 0.000000 0.000000
+scene.materials.lux_mat.bumptex = 0.000000 0.000000 0.000000
+scene.materials.lux_mat.normaltex = 0.000000 0.000000 0.000000
+scene.materials.lux_mat.samples = -1
+scene.materials.lux_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.lux_mat.visibility.indirect.glossy.enable = 1
+scene.materials.lux_mat.visibility.indirect.specular.enable = 1
+scene.materials.lux_mat.bumpsamplingdistance = 0.001000
+scene.materials.lux_mat.volume.interior = "default_volume"
+scene.materials.lux_mat.volume.exterior = "default_volume"
+scene.materials.lux_mat.id = 0
+scene.materials.lux_mat.transparency = 1.000000 1.000000 1.000000
+scene.materials.lux_mat.shadowcatcher.enable = 0
+scene.materials.lux_mat.emission = 0.000000 0.000000 0.000000
+scene.materials.lux_mat.emission.gain = 0.000000 0.000000 0.000000
+scene.materials.lux_mat.emission.power = 0.000000
+scene.materials.lux_mat.emission.efficency = 0.000000
+scene.materials.lux_mat.emission.mapfile = ""
+scene.materials.lux_mat.emission.gamma = 2.200000
+scene.materials.lux_mat.emission.iesfile = ""
+scene.materials.lux_mat.emission.flipz = 0
+scene.materials.lux_mat.emission.samples = -1
+scene.materials.lux_mat.emission.map.width = 0
+scene.materials.lux_mat.emission.map.height = 0
+scene.materials.lux_mat.emission.id = 0
+
+scene.materials.outer_ball_mat.type = "mirror"
+scene.materials.outer_ball_mat.kr = 1.000000 1.000000 1.000000
+scene.materials.outer_ball_mat.bumptex = 0.000000 0.000000 0.000000
+scene.materials.outer_ball_mat.normaltex = 0.000000 0.000000 0.000000
+scene.materials.outer_ball_mat.samples = -1
+scene.materials.outer_ball_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.outer_ball_mat.visibility.indirect.glossy.enable = 1
+scene.materials.outer_ball_mat.visibility.indirect.specular.enable = 1
+scene.materials.outer_ball_mat.bumpsamplingdistance = 0.001000
+scene.materials.outer_ball_mat.volume.interior = "default_volume"
+scene.materials.outer_ball_mat.volume.exterior = "default_volume"
+scene.materials.outer_ball_mat.id = 0
+scene.materials.outer_ball_mat.transparency = 1.000000 1.000000 1.000000
+scene.materials.outer_ball_mat.shadowcatcher.enable = 0
+scene.materials.outer_ball_mat.emission = 0.000000 0.000000 0.000000
+scene.materials.outer_ball_mat.emission.gain = 0.000000 0.000000 0.000000
+scene.materials.outer_ball_mat.emission.power = 0.000000
+scene.materials.outer_ball_mat.emission.efficency = 0.000000
+scene.materials.outer_ball_mat.emission.mapfile = ""
+scene.materials.outer_ball_mat.emission.gamma = 2.200000
+scene.materials.outer_ball_mat.emission.iesfile = ""
+scene.materials.outer_ball_mat.emission.flipz = 0
+scene.materials.outer_ball_mat.emission.samples = -1
+scene.materials.outer_ball_mat.emission.map.width = 0
+scene.materials.outer_ball_mat.emission.map.height = 0
+scene.materials.outer_ball_mat.emission.id = 0
+
+scene.materials.floor_mat.type = "matte"
+scene.materials.floor_mat.kd = "grid_tex"
+scene.materials.floor_mat.bumptex = 0.000000 0.000000 0.000000
+scene.materials.floor_mat.normaltex = 0.000000 0.000000 0.000000
+scene.materials.floor_mat.samples = -1
+scene.materials.floor_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.floor_mat.visibility.indirect.glossy.enable = 1
+scene.materials.floor_mat.visibility.indirect.specular.enable = 1
+scene.materials.floor_mat.bumpsamplingdistance = 0.001000
+scene.materials.floor_mat.volume.interior = "default_volume"
+scene.materials.floor_mat.volume.exterior = "default_volume"
+scene.materials.floor_mat.id = 0
+scene.materials.floor_mat.transparency = 1.000000 1.000000 1.000000
+scene.materials.floor_mat.shadowcatcher.enable = 0
+scene.materials.floor_mat.emission = 0.000000 0.000000 0.000000
+scene.materials.floor_mat.emission.gain = 0.000000 0.000000 0.000000
+scene.materials.floor_mat.emission.power = 0.000000
+scene.materials.floor_mat.emission.efficency = 0.000000
+scene.materials.floor_mat.emission.mapfile = ""
+scene.materials.floor_mat.emission.gamma = 2.200000
+scene.materials.floor_mat.emission.iesfile = ""
+scene.materials.floor_mat.emission.flipz = 0
+scene.materials.floor_mat.emission.samples = -1
+scene.materials.floor_mat.emission.map.width = 0
+scene.materials.floor_mat.emission.map.height = 0
+scene.materials.floor_mat.emission.id = 0
+
+scene.textures.grid_tex.type = "imagemap"
+scene.textures.grid_tex.file = "/home/richard/programs/luxed/tex/grid.png"
+scene.textures.grid_tex.gamma = 2.200000
+scene.textures.grid_tex.gain = 1.000000
+scene.textures.grid_tex.mapping.type = "uvmapping2d"
+scene.textures.grid_tex.mapping.uvscale = 1.000000 -1.000000
+scene.textures.grid_tex.mapping.uvdelta = 0.000000 0.000000
 
