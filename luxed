@@ -44,12 +44,17 @@ MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass'
 MaterialsCarPaintType = ['ford f8','polaris silber','opel titan','bmw339','2k acrylack','white','blue','blue matte']
 MaterialsClothType = ['denimdenim','silk_charmeuse','silk_shantung','cotton_twill','wool_garbardine','polyester_lining_cloth']
 # TEXTURES
-TexturesType = ['imagemap','marble','mix','add','subtract','band','scale','uv','hitpointalpha','hitpointcolor','hitpointgrey','hsv','windy','wood','blender_magic','blender_noise']
+TexturesType = ['imagemap','marble','mix','add','subtract','band','scale','uv','hitpointalpha','hitpointcolor','hitpointgrey','hsv','windy','wood','blender_blend','blender_clouds','blender_distortednoise','blender_magic','blender_noise']
 TexturesBandInterpolation = ['linear','cubic','none']
 TexturesWoodType = ['bands','rings','bandnoise','ringnoise']
 TexturesWoodNoiseBasis2 = ['sin','saw','tri']
 TexturesWoodNoiseType = ['soft_noise','hard_noise']
+TexturesBlenderBlendProgressionType = ['linear','quadratic','easing','diagonal','spherical','quadratic_spherical','halo','radial']
+TexturesBlenderBlendDirection = ['horizontal','vertical']
+TexturesBlenderCloudsNoiseType = ['soft_noise','hard_noise']
+TexturesBlenderCloudsNoiseBasis = ['blender_original','original_perlin','improved_perlin','voronoi_f1','voronoi_f2','voronoi_f3','voronoi_f4','voronoi_f2','voronoi_crackle','cell_noise']
 TexturesMappingType = ['uvmapping2d','uvmapping3d','globalmapping3d']
+
 # VOLUMES
 VolumesType = ['clear','homogeneous','heterogeneous']
 
@@ -427,6 +432,28 @@ class Property:
             self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['globalmapping3d'],"",TexturesMappingType)) 
 
         # Blender Textures
+        if self.value[0] == 'blender_blend':
+            self.props.append(Property('textures',self.nname,'progressiontype','option',None,None,None,['linear'],"",TexturesBlenderBlendProgressionType)) 
+            self.props.append(Property('textures',self.nname,'direction','option',None,None,None,['horizontal'],"",TexturesBlenderBlendDirection)) 
+            self.props.append(Property('textures',self.nname,'bright','float',None,None,None,1.0,"")) 
+            self.props.append(Property('textures',self.nname,'contrast','float',None,None,None,1.0,"")) 
+
+        if self.value[0] == 'blender_clouds':
+            self.props.append(Property('textures',self.nname,'noisetype','option',None,None,None,['soft_noise'],"",TexturesBlenderCloudsNoiseType)) 
+            self.props.append(Property('textures',self.nname,'noisebasis','option',None,None,None,['blender_original'],"",TexturesBlenderCloudsNoiseBasis)) 
+            self.props.append(Property('textures',self.nname,'noisesize','float',None,None,None,0.25,"")) 
+            self.props.append(Property('textures',self.nname,'noisedepth','int',None,None,None,2,"")) 
+            self.props.append(Property('textures',self.nname,'bright','float',None,None,None,1.0,"")) 
+            self.props.append(Property('textures',self.nname,'contrast','float',None,None,None,1.0,"")) 
+
+        if self.value[0] == 'blender_distortednoise':
+            self.props.append(Property('textures',self.nname,'noise_distortion','option',None,None,None,['blender_original'],"",TexturesBlenderCloudsNoiseBasis)) 
+            self.props.append(Property('textures',self.nname,'noisebasis','option',None,None,None,['blender_original'],"",TexturesBlenderCloudsNoiseBasis)) 
+            self.props.append(Property('textures',self.nname,'noisesize','float',None,None,None,0.25,"")) 
+            self.props.append(Property('textures',self.nname,'distortion','int',None,None,None,1,"")) 
+            self.props.append(Property('textures',self.nname,'bright','float',None,None,None,1.0,"")) 
+            self.props.append(Property('textures',self.nname,'contrast','float',None,None,None,1.0,"")) 
+
         if self.value[0] == 'blender_magic':
             self.props.append(Property('textures',self.nname,'noisedepth','int',None,None,None,2,"")) 
             self.props.append(Property('textures',self.nname,'turbulence','float',None,None,None,5.0,"")) 
