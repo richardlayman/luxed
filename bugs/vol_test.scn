@@ -1,0 +1,168 @@
+scene.camera.lookat.orig = 0.640000 0.270000 0.140000
+scene.camera.lookat.target = 0.100000 1.040000 -0.180000
+scene.camera.up = 0.000000 0.000000 1.000000
+scene.camera.cliphither = 0.001000
+scene.camera.clipyon = 1.000000
+scene.camera.lensradius = 0.000000
+scene.camera.focaldistance = 0.280000
+scene.camera.fieldofview = 49.000000
+
+scene.volumes.default_volume.type = "clear"
+
+scene.objects.light_left.material = "light_mat"
+scene.objects.light_left.shape = "light_left_shape"
+
+scene.objects.light_right.material = "light_mat"
+scene.objects.light_right.shape = "light_right_shape"
+
+scene.objects.light_back.material = "light_mat"
+scene.objects.light_back.shape = "light_back_shape"
+
+scene.objects.floor.material = "floor_mat"
+scene.objects.floor.shape = "floor_shape"
+
+scene.shapes.light_left_shape.type = "mesh"
+scene.shapes.light_left_shape.ply = "../mesh/light_left.ply"
+
+scene.shapes.light_right_shape.type = "mesh"
+scene.shapes.light_right_shape.ply = "../mesh/light_right.ply"
+
+scene.shapes.light_back_shape.type = "mesh"
+scene.shapes.light_back_shape.ply = "../mesh/light_back.ply"
+
+scene.materials.light_mat.type = "matte"
+scene.materials.light_mat.kd = 1.000000 1.000000 1.000000
+scene.materials.light_mat.bumptex = 0.000000 0.000000 0.000000
+scene.materials.light_mat.normaltex = 0.000000 0.000000 0.000000
+scene.materials.light_mat.samples = -1
+scene.materials.light_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.light_mat.visibility.indirect.glossy.enable = 1
+scene.materials.light_mat.visibility.indirect.specular.enable = 1
+scene.materials.light_mat.bumpsamplingdistance = 0.001000
+scene.materials.light_mat.volume.interior = "default_volume"
+scene.materials.light_mat.volume.exterior = "default_volume"
+scene.materials.light_mat.id = 0
+scene.materials.light_mat.transparency = 1.000000 1.000000 1.000000
+scene.materials.light_mat.shadowcatcher.enable = 0
+scene.materials.light_mat.emission = 1.000000 1.000000 1.000000
+scene.materials.light_mat.emission.gain = 1.000000 1.000000 1.000000
+scene.materials.light_mat.emission.power = 0.000000
+scene.materials.light_mat.emission.efficency = 0.000000
+scene.materials.light_mat.emission.mapfile = ""
+scene.materials.light_mat.emission.gamma = 2.200000
+scene.materials.light_mat.emission.iesfile = ""
+scene.materials.light_mat.emission.flipz = 0
+scene.materials.light_mat.emission.samples = -1
+scene.materials.light_mat.emission.map.width = 0
+scene.materials.light_mat.emission.map.height = 0
+scene.materials.light_mat.emission.id = 0
+
+scene.materials.room_mat.type = "matte"
+scene.materials.room_mat.kd = 1.000000 1.000000 1.000000
+scene.materials.room_mat.bumptex = 0.000000 0.000000 0.000000
+scene.materials.room_mat.normaltex = 0.000000 0.000000 0.000000
+scene.materials.room_mat.samples = -1
+scene.materials.room_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.room_mat.visibility.indirect.glossy.enable = 1
+scene.materials.room_mat.visibility.indirect.specular.enable = 1
+scene.materials.room_mat.bumpsamplingdistance = 0.001000
+scene.materials.room_mat.volume.interior = "default_volume"
+scene.materials.room_mat.volume.exterior = "default_volume"
+scene.materials.room_mat.id = 0
+scene.materials.room_mat.transparency = 1.000000 1.000000 1.000000
+scene.materials.room_mat.shadowcatcher.enable = 0
+scene.materials.room_mat.emission = 0.000000 0.000000 0.000000
+scene.materials.room_mat.emission.gain = 0.000000 0.000000 0.000000
+scene.materials.room_mat.emission.power = 0.000000
+scene.materials.room_mat.emission.efficency = 0.000000
+scene.materials.room_mat.emission.mapfile = ""
+scene.materials.room_mat.emission.gamma = 2.200000
+scene.materials.room_mat.emission.iesfile = ""
+scene.materials.room_mat.emission.flipz = 0
+scene.materials.room_mat.emission.samples = -1
+scene.materials.room_mat.emission.map.width = 0
+scene.materials.room_mat.emission.map.height = 0
+scene.materials.room_mat.emission.id = 0
+
+scene.shapes.floor_shape.type = "mesh"
+scene.shapes.floor_shape.ply = "../mesh/floor.ply"
+
+scene.objects.room.material = "room_mat"
+scene.objects.room.shape = "room_shape"
+
+scene.shapes.room_shape.type = "mesh"
+scene.shapes.room_shape.ply = "../mesh/room.ply"
+
+scene.materials.floor_mat.type = "matte"
+scene.materials.floor_mat.kd = "grid_tex"
+scene.materials.floor_mat.bumptex = 0.000000 0.000000 0.000000
+scene.materials.floor_mat.normaltex = 0.000000 0.000000 0.000000
+scene.materials.floor_mat.samples = -1
+scene.materials.floor_mat.visibility.indirect.diffuse.enable = 1
+scene.materials.floor_mat.visibility.indirect.glossy.enable = 1
+scene.materials.floor_mat.visibility.indirect.specular.enable = 1
+scene.materials.floor_mat.bumpsamplingdistance = 0.001000
+scene.materials.floor_mat.volume.interior = "default_volume"
+scene.materials.floor_mat.volume.exterior = "default_volume"
+scene.materials.floor_mat.id = 0
+scene.materials.floor_mat.transparency = 1.000000 1.000000 1.000000
+scene.materials.floor_mat.shadowcatcher.enable = 0
+scene.materials.floor_mat.emission = 0.000000 0.000000 0.000000
+scene.materials.floor_mat.emission.gain = 0.000000 0.000000 0.000000
+scene.materials.floor_mat.emission.power = 0.000000
+scene.materials.floor_mat.emission.efficency = 0.000000
+scene.materials.floor_mat.emission.mapfile = ""
+scene.materials.floor_mat.emission.gamma = 2.200000
+scene.materials.floor_mat.emission.iesfile = ""
+scene.materials.floor_mat.emission.flipz = 0
+scene.materials.floor_mat.emission.samples = -1
+scene.materials.floor_mat.emission.map.width = 0
+scene.materials.floor_mat.emission.map.height = 0
+scene.materials.floor_mat.emission.id = 0
+
+scene.textures.grid_tex.type = "imagemap"
+scene.textures.grid_tex.file = "../tex/grid.png"
+scene.textures.grid_tex.gamma = 2.200000
+scene.textures.grid_tex.gain = 1.000000
+scene.textures.grid_tex.mapping.type = "uvmapping2d"
+scene.textures.grid_tex.mapping.uvscale = 1.000000 -1.000000
+scene.textures.grid_tex.mapping.uvdelta = 0.000000 0.000000
+
+scene.materials.volume_ball.type = "matte"
+scene.materials.volume_ball.kd = 1 1 1
+scene.materials.volume_ball.bumptex = 0 0 0
+scene.materials.volume_ball.normaltex = 0 0 0
+scene.materials.volume_ball.samples = -1
+scene.materials.volume_ball.visibility.indirect.diffuse.enable = 1
+scene.materials.volume_ball.visibility.indirect.glossy.enable = 1
+scene.materials.volume_ball.visibility.indirect.specular.enable = 1
+scene.materials.volume_ball.bumpsamplingdistance = 0.001000
+scene.materials.volume_ball.volume.interior = "ball_volume"
+scene.materials.volume_ball.volume.exterior = "default_volume"
+scene.materials.volume_ball.id = 0
+scene.materials.volume_ball.transparency = 0.000000 0.000000 0.000000
+scene.materials.volume_ball.shadowcatcher.enable = 0
+scene.materials.volume_ball.emission = 0 0 0
+scene.materials.volume_ball.emission.gain = 0 0 0
+scene.materials.volume_ball.emission.power = 0.000000
+scene.materials.volume_ball.emission.efficency = 0.000000
+scene.materials.volume_ball.emission.mapfile = ""
+scene.materials.volume_ball.emission.gamma = 2.200000
+scene.materials.volume_ball.emission.iesfile = ""
+scene.materials.volume_ball.emission.flipz = 0
+scene.materials.volume_ball.emission.samples = -1
+scene.materials.volume_ball.emission.map.width = 0
+scene.materials.volume_ball.emission.map.height = 0
+scene.materials.volume_ball.emission.id = 0
+
+scene.shapes.volume_shape.type = "mesh"
+scene.shapes.volume_shape.ply = "volume_floor_pent_test.ply"
+
+scene.objects.volume_object.material = "volume_ball"
+scene.objects.volume_object.shape = "volume_shape"
+
+scene.volumes.ball_volume.type = "homogeneous"
+scene.volumes.ball_volume.scattering = 250.000000
+scene.volumes.ball_volume.asymmetry = 0 0 0
+scene.volumes.ball_volume.multiscattering = 1
+
