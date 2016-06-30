@@ -44,8 +44,9 @@ MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass'
 MaterialsCarPaintType = ['ford f8','polaris silber','opel titan','bmw339','2k acrylack','white','blue','blue matte']
 MaterialsClothType = ['denimdenim','silk_charmeuse','silk_shantung','cotton_twill','wool_garbardine','polyester_lining_cloth']
 # TEXTURES
-TexturesType = ['imagemap','marble','mix','add','subtract','band','scale','uv','hitpointalpha','hitpointcolor','hitpointgrey','hsv','windy','wood','blender_blend','blender_clouds','blender_distortednoise','blender_magic','blender_noise']
+TexturesType = ['imagemap','marble','mix','add','subtract','band','brick','checkerboard3d','constfloat1','constfloat3','dots','scale','uv','hitpointalpha','hitpointcolor','hitpointgrey','hsv','windy','wood','blender_blend','blender_clouds','blender_distortednoise','blender_magic','blender_noise']
 TexturesBandInterpolation = ['linear','cubic','none']
+TexturesBrickBrickBond = ['running','flemish','english','herringbone','basket','chain link']
 TexturesWoodType = ['bands','rings','bandnoise','ringnoise']
 TexturesWoodNoiseBasis2 = ['sin','saw','tri']
 TexturesWoodNoiseType = ['soft_noise','hard_noise']
@@ -134,7 +135,12 @@ class Property:
         if self.vtype == 'bool' or self.vtype == 'int' or self.vtype == 'u_int':
             out = "%s = %d" % (self.getCallString(), int(self.value))
         if self.vtype == 'float' or self.vtype == 'double' or self.vtype == 'u_longlong' or self.vtype == 'spectrum':
-            out = "%s = %f" % (self.getCallString(), float(self.value))
+            if type(self.value) is float:
+                out = "%s = %f" % (self.getCallString(), float(self.value))
+            elif len(self.value) == 2:
+                out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
+            elif len(self.value) == 3:
+                out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
         if self.vtype == 'uv':
             out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
         if self.vtype == 'point':
@@ -371,7 +377,7 @@ class Property:
             self.props.append(Property('textures',self.nname,'roughness','float',None,None,None,0.5,""))
             self.props.append(Property('textures',self.nname,'scale','float',None,None,None,1.0,""))
             self.props.append(Property('textures',self.nname,'variation','float',None,None,None,0.2,""))
-            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+            #self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping3d'],"",TexturesMappingType)) 
          
         if self.value[0] == 'mix':
             self.props.append(Property('textures',self.nname,'amount','texture',None,None,None,[0.5,0.5,0.5],""))
@@ -392,6 +398,35 @@ class Property:
             self.props.append(Property('textures',self.nname,'interpolation','option',None,None,None,['linear'],"",TexturesBandInterpolation))
             self.props.append(Property('textures',self.nname,'offset[0]','float',None,0.0,1.0,0.0,""))
             self.props.append(Property('textures',self.nname,'value[0]','spectrum',None,None,None,1.0,""))
+   
+        if self.value[0] == 'brick':
+            self.props.append(Property('textures',self.nname,'bricktex','texture',None,None,None,[1,1,1],""))
+            self.props.append(Property('textures',self.nname,'mortartex','texture',None,None,None,[0.2,0.2,0.2],""))
+            self.props.append(Property('textures',self.nname,'brickmodtex','texture',None,None,None,[1,1,1],""))
+            self.props.append(Property('textures',self.nname,'brickbond','option',None,None,None,['running'],"",TexturesBrickBrickBond))
+            self.props.append(Property('textures',self.nname,'brickwidth','float',None,None,None,0.3,""))
+            self.props.append(Property('textures',self.nname,'brickheight','float',None,None,None,0.1,""))
+            self.props.append(Property('textures',self.nname,'brickdepth','float',None,None,None,0.15,""))
+            self.props.append(Property('textures',self.nname,'mortarsize','float',None,None,None,0.01,""))
+            self.props.append(Property('textures',self.nname,'brickrun','float',None,None,None,0.75,""))
+            self.props.append(Property('textures',self.nname,'brickbevel','float',None,None,None,0.0,""))
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping3d'],"",TexturesMappingType)) 
+  
+        if self.value[0] == 'checkerboard3d':
+            self.props.append(Property('textures',self.nname,'texture1','texture',None,None,None,[1,1,1],""))
+            self.props.append(Property('textures',self.nname,'texture2','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping3d'],"",TexturesMappingType)) 
+     
+        if self.value[0] == 'constfloat1':
+            self.props.append(Property('textures',self.nname,'value','float',None,None,None,1.0,""))
+
+        if self.value[0] == 'constfloat3':
+            self.props.append(Property('textures',self.nname,'value','spectrum',None,None,None,[1,1,1],""))
+
+        if self.value[0] == 'dots':
+            self.props.append(Property('textures',self.nname,'inside','texture',None,None,None,[1,1,1],""))
+            self.props.append(Property('textures',self.nname,'outside','texture',None,None,None,[0,0,0],""))
+            self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
          
         if self.value[0] == 'scale':
             self.props.append(Property('textures',self.nname,'texture1','texture',None,None,None,[1,1,1],""))
@@ -460,6 +495,7 @@ class Property:
             self.props.append(Property('textures',self.nname,'bright','float',None,None,None,1.0,"")) 
             self.props.append(Property('textures',self.nname,'contrast','float',None,None,None,1.0,"")) 
             #self.props.append(Property('textures',self.nname,'mapping.type','string',None,None,None,['uvmapping2d'],"",TexturesMappingType)) 
+
         if self.value[0] == 'blender_noise':
             self.props.append(Property('textures',self.nname,'noisedepth','int',None,None,None,2,"")) 
             self.props.append(Property('textures',self.nname,'bright','float',None,None,None,1.0,"")) 
@@ -699,13 +735,13 @@ class Lux(QThread):
         self.session.Start()
 
     def setProperties(self,propstring):
-        print("PROP CALL STRING")
-        print(propstring)
         self.session.BeginSceneEdit()
         try:
             self.scene.Parse(self.sceneprops.SetFromString(propstring))
+            print("setProperty() PASSED!!!!!!\n[START]\n%s[END]"%propstring)
         except RuntimeError:
-            pass
+            print("setProperty() FAILED!!!!!!\n[START]\n%s[END]"%propstring)
+            pass 
         self.session.EndSceneEdit()
         self.writeImage()
    
@@ -1107,10 +1143,10 @@ class SceneGraph():
         nodelist = []
         print("get names for %s"%ntype) 
         for node in self.nodes:
-            print("looking at node")
-            print("name=%s, type=%s"%(node.name,node.ntype))
+            #print("looking at node")
+            #print("name=%s, type=%s"%(node.name,node.ntype))
             if node.ntype == ntype:
-                print("adding node " + node.name)
+                #print("adding node " + node.name)
                 nodelist.append(node.name)
 
         return nodelist 
@@ -1771,7 +1807,11 @@ class TextureAttribute(QWidget):
         self.prop = prop
         print("SETTING VALUE FOR %s"%prop.vname)
         print(prop.value)
-        print(prop.value[0])
+        #print(prop.value[0])
+        if type(self.prop.value) is float:
+            self.linkEnabled = 0
+            self.toggleValueType('F')
+            return
         if type(self.prop.value[0]) is 'str'.__class__ and len(self.prop.value) == 1:
             self.linkEnabled = 1
             self.linkValue.setText(self.prop.value[0])

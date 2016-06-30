@@ -71,6 +71,11 @@ Currently Supported Features
   * Add
   * Substract
   * Band (bugged)
+  * Brick
+  * CheckerBoard3D
+  * ConstFloat1
+  * ConstFloat3
+  * Dots
   * Scale
   * UV
   * HitPointAlpha
