@@ -1,0 +1,31 @@
+# Maintainer: Richard Layman <rlayman2000@yahoo.com>
+pkgname=luxed 
+pkgver=0.1 
+pkgrel=0
+pkgdesc="UI to edit LuxRender config and scene files"
+arch=(x86_64)
+url="https://github.com/richardlayman/luxed.git"
+license=('GPL3')
+groups=()
+depends=('luxrays' 'embree' 'python' 'qt5-base' 'python-pyqt5')
+makedepends=()
+optdepends=()
+provides=("luxed")
+conflicts=("luxed")
+replaces=()
+backup=()
+options=()
+install=
+changelog=
+source=("git+https://github.com/richardlayman/$pkgname.git")
+md5sums=('SKIP')
+
+package() {
+    mkdir -p "${pkgdir}/usr/bin"
+    mkdir -p "${pkgdir}/usr/share/${pkgname}"
+    cp -rf $srcdir/luxed/mesh/  "${pkgdir}/usr/share/${pkgname}"
+    cp -rf $srcdir/luxed/tex/  "${pkgdir}/usr/share/${pkgname}"
+    cp $srcdir/luxed/luxed "${pkgdir}/usr/bin/"
+    cp $srcdir/luxed/render.cfg "${pkgdir}/usr/share/${pkgname}"
+    cp $srcdir/luxed/scene.scn  "${pkgdir}/usr/share/${pkgname}"
+}
