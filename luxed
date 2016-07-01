@@ -838,7 +838,7 @@ class Lux(QThread):
         self.scene.Parse(self.sceneprops) 
         self.scene.DeleteObject(node.name) 
 
-        #self.session.EndSceneEdit()
+        self.session.EndSceneEdit()
         names = ""
         names = self.sceneprops.GetAllNames()
         print("Property List AFTER")
