@@ -30,7 +30,7 @@ from types import *
 
 import pyluxcore
 
-from PyQt5.QtCore import pyqtSignal, Qt, QRect, QThread, QTimer
+from PyQt5.QtCore import pyqtSignal, Qt, QDir, QRect, QThread, QTimer
 from PyQt5.QtWidgets import QMainWindow, QAbstractScrollArea, QScrollArea, QSlider, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
 from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, QIntValidator, QDoubleValidator
 
@@ -603,9 +603,17 @@ class Node:
     def getProperty(self,name):
         print("looking for %s"%name)
         for prop in self.props:
+            print('prop vname:%s'%prop.vname)
+            outprop = prop.getProperty(name)
+            if outprop is not None:
+                return outprop 
+            '''
             if name == prop.vname:
                 print("found prop %s"%name)
                 return prop
+            else:
+                if prop.getProperty(name).vname
+            '''
         return None
 
     def getProperties(self):
@@ -1404,7 +1412,7 @@ class SceneGraph():
             self.addTextureProperties(node,subtype)
         elif node.ntype == 'volumes':
             self.addVolumeProperties(node,subtype)
-  
+
     def addCameraProperties(self,node):
         name = node.name
         node.clearProperties()
@@ -3128,7 +3136,47 @@ class FileNewAction(QAction):
         self.lux.sg.clearScene()
         self.lux.updateScene.emit()
 
-        
+ 
+class AddMeshAction(QAction):
+
+    def __init__(self,lux,parent):
+        super().__init__("Add Mesh",parent)
+        self.triggered.connect(self.doit)
+        self.lux = lux
+
+    def doit(self):
+        filenames = QFileDialog.getOpenFileNames(None,"Select Ply Files",".","Ply Files (*.ply)")
+        #file = open(filename[0],'r')
+        if len(filenames[0]) == 0:
+            return
+        #self.lux.sg.parseSceneFile(file.readlines())
+        for line in filenames[0]:
+            print("import:%s"%line)
+            # get filename
+            sep = QDir.separator()
+            spos = line.rfind(sep) + 1
+            epos = line.rfind('.ply')
+            nodename = line[spos:epos]
+            if nodename == '':
+                return
+            # create material
+            mat = self.lux.sg.addSceneNode(nodename+"_mat",'materials','matte')
+            # create shape
+            self.lux.sg.updateNode(mat) 
+            shp = self.lux.sg.addSceneNode(nodename+"_shp",'shapes','mesh')
+            prop = shp.getProperty('ply')
+            prop.value[0] = line
+            self.lux.sg.updateNode(shp) 
+            obj = self.lux.sg.addSceneNode(nodename+"_obj",'objects','')
+            prop = obj.getProperty('material')
+            prop.value[0] = nodename+'_mat'
+            prop = obj.getProperty('shape')
+            prop.value[0] = nodename+'_shp'
+            self.lux.sg.updateNode(obj) 
+
+        self.lux.updateScene.emit()
+
+       
 class FileExitAction(QAction):
 
     def __init__(self,lux,parent):
@@ -3154,7 +3202,6 @@ class ExportMenu(QMenu):
         super().__init__("Export",parent)
         self.addAction(ExportRenderAction(lux,self))
         self.addAction(ExportSceneAction(lux,self))
-
 
 # IMPORT ACTIONS
 class ImportSceneAction(QAction):
@@ -3217,6 +3264,7 @@ class FileMenu(QMenu):
     def __init__(self,lux,name):
         super().__init__(name)
         self.addAction(FileNewAction(lux,self))
+        self.addAction(AddMeshAction(lux,self))
         self.addSeparator()
         self.addMenu(ImportMenu(lux,self))
         self.addMenu(ExportMenu(lux,self))
