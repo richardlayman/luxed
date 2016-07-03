@@ -1304,7 +1304,6 @@ class SceneGraph():
  
     def addSceneNode(self,name,ntype,subtype):
         node = None
-        name = self.getUniqueName(name)
 
         for n in self.nodes:
             if n.name == name and n.ntype == ntype:
@@ -1317,10 +1316,11 @@ class SceneGraph():
                 print("node with name already exist but not of the same type")
 
         if node is None:
-                node = Node(name,ntype)
-                self.addProperties(node,subtype)
-                self.lux.setProperties(node.getPropertyString())
-                self.nodes.append(node)
+            name = self.getUniqueName(name)
+            node = Node(name,ntype)
+            self.addProperties(node,subtype)
+            self.lux.setProperties(node.getPropertyString())
+            self.nodes.append(node)
 
         return node 
 
