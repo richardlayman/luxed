@@ -44,7 +44,7 @@ MaterialsType = ['matte','roughmatte','glossy2','archglass','glass','roughglass'
 MaterialsCarPaintType = ['ford f8','polaris silber','opel titan','bmw339','2k acrylack','white','blue','blue matte']
 MaterialsClothType = ['denimdenim','silk_charmeuse','silk_shantung','cotton_twill','wool_garbardine','polyester_lining_cloth']
 # TEXTURES
-TexturesType = ['imagemap','marble','mix','add','subtract','band','brick','checkerboard3d','constfloat1','constfloat3','dots','fbm','fresnelapproxk','fresnelapproxn','scale','uv','hitpointalpha','hitpointcolor','hitpointgrey','hsv','windy','wood','wrinkled','abs','clamp','blackbody','irregulardata','lampspectrum','blender_blend','blender_clouds','blender_distortednoise','blender_magic','blender_noise','fresnelcolor','fresnelpreset','fresnelsopra','fresneluxpop']
+TexturesType = ['imagemap','marble','mix','add','subtract','band','brick','checkerboard3d','constfloat1','constfloat3','dots','fbm','fresnelapproxk','fresnelapproxn','scale','uv','hitpointalpha','hitpointcolor','hitpointgrey','hsv','windy','wood','wrinkled','abs','clamp','blackbody','irregulardata','lampspectrum','blender_blend','blender_clouds','blender_distortednoise','blender_magic','blender_noise','fresnelcolor','fresnelpreset','fresnelsopra','fresnelluxpop']
 TexturesBandInterpolation = ['linear','cubic','none']
 TexturesBrickBrickBond = ['running','flemish','english','herringbone','basket','chain link']
 TexturesWoodType = ['bands','rings','bandnoise','ringnoise']
@@ -547,7 +547,7 @@ class Property:
         if self.value[0] == 'fresnelsopra':
             self.props.append(Property('textures',self.nname,'file','file',None,None,None,[''],"nk file path"))
    
-        if self.value[0] == 'fresneluxpop':
+        if self.value[0] == 'fresnelluxpop':
             self.props.append(Property('textures',self.nname,'file','file',None,None,None,[''],"nk file path"))
  
         # Texture Mapping 
