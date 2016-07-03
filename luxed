@@ -1425,16 +1425,6 @@ class SceneGraph():
         node.addProperty(Property('camera',name,'focaldistance','float',None,None,None,0.28,""))
         node.addProperty(Property('camera',name,'fieldofview','float',None,None,None,49.0,""))
 
-    '''
-    def addObjectProperties(self,node,subtype):
-        name = node.name
-        node.clearProperties()
-
-        if subtype == 'ply':
-            node.addProperty(Property('objects',name,'material','string',None,None,None,['mat'],"type of material"))
-            node.addProperty(Property('objects',name,'ply','string',None,None,None,[''],"mesh path (e.g scenes/luxball/luxball-shell.ply)"))
-    '''
-
     def addObjectProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
@@ -3146,12 +3136,9 @@ class AddMeshAction(QAction):
 
     def doit(self):
         filenames = QFileDialog.getOpenFileNames(None,"Select Ply Files",".","Ply Files (*.ply)")
-        #file = open(filename[0],'r')
         if len(filenames[0]) == 0:
             return
-        #self.lux.sg.parseSceneFile(file.readlines())
         for line in filenames[0]:
-            print("import:%s"%line)
             # get filename
             sep = QDir.separator()
             spos = line.rfind(sep) + 1

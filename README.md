@@ -17,6 +17,7 @@ Currently Supported Features
 ---------------
 - File IO
   * New Scene (bug: this will still show the last rendered image after a scene has been cleared)
+  * Add Mesh
   * Import Scene
   * Export Render Config
   * Export Scene
@@ -76,6 +77,9 @@ Currently Supported Features
   * ConstFloat1
   * ConstFloat3
   * Dots
+  * FBM
+  * FresnelApproxK
+  * FresnelApproxN
   * Scale
   * UV
   * HitPointAlpha
@@ -84,6 +88,17 @@ Currently Supported Features
   * HSV
   * Windy
   * Wood (bugged)
+  * Wrinkled
+  * ABS
+  * Clamp
+  * BlackBody
+  * IrregularData
+  * LampSpectrum
+  * Blender\_Blend
+  * Blender\_Clouds
+  * Blender\_DistortedNoise
+  * Blender\_Magic
+  * Blender\_Noise
 - Lights
   * TODO
 - Volumes
@@ -95,6 +110,7 @@ Currently Supported Features
   * Remove Node
   * Rename Node
   * Can change the rotation and field-of-view of the viewport camera with the mouse
+  * Load multiple ply meshes that will get automatically setup with object, shape and material properties
 
 Known Issues
 ---------------
