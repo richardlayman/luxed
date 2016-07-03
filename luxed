@@ -753,6 +753,7 @@ class Lux(QThread):
         stats = self.session.GetStats();
         return stats.Get("stats.dataset.trianglecount").GetFloat()
 
+    '''
     def getMaterialType(self,name):
         mtype = ""
         mtype=self.scnprops.Get("scene.materials.%s.type"%name).Get() 
@@ -761,6 +762,7 @@ class Lux(QThread):
 
     def getTextureType(self,name):
         return self.scnprops.Get("scene.textures.%s.type"%name).Get() 
+    '''
 
     def beginEdit(self):
         self.session.BeginSceneEdit()
@@ -932,7 +934,7 @@ class Lux(QThread):
             if valpass:
                 if prop.vtype == 'int':
                     prop.value = int(val[0])
-                elif prop.vtype == 'float' or prop.vtype == 'double' or prop.vtype == 'u_longlong' or prop.vtype == 'spectrum':
+                elif prop.vtype == 'float' or prop.vtype == 'double' or prop.vtype == 'u_longlong': # or prop.vtype == 'spectrum':
                     prop.value = float(val[0])
                 elif prop.vtype == 'string' or prop.vtype == 'option' or prop.vtype == 'link' or prop.vtype == 'file':
                     prop.value = val
@@ -947,7 +949,7 @@ class Lux(QThread):
                 elif prop.vtype == 'matrix':
                     pass
                 else:
-                    # it's a texture if it makes it this far
+                    # it's a texture or spectrum if it makes it this far
                     print("FILLING IN PROP %s for node %s with:"%(prop.vname,node.name))
                     print(val)
                     # check to see if it's a string
@@ -2225,7 +2227,7 @@ class OptionAttribute(QWidget):
 
         match = False
 
-        if options is not None: 
+        if options is not None:
             for item in options:
                 self.value.addItem(item)
                 if self.prop.value[0] == item:
@@ -2233,6 +2235,7 @@ class OptionAttribute(QWidget):
                     match = True
             # set the default to the first item in the list
             if match is not True:
+                self.value.setCurrentText(options[0])
                 self.prop.value[0] = self.value.currentText()
         else:
             if self.prop.ntype == 'materials' or self.prop.ntype == 'textures' or self.prop.ntype == 'volumes':
@@ -2252,7 +2255,7 @@ class OptionAttribute(QWidget):
         self.value.currentIndexChanged.connect(self.changed)
 
         #self.prop.value[0] = self.value.currentText()
-        self.value.setCurrentText(self.prop.value[0]) 
+        #self.value.setCurrentText(self.prop.value[0]) 
   
     def enabled(self):
         return self.label.isEnabled()
@@ -2795,7 +2798,7 @@ class NodeAttributeLoader(QWidget):
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)
             elif prop.vtype is 'option':
-                attribute = OptionAttribute(prop)
+                attribute = OptionAttribute(prop,prop.types)
                 if prop.vname == 'type':
                     attribute.valueChanged.connect(self.setType)
                 else:

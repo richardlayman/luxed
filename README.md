@@ -104,7 +104,7 @@ Currently Supported Features
   * FresnelSopra
   * FresnelLuxpop
 - Lights
-  * TODO
+  * Sun 
 - Volumes
   * Clear
   * Homogeneous
