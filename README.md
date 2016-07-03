@@ -104,7 +104,17 @@ Currently Supported Features
   * FresnelSopra
   * FresnelLuxpop
 - Lights
-  * Sun 
+  * Sun
+  * Sky
+  * Sky2
+  * Infinite
+  * Point
+  * MapPoint
+  * Spot
+  * Projection
+  * ConstantInfinite
+  * SharpDistant
+  * Distant 
 - Volumes
   * Clear
   * Homogeneous

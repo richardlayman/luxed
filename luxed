@@ -57,7 +57,7 @@ TexturesBlenderCloudsNoiseBasis = ['blender_original','original_perlin','improve
 TexturesFresnelPreset = ['aluminium','silver','copper','gold','amorphous carbon']
 TexturesMappingType = ['uvmapping2d','uvmapping3d','globalmapping3d']
 # LIGHTS
-LightsType = ['sun']
+LightsType = ['sun','sky','sky2','infinite','point','mappoint','spot','projection','constantinfinite','sharpdistant','distant']
 
 # VOLUMES
 VolumesType = ['clear','homogeneous','heterogeneous']
@@ -606,6 +606,81 @@ class Property:
             self.props.append(Property('lights',self.nname,'visibility.indirect.diffuse.enable','bool',None,None,None,1,""))
             self.props.append(Property('lights',self.nname,'visibility.indirect.glossy.enable','bool',None,None,None,1,""))
             self.props.append(Property('lights',self.nname,'visibility.indirect.specular.enable','bool',None,None,None,1,""))
+
+        if self.value[0] == 'sky':
+            self.props.append(Property('lights',self.nname,'turbidity','float',None,None,None,2.2,""))
+            self.props.append(Property('lights',self.nname,'dir','vector',None,None,None,[0.0,0.0,1.0],""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.diffuse.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.glossy.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.specular.enable','bool',None,None,None,1,""))
+
+        if self.value[0] == 'sky2':
+            self.props.append(Property('lights',self.nname,'turbidity','float',None,None,None,2.2,""))
+            self.props.append(Property('lights',self.nname,'dir','vector',None,None,None,[0.0,0.0,1.0],""))
+            self.props.append(Property('lights',self.nname,'gain','vector',None,None,None,[0.0,0.0,0.0],""))
+            self.props.append(Property('lights',self.nname,'groundalbedo','vector',None,None,None,[0.5,0.5,0.5],""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.diffuse.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.glossy.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.specular.enable','bool',None,None,None,1,""))
+
+        if self.value[0] == 'infinite':
+            self.props.append(Property('lights',self.nname,'file','file',None,None,None,[''],"filename of the environment map"))
+            self.props.append(Property('lights',self.nname,'gamma','float',None,None,None,1.0,""))
+            # TODO shift property
+            self.props.append(Property('lights',self.nname,'visibility.indirect.diffuse.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.glossy.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.specular.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'blacklowerhemisphere','bool',None,None,None,0,""))
+
+        if self.value[0] == 'point':
+            self.props.append(Property('lights',self.nname,'position','point',None,None,None,[0,0,0],"filename of the environment map"))
+            self.props.append(Property('lights',self.nname,'color','spectrum',None,None,None,[1,1,1],""))
+            self.props.append(Property('lights',self.nname,'power','float',None,None,None,0.0,""))
+            self.props.append(Property('lights',self.nname,'efficency','float',None,None,None,0.0,""))
+ 
+        if self.value[0] == 'mappoint':
+            self.props.append(Property('lights',self.nname,'position','point',None,None,None,[0,0,0],"filename of the environment map"))
+            self.props.append(Property('lights',self.nname,'color','spectrum',None,None,None,[1,1,1],""))
+            self.props.append(Property('lights',self.nname,'power','float',None,None,None,0.0,""))
+            self.props.append(Property('lights',self.nname,'efficency','float',None,None,None,0.0,""))
+            self.props.append(Property('lights',self.nname,'emission.mapfile','file',None,None,None,[''],""))
+            self.props.append(Property('lights',self.nname,'emission.gamma','float',None,None,None,2.2,""))
+            self.props.append(Property('lights',self.nname,'emission.iesfile','file',None,None,None,[''],""))
+            self.props.append(Property('lights',self.nname,'emission.flipz','bool',None,None,None,0,""))
+            self.props.append(Property('lights',self.nname,'emission.map.width','int',None,0,None,0,""))
+            self.props.append(Property('lights',self.nname,'emission.map.height','int',None,0,None,0,""))
+
+        if self.value[0] == 'spot':
+            self.props.append(Property('lights',self.nname,'position','point',None,None,None,[0,0,0],"filename of the environment map"))
+            self.props.append(Property('lights',self.nname,'target','point',None,None,None,[0,0,0],"filename of the environment map"))
+            self.props.append(Property('lights',self.nname,'color','spectrum',None,None,None,[1,1,1],""))
+            self.props.append(Property('lights',self.nname,'power','float',None,None,None,0.0,""))
+            self.props.append(Property('lights',self.nname,'coneangle','float',None,None,None,30.0,""))
+            self.props.append(Property('lights',self.nname,'conedeltaangle','float',None,None,None,5.0,""))
+ 
+        if self.value[0] == 'projection':
+            self.props.append(Property('lights',self.nname,'position','point',None,None,None,[0,0,0],"filename of the environment map"))
+            self.props.append(Property('lights',self.nname,'target','point',None,None,None,[0,0,0],"filename of the environment map"))
+            self.props.append(Property('lights',self.nname,'color','spectrum',None,None,None,[1,1,1],""))
+            self.props.append(Property('lights',self.nname,'power','float',None,None,None,0.0,""))
+            self.props.append(Property('lights',self.nname,'fov','float',None,None,None,45.0,""))
+            self.props.append(Property('lights',self.nname,'mapfile','file',None,None,None,[''],""))
+            self.props.append(Property('lights',self.nname,'gamma','float',None,None,None,2.2,""))
+ 
+        if self.value[0] == 'constantinfinite':
+            self.props.append(Property('lights',self.nname,'color','spectrum',None,None,None,[1,1,1],""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.diffuse.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.glossy.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.specular.enable','bool',None,None,None,1,""))
+
+        if self.value[0] == 'sharpdistant':
+            self.props.append(Property('lights',self.nname,'color','spectrum',None,None,None,[1,1,1],""))
+            self.props.append(Property('lights',self.nname,'direction','vector',None,None,None,[0.0,0.0,1.0],""))
+
+        if self.value[0] == 'distant':
+            self.props.append(Property('lights',self.nname,'color','spectrum',None,None,None,[1,1,1],""))
+            self.props.append(Property('lights',self.nname,'direction','vector',None,None,None,[0.0,0.0,1.0],""))
+            self.props.append(Property('lights',self.nname,'theta','float',None,None,None,10.0,""))
 
         # common
         self.props.append(Property('lights',self.nname,'gain','spectrum',None,None,None,[1,1,1],""))
