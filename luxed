@@ -1192,6 +1192,33 @@ class SceneGraph():
 
         return nodelist 
 
+    def getUniqueName(self,name):
+        unique = 1
+        found = False
+        # first check to see if name by itself is in the sg
+        for n in self.nodes:
+            if n.name == name:
+                found = True
+        if found is False:
+            return name
+        newname = '%s_%s'%(name,unique)
+        # TODO this current method will return 'node_1_1' when a match for 'node_1' is found
+        while found is True:
+            found = False
+            for n in self.nodes:
+                if n.name == newname:
+                    found = True
+                    unique += 1
+                    newname = '%s_%s'%(name,unique)
+            if found is False:
+                return newname
+
+    def isUniqueName(self,name):
+        if name == self.getUniqueName(name):
+            return True
+        else:
+            return False
+
     def getRenderSettings(self):
         propstring = ''
 
@@ -1261,10 +1288,8 @@ class SceneGraph():
         self.nodes.append(node)
  
     def addSceneNode(self,name,ntype,subtype):
-        # if the scene node already exist, replace it
-        # else add it
-        #print("addSceneNode() name=%s, ntype=%s, subtype=%s"%(name,ntype,subtype))
         node = None
+        name = self.getUniqueName(name)
 
         for n in self.nodes:
             if n.name == name and n.ntype == ntype:
@@ -2591,8 +2616,9 @@ class RenameNodeDialog(QDialog):
 class AddNodeDialog(QDialog):
     nodeAdded = pyqtSignal(['QString','QString','QString'])
 
-    def __init__(self,ntype):
+    def __init__(self,ntype,lux):
         super().__init__()
+        self.lux = lux
         #self.setFixedWidth(400)
         #self.setFixedHeight(400)
         self.setWindowTitle("Add Node")
@@ -2615,9 +2641,23 @@ class AddNodeDialog(QDialog):
         self.setLayout(vbox)
 
         self.setType(self.ntype)
+        self.name.textChanged.connect(self.checkName)
         self.addBtn.clicked.connect(self.setNode)
         self.cancelBtn.clicked.connect(self.reject)
         self.hide()
+
+    def checkName(self,name):
+        print("checkName")
+        unique = self.lux.sg.isUniqueName(name)
+        if unique:
+            print("name unique")
+            color = QColor(0,255,0)
+        else:
+            color = QColor(255,0,0)
+        self.name.setAutoFillBackground(1)
+        palette = QPalette()
+        palette.setColor(QPalette.Base,color)
+        self.name.setPalette(palette)
 
     def setType(self,ntype):
         self.ntype = ntype
@@ -2696,7 +2736,7 @@ class SceneLayout(QDockWidget):
 
         self.setWidget(frame)
 
-        self.addNodeDialog = AddNodeDialog(self.getTabName(self.tabs.currentIndex()))
+        self.addNodeDialog = AddNodeDialog(self.getTabName(self.tabs.currentIndex()),self.lux)
         self.renameNodeDialog = RenameNodeDialog()
 
         self.cameras.itemClicked.connect(self.nodeChanged)
