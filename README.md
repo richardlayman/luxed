@@ -99,6 +99,10 @@ Currently Supported Features
   * Blender\_DistortedNoise
   * Blender\_Magic
   * Blender\_Noise
+  * FresnelColor
+  * FresnelPreset
+  * FresnelSopra
+  * FresnelLuxpop
 - Lights
   * TODO
 - Volumes
