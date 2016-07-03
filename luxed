@@ -31,7 +31,7 @@ from types import *
 import pyluxcore
 
 from PyQt5.QtCore import pyqtSignal, Qt, QDir, QRect, QThread, QTimer
-from PyQt5.QtWidgets import QMainWindow, QAbstractScrollArea, QScrollArea, QSlider, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
+from PyQt5.QtWidgets import QMainWindow, QAbstractScrollArea, QScrollArea, QSlider, QCheckBox, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
 from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, QIntValidator, QDoubleValidator
 
 
@@ -56,7 +56,8 @@ TexturesBlenderCloudsNoiseType = ['soft_noise','hard_noise']
 TexturesBlenderCloudsNoiseBasis = ['blender_original','original_perlin','improved_perlin','voronoi_f1','voronoi_f2','voronoi_f3','voronoi_f4','voronoi_f2','voronoi_crackle','cell_noise']
 TexturesFresnelPreset = ['aluminium','silver','copper','gold','amorphous carbon']
 TexturesMappingType = ['uvmapping2d','uvmapping3d','globalmapping3d']
-
+# LIGHTS
+LightsType = ['sun']
 
 # VOLUMES
 VolumesType = ['clear','homogeneous','heterogeneous']
@@ -192,6 +193,8 @@ class Property:
             return "scene.materials.%s.%s"%(self.nname,self.vname)
         elif self.ntype is 'textures':
             return "scene.textures.%s.%s"%(self.nname,self.vname)
+        elif self.ntype is 'lights':
+            return "scene.lights.%s.%s"%(self.nname,self.vname)
         elif self.ntype is 'volumes':
             return "scene.volumes.%s.%s"%(self.nname,self.vname)
         return "%s.%s"%(self.nname,self.vname)
@@ -221,6 +224,8 @@ class Property:
             self.initMaterialsProperties()
         elif self.ntype == 'textures':
             self.initTexturesProperties()
+        elif self.ntype == 'lights':
+            self.initLightsProperties()
         elif self.ntype == 'volumes':
             self.initVolumesProperties()
 
@@ -593,6 +598,21 @@ class Property:
             self.props.append(Property('volumes',self.nname,'emission','texture',None,None,None,[0,0,0],""))
             self.props.append(Property('volumes',self.nname,'emission.id','int',None,0,None,0,""))
  
+    def initLightsProperties(self):
+        if self.value[0] == 'sun':
+            self.props.append(Property('lights',self.nname,'turbidity','float',None,None,None,2.2,""))
+            self.props.append(Property('lights',self.nname,'relsize','float',None,None,None,1.0,""))
+            self.props.append(Property('lights',self.nname,'dir','vector',None,None,None,[0.0,0.0,1.0],""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.diffuse.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.glossy.enable','bool',None,None,None,1,""))
+            self.props.append(Property('lights',self.nname,'visibility.indirect.specular.enable','bool',None,None,None,1,""))
+
+        # common
+        self.props.append(Property('lights',self.nname,'gain','spectrum',None,None,None,[1,1,1],""))
+        self.props.append(Property('lights',self.nname,'samples','int',None,-1,None,-1,""))
+        self.props.append(Property('lights',self.nname,'id','int',None,0,None,0,""))
+ 
+
 # NODE
 class Node:
 
@@ -1450,6 +1470,8 @@ class SceneGraph():
             self.addMaterialProperties(node,subtype)
         elif node.ntype == 'textures':
             self.addTextureProperties(node,subtype)
+        elif node.ntype == 'lights':
+            self.addLightProperties(node,subtype)
         elif node.ntype == 'volumes':
             self.addVolumeProperties(node,subtype)
 
@@ -1485,7 +1507,12 @@ class SceneGraph():
         name = node.name
         node.clearProperties()
         node.props.append(Property('textures',name,'type','option',None,None,None,[subtype],"",TexturesType))
- 
+  
+    def addLightProperties(self,node,subtype):
+        name = node.name
+        node.clearProperties()
+        node.props.append(Property('lights',name,'type','option',None,None,None,[subtype],"",LightsType))
+
     def addVolumeProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
@@ -1659,7 +1686,269 @@ class LinkDialog(QDialog):
         self.linkSelected.emit(self.link)
         self.hide()
 
+  
+# Spectrum Attribute
+class SpectrumAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,prop,lux):
+        super().__init__()
+        self.lux = lux
+        self.prop = prop
+        self.label = QLabel(self.prop.vname)
+        self.colorValue = ColorWidget()
+        self.colorValue.setFixedWidth(80)
+        if self.prop.min is None:
+            minVal = -10000000000.0
+        else:
+            minVal = self.prop.min
+        if self.prop.max is None:
+            maxVal = 10000000000.0
+        else:
+            maxVal = self.prop.max
+        validator = QDoubleValidator(minVal,maxVal,4)
+
+        self.float3Value = QLineEdit()
+        self.float3Value.setValidator(validator)
+        self.float3Value.setText('1.0')
+        self.float3Value.setFixedHeight(20)
+        self.float2Value = QLineEdit()
+        self.float2Value.setText('1.0')
+        self.float2Value.setValidator(validator)
+        self.float2Value.setFixedHeight(20)
+        self.float1Value = QLineEdit()
+        self.float1Value.setText('1.0')
+        self.float1Value.setValidator(validator)
+        self.float1Value.setFixedHeight(20)
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.float1Value)
+        hbox.addWidget(self.float2Value)
+        hbox.addWidget(self.float3Value)
+        hbox.setSpacing(1)
+        hbox.setContentsMargins(0,0,0,0)
+
+        floatValue = QFrame()
+        floatValue.setLayout(hbox)
+
+        self.linkValue = QPushButton("select")
+        self.enableBtn = QPushButton("X")
+        self.enableBtn.setFixedWidth(30)
  
+        self.stackedValue = QStackedWidget()
+        self.stackedValue.setFixedWidth(80)
+        self.stackedValue.setFixedHeight(20)
+        self.stackedValue.addWidget(self.colorValue)
+        self.stackedValue.addWidget(self.linkValue)
+        self.stackedValue.addWidget(floatValue)
+        self.stackedValue.setCurrentIndex(0)
+
+        self.linkEnabled = 0 # use a color value or a texture link
+        self.valueTypeBtn = QPushButton("C") # 'C'=color, 'T'=texture name, '3F'=3 floats, '2F'=2 floats, 'F'=1 float
+        self.valueTypeBtn.setFixedWidth(30)
+        self.link = None
+
+        if prop.ntype == 'materials':
+            if 'vol' in prop.vname:
+                self.link = LinkDialog(self.lux,'volumes')
+            else:
+                self.link = LinkDialog(self.lux,'textures')
+        if prop.ntype == 'textures':
+            self.link = LinkDialog(self.lux,'textures')
+        if prop.ntype == 'objects':
+            self.link = LinkDialog(self.lux,'materials')
+
+        self.setToolTip(self.prop.desc)
+ 
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.stackedValue)
+        hbox.addWidget(self.valueTypeBtn)
+        hbox.addWidget(self.enableBtn)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        self.colorValue.colorChanged.connect(self.changed) 
+        self.float1Value.editingFinished.connect(self.changed)
+        self.float2Value.editingFinished.connect(self.changed)
+        self.float3Value.editingFinished.connect(self.changed)
+        self.linkValue.clicked.connect(self.showLinkDialog)
+        self.valueTypeBtn.clicked.connect(self.toggleValueType)
+        self.enableBtn.clicked.connect(self.toggleEnabledState)
+
+        if self.link:
+            self.link.linkSelected.connect(self.setLink)
+            self.link.hide()
+
+        #self.getValue()
+        self.setProperty(self.prop)
+        
+    def toggleEnabledState(self):
+        if self.enableBtn.text() == 'X':
+            self.enableBtn.setText('O')
+            self.prop.enabled = 1 
+            self.label.setEnabled(1)
+            self.stackedValue.setEnabled(1)
+            self.valueTypeBtn.setEnabled(1)
+        else:
+            self.enableBtn.setText('X')
+            self.prop.enabled = 0
+            self.label.setEnabled(0)
+            self.stackedValue.setEnabled(0)
+            self.valueTypeBtn.setEnabled(0)
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+    def toggleValueType(self,target=None):
+        if (self.valueTypeBtn.text() == 'C' and target is False) or target == 'T':
+            self.linkEnabled = 1
+            self.stackedValue.setCurrentIndex(1)
+            self.valueTypeBtn.setText('T')
+            if(self.linkEnabled):
+                self.prop.value = [self.linkValue.text()]
+            else:
+                self.prop.value = [''] 
+        elif (self.valueTypeBtn.text() == 'T' and target is False) or target == '3F':
+            self.linkEnabled = 0
+            self.stackedValue.setCurrentIndex(2)
+            self.valueTypeBtn.setText('3F')
+            self.float1Value.show()
+            self.float2Value.show()
+            self.float3Value.show()
+            self.prop.value = []
+            self.prop.value.insert(0,float(self.float1Value.text()))
+            self.prop.value.insert(1,float(self.float2Value.text()))
+            self.prop.value.insert(2,float(self.float3Value.text()))
+        elif (self.valueTypeBtn.text() == '3F' and target is False) or target == '2F':
+            self.valueTypeBtn.setText('2F')
+            self.float3Value.hide()
+            self.prop.value = []
+            self.prop.value.insert(0,float(self.float1Value.text()))
+            self.prop.value.insert(1,float(self.float2Value.text()))
+        elif (self.valueTypeBtn.text() == '2F' and target is False) or target == 'F':
+            self.valueTypeBtn.setText('F')
+            self.float2Value.hide()
+            self.prop.value = []
+            self.prop.value.insert(0,float(self.float1Value.text()))
+        elif (self.valueTypeBtn.text() == 'F' and target is False) or target == 'C':
+            self.stackedValue.setCurrentIndex(0)
+            self.valueTypeBtn.setText('C')
+            self.float1Value.hide()
+            color = self.colorValue.getColor()
+            self.prop.value = []
+            self.prop.value = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
+
+        self.getValue()
+        
+    def showLinkDialog(self):
+        self.link.show()
+
+    def setLink(self,link):
+        self.linkValue.setText(link)
+        self.changed()
+
+    def changed(self):
+        self.getValue() 
+        self.valueChanged.emit()
+
+    def changeColorValue(self,e):
+        pass
+
+    '''
+    def getColorValue(self):
+        if(self.linkEnabled):
+            self.prop.type = 'string'
+            self.prop.value = self.linkValue.text()
+        else:
+            color = self.colorValue.getColor()
+            self.prop.type = 'texture'
+            self.prop.value = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
+        return self.prop.value
+    '''
+
+    def getValue(self):
+        print("GET VALUE")
+        print(self.prop.value)
+        print(self.linkValue.text())
+        if(self.stackedValue.currentIndex() == 0):
+            #self.prop.vtype = 'texture'
+            color = self.colorValue.getColor()
+            self.prop.value = [color.red()/255.0, color.green()/255.0, color.blue()/255.0]
+        elif(self.stackedValue.currentIndex() == 1):
+            #self.prop.vtype = 'string'
+            if(self.linkEnabled):
+                self.prop.value = [self.linkValue.text()]
+            else:
+                self.prop.enabled = 0
+        elif(self.stackedValue.currentIndex() == 2):
+            #self.prop.vtype = 'texture'
+            print("PREVALUES: %f %f %f"%(float(self.float1Value.text()),float(self.float2Value.text()),float(self.float3Value.text())))     
+            print(self.prop.value)
+            if len(self.prop.value) == 1:
+                self.prop.value[0] = float(self.float1Value.text())
+                print("VALUES: %f"%(float(self.float1Value.text())))     
+            elif len(self.prop.value) == 2:
+                self.prop.value[0] = float(self.float1Value.text())
+                self.prop.value[1] = float(self.float2Value.text())
+                print("VALUES: %f %f"%(float(self.float1Value.text()),float(self.float2Value.text())))     
+            elif len(self.prop.value) == 3:
+                self.prop.value[0] = float(self.float1Value.text())
+                self.prop.value[1] = float(self.float2Value.text())
+                self.prop.value[2] = float(self.float3Value.text())
+                print("VALUES: %f %f %f"%(float(self.float1Value.text()),float(self.float2Value.text()),float(self.float3Value.text())))     
+
+    def setProperty(self,prop):
+        self.prop = prop
+        print("SETTING VALUE FOR %s"%prop.vname)
+        print(prop.value)
+        #print(prop.value[0])
+        if type(self.prop.value) is float:
+            self.linkEnabled = 0
+            self.toggleValueType('F')
+            return
+        if type(self.prop.value[0]) is 'str'.__class__ and len(self.prop.value) == 1:
+            self.linkEnabled = 1
+            self.linkValue.setText(self.prop.value[0])
+            self.toggleValueType('T')
+            self.stackedValue.setCurrentIndex(1)
+            return
+ 
+        if(self.stackedValue.currentIndex() == 0):
+            if len(prop.value) != 3:
+                self.stackedValue.setCurrentIndex(2)
+            else:
+                print("colorValue = %f %f %f"%(self.prop.value[0],self.prop.value[1],self.prop.value[2]))
+                self.colorValue.setColor(QColor(255.0 * float(self.prop.value[0]), 255.0 * float(self.prop.value[1]), 255.0 * float(self.prop.value[2])))
+        elif(self.stackedValue.currentIndex() == 1):
+            self.linkValue.setText(self.prop.value[0])
+        elif(self.stackedValue.currentIndex() == 2):
+            if len(self.props.value) == 1:
+                self.float1Value.setText(self.props.value[0])
+            elif len(self.props.value) == 2:
+                self.float1Value.setText(self.props.value[0])
+                self.float2Value.setText(self.props.value[1])
+            elif len(self.props.value) == 3:
+                self.float1Value.setText(self.props.value[0])
+                self.float2Value.setText(self.props.value[1])
+                self.float3Value.setText(self.props.value[2])
+
+        # verify that the enable btn is synced up the enabled state of the property
+        if self.prop.enabled:
+            self.enableBtn.setText('O')
+            self.label.setEnabled(1)
+            self.stackedValue.setEnabled(1)
+            self.valueTypeBtn.setEnabled(1)
+        else:
+            self.enableBtn.setText('X')
+            self.label.setEnabled(0)
+            self.stackedValue.setEnabled(0)
+            self.valueTypeBtn.setEnabled(0)
+ 
+
 # Texture Attribute
 class TextureAttribute(QWidget):
     valueChanged = pyqtSignal()
@@ -1987,6 +2276,65 @@ class OptionAttribute(QWidget):
         self.value.setCurrentText(self.prop.value[0])
 
 
+# Bool Attribute
+class BoolAttribute(QWidget):
+    valueChanged = pyqtSignal()
+
+    def __init__(self,prop):
+        super().__init__()
+        self.prop = prop
+        self.label = QLabel(self.prop.vname)
+        self.value = QCheckBox()
+        #self.value.setFixedWidth(80)
+        #if self.prop.min is not None and self.prop.max is not None:
+        #    self.validator = QIntValidator(self.prop.min,self.prop.max)
+        #    self.value.setValidator(self.validator)
+        #self.value.setText("%d"%self.prop.value)
+
+        self.setToolTip(self.prop.desc)
+       
+        hbox = QHBoxLayout()        
+        hbox.addStretch()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.value)
+        hbox.setSpacing(2)
+        hbox.setContentsMargins(1,1,1,1)
+
+        self.setLayout(hbox)
+
+        # connections
+        self.value.stateChanged.connect(self.changed)
+
+
+    def enabled(self):
+        return self.label.isEnabled()
+
+    def changed(self,val):
+        if val == 0:
+            self.prop.value = 0
+        else:
+            self.prop.value = 1
+        self.valueChanged.emit()
+
+    def getValue(self):
+        return int(self.prop.value)
+
+    def setValue(self,val):
+        self.prop.value = val
+        if self.prop.value == 0:
+            self.value.setCheckState(Qt.Unchecked)
+        else:
+            self.value.setCheckState(Qt.Checked)
+
+
+    def setProperty(self,prop):
+        self.prop = prop
+        if self.prop.value == 0:
+            self.value.setCheckState(Qt.Unchecked)
+        else:
+            self.value.setCheckState(Qt.Checked)
+
+
 # Int Attribute
 class IntAttribute(QWidget):
     valueChanged = pyqtSignal()
@@ -2053,7 +2401,7 @@ class FloatAttribute(QWidget):
         else:
             self.validator.setDecimals(4)
         self.value.setValidator(self.validator)
- 
+
         self.value.setText("%.4f"%self.prop.value)
 
         self.setToolTip(self.prop.desc)
@@ -2482,6 +2830,10 @@ class NodeAttributeLoader(QWidget):
                     attribute = StringAttribute(prop)
                     attribute.valueChanged.connect(self.updateNode)
                     self.vbox.addWidget(attribute)
+            elif prop.vtype is 'bool':
+                attribute = BoolAttribute(prop)
+                attribute.valueChanged.connect(self.updateNode)
+                self.vbox.addWidget(attribute)        
             elif prop.vtype is 'int':
                 attribute = IntAttribute(prop)
                 attribute.valueChanged.connect(self.updateNode)
@@ -2507,7 +2859,7 @@ class NodeAttributeLoader(QWidget):
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
             elif prop.vtype is 'spectrum':
-                attribute = FloatAttribute(prop)
+                attribute = SpectrumAttribute(prop,self.lux)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
  
@@ -2693,6 +3045,10 @@ class AddNodeDialog(QDialog):
             self.vtype.show()
             for t in TexturesType:
                 self.vtype.addItem(t)
+        if self.ntype == 'lights':
+            self.vtype.show()
+            for l in LightsType:
+                self.vtype.addItem(l)
         if self.ntype == 'volumes':
             self.vtype.show()
             for v in VolumesType:
