@@ -851,6 +851,7 @@ class Lux(QThread):
     # When the AE is first loaded it will load the properties for lux and then this method will get called
     # for each property.
     # It will ask lux if the property exists and add it if it doesn't.   
+    '''
     def verifyProperty(self,name,prop):
         if self.scnprops.IsDefined(name) is False:
             print(name + " is missing. Adding it")
@@ -868,6 +869,7 @@ class Lux(QThread):
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]],prop.value[2]))
             if prop.type == 'texture':
                 self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
+    '''
 
     def changeSize(self,width,height):
         print("CHANGE SIZE")
@@ -1007,7 +1009,7 @@ class Lux(QThread):
                 prop.enabled = 0
                 valpass = False
             if valpass:
-                if prop.vtype == 'int':
+                if prop.vtype == 'int' or prop.vtype == 'bool':
                     prop.value = int(val[0])
                 elif prop.vtype == 'float' or prop.vtype == 'double' or prop.vtype == 'u_longlong': # or prop.vtype == 'spectrum':
                     prop.value = float(val[0])
@@ -1510,6 +1512,8 @@ class SceneGraph():
                 val = line[i+1:].strip()
                 ntype,name,vname = self.getNodeInfoFromString(pre)
                 #print("IMPORT NODE %s,%s,%s"%(ntype,name,vname))
+                #print("value=")
+                #print(val)
                 if ntype != None and name != None and vname != None:
                     if cname != name:
                         node = Node(name,ntype)
@@ -2398,7 +2402,7 @@ class BoolAttribute(QWidget):
         return int(self.prop.value)
 
     def setValue(self,val):
-        self.prop.value = val
+        self.prop.value = int(val)
         if self.prop.value == 0:
             self.value.setCheckState(Qt.Unchecked)
         else:
