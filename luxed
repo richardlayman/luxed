@@ -357,7 +357,7 @@ class Property:
             self.props.append(Property('materials',self.nname,'emission','texture',None,None,None,[0,0,0],"color of the emitted light"))
             # why is gain not in the SDL and why is that lights won't work without it?
             self.props.append(Property('materials',self.nname,'emission.gain','texture',None,None,None,[0,0,0],""))
-            self.props.append(Property('materials',self.nname,'emission.power','spectrum',None,None,None,0.0,"lamp output power in watts. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
+            self.props.append(Property('materials',self.nname,'emission.power','float',None,None,None,0.0,"lamp output power in watts. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
             self.props.append(Property('materials',self.nname,'emission.efficency','float',None,None,None,0.0,"luminous efficacy in lumens/watt. Setting 0 for both power and efficacy bypasses this feature and uses only the lamp gain"))
             self.props.append(Property('materials',self.nname,'emission.mapfile','string',None,None,None,[''],""))
             self.props.append(Property('materials',self.nname,'emission.gamma','float',None,None,None,2.2,""))
