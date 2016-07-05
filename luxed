@@ -218,7 +218,9 @@ class Property:
 
         print("ADDING PROP %s"%self.value[0])
 
-        if self.ntype == 'shapes':
+        if self.ntype == 'camera':
+            self.initCameraProperties()
+        elif self.ntype == 'shapes':
             self.initShapesProperties()
         elif self.ntype == 'materials':
             self.initMaterialsProperties()
@@ -229,6 +231,16 @@ class Property:
         elif self.ntype == 'volumes':
             self.initVolumesProperties()
 
+    def initCameraProperties(self):
+        node.props.append(Property('camera',name,'lookat.orig','point',None,None,None,[0,1,-1],""))
+        node.props.append(Property('camera',name,'lookat.target','point',None,None,None,[0,0,0],""))
+        node.props.append(Property('camera',name,'up','vector',None,None,None,[0,0,1],""))
+        node.props.append(Property('camera',name,'cliphither','float',None,None,None,0.001,""))
+        node.props.append(Property('camera',name,'clipyon','float',None,None,None,1.0,""))
+        node.props.append(Property('camera',name,'lensradius','float',None,None,None,0.0,""))
+        node.props.append(Property('camera',name,'focaldistance','float',None,None,None,0.28,""))
+        node.props.append(Property('camera',name,'fieldofview','float',None,None,None,49.0,""))
+ 
     def initShapesProperties(self):
 
         if self.value[0] == 'mesh':
@@ -768,7 +780,7 @@ class Lux(QThread):
         self.sceneprops.Set(pyluxcore.Property("scene.camera.lensradius", [0.00]))
         self.sceneprops.Set(pyluxcore.Property("scene.camera.focaldistance", [0.28]))
         self.sceneprops.Set(pyluxcore.Property("scene.camera.fieldofview", [49]))
-
+        
         self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain", [0, 0, 0]))
         self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.transformation", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]))
         self.sceneprops.Set(pyluxcore.Property("scene.lights.ext_light.gain.samples", [-1]))
@@ -1056,6 +1068,7 @@ class SceneGraph():
         self.nodes = []
 
         # default camera
+        '''
         camera = Node('default_camera','camera')
         self.addCameraProperties(camera)
         camera.getProperty('lookat.orig').value = [0.64, 0.27, 0.14]
@@ -1066,6 +1079,7 @@ class SceneGraph():
         volume = Node('default_volume','volumes')
         self.addVolumeProperties(volume,'clear')
         self.nodes.append(volume)
+        '''
 
         self.initRenderNodes()
         #self.lux.setRenderSettings(self.render.getPropertyString)
@@ -1441,13 +1455,14 @@ class SceneGraph():
                 camera = n
             if n.name == 'default_volume':
                 volume = n
-            else:
-                self.lux.removeNode(n)
+            self.lux.removeNode(n)
         self.nodes.clear()
+        '''
         if camera is not None:
             self.nodes.append(camera)
         if volume is not None:
             self.nodes.append(volume)
+        '''
 
     # This will parse a input string like 'scene.materials.my_material.kd'
     # and out the string type('object'), name('my_material') and value type('kd')
@@ -1475,8 +1490,12 @@ class SceneGraph():
         # we will need to add extra checking here
         # For the time being we know that all the lines are formated as scene.[type].[name].[vname]...
         ntype = prefix[indexs[0]+1:indexs[1]]
-        name = prefix[indexs[1]+1:indexs[2]]
-        vname = prefix[indexs[2]+1:]
+        if ntype == 'camera':
+            vname = prefix[indexs[1]+1:indexs[2]]
+            name = 'default_camera'
+        else:
+            name = prefix[indexs[1]+1:indexs[2]]
+            vname = prefix[indexs[2]+1:]
         '''
         print(data)
 
@@ -1543,7 +1562,9 @@ class SceneGraph():
         return True
   
     def addProperties(self,node,subtype):
-        if node.ntype == 'shapes':
+        if node.ntype == 'camera':
+            self.addCameraProperties(node)
+        elif node.ntype == 'shapes':
             self.addShapeProperties(node,subtype)
         elif node.ntype == 'objects':
             self.addObjectProperties(node,subtype)
@@ -1559,6 +1580,7 @@ class SceneGraph():
     def addCameraProperties(self,node):
         name = node.name
         node.clearProperties()
+        '''
         node.addProperty(Property('camera',name,'lookat.orig','point',None,None,None,[0,1,-1],""))
         node.addProperty(Property('camera',name,'lookat.target','point',None,None,None,[0,0,0],""))
         node.addProperty(Property('camera',name,'up','vector',None,None,None,[0,0,1],""))
@@ -1567,7 +1589,16 @@ class SceneGraph():
         node.addProperty(Property('camera',name,'lensradius','float',None,None,None,0.0,""))
         node.addProperty(Property('camera',name,'focaldistance','float',None,None,None,0.28,""))
         node.addProperty(Property('camera',name,'fieldofview','float',None,None,None,49.0,""))
-
+        '''
+        node.props.append(Property('camera',name,'lookat.orig','point',None,None,None,[0,1,-1],""))
+        node.props.append(Property('camera',name,'lookat.target','point',None,None,None,[0,0,0],""))
+        node.props.append(Property('camera',name,'up','vector',None,None,None,[0,0,1],""))
+        node.props.append(Property('camera',name,'cliphither','float',None,None,None,0.001,""))
+        node.props.append(Property('camera',name,'clipyon','float',None,None,None,1.0,""))
+        node.props.append(Property('camera',name,'lensradius','float',None,None,None,0.0,""))
+        node.props.append(Property('camera',name,'focaldistance','float',None,None,None,0.28,""))
+        node.props.append(Property('camera',name,'fieldofview','float',None,None,None,49.0,""))
+ 
     def addObjectProperties(self,node,subtype):
         name = node.name
         node.clearProperties()
