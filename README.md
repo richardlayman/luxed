@@ -17,10 +17,12 @@ Currently Supported Features
 ---------------
 - File IO
   * New Scene (bug: this will still show the last rendered image after a scene has been cleared)
+  * Open Scene
+  * Save Scene
   * Add Mesh
-  * Import Scene
+  * Import Scene Item
   * Export Render Config
-  * Export Scene
+  * Export Scene Item
 - Render Settings
 - Engine Type
   * PATHCPU
@@ -123,6 +125,7 @@ Currently Supported Features
   * Add Node
   * Remove Node
   * Rename Node
+  * Export Node will export the node's properties, including all the properties of node's linked to it, to a scene file
   * Can change the rotation and field-of-view of the viewport camera with the mouse
   * Load multiple ply meshes that will get automatically setup with object, shape and material properties
 
