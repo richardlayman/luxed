@@ -87,7 +87,23 @@ class Property:
 
     def getValue(self):
         return self.value
-    
+
+    def getLinkedNodeNames(self):
+        names = []
+
+        for prop in self.props:
+            for name in prop.getLinkedNodeNames(): 
+                names.append(name)
+
+        if self.vtype is 'texture' or self.vtype is 'spectrum' or self.vtype is 'link':
+            print("looking to add %s to list, value type is:"%self.nname)
+            print(type(self.value[0]))
+            if len(self.value) == 1 and type(self.value[0]) == 'str'.__class__:
+                if self.value[0] not in names:
+                    names.append(self.value[0])
+
+        return names
+
     def addProperty(self,prop):
         self.props.append(prop)
 
@@ -753,6 +769,13 @@ class Node:
         print(out)
         print("END")
         return out
+
+    def getLinkedNodeNames(self):
+        names=[]
+        for prop in self.props:
+            for nname in prop.getLinkedNodeNames():
+                names.append(nname)
+        return names
 
 
 # LUX SCENE
@@ -1512,9 +1535,6 @@ class SceneGraph():
         return ntype,name,vname
 
     def parseSceneFile(self,lines):
-        #print("SCN FILE START")
-        #print(lines)
-        #print("SCN FILE END\nAFTER CLEANUP")
         # cleanup
         setstring = ''
         cname = '' 
@@ -1530,26 +1550,18 @@ class SceneGraph():
                 pre = line[0:i].strip()
                 val = line[i+1:].strip()
                 ntype,name,vname = self.getNodeInfoFromString(pre)
-                #print("IMPORT NODE %s,%s,%s"%(ntype,name,vname))
-                #print("value=")
-                #print(val)
-                if ntype != None and name != None and vname != None:
-                    if cname != name:
-                        node = Node(name,ntype)
-                        nodes.append(node)
-                        cname = name
-                        if vname == 'ply':
-                            self.addProperties(node,'ply')
-                        else:
-                            val = val.replace('"','')
-                            self.addProperties(node,val)
-                    '''
-                    if vname == 'ply':
-                        self.addProperties(node,'ply')
-                    elif vname == 'type':
-                        val = val.replace('"','')
-                        self.addProperties(node,val)
-                    '''
+                # don't add the node if one of the same name already exist
+                if self.isUniqueName(name): 
+                    if ntype != None and name != None and vname != None:
+                        if cname != name:
+                            node = Node(name,ntype)
+                            nodes.append(node)
+                            cname = name
+                            if vname == 'ply':
+                                self.addProperties(node,'ply')
+                            else:
+                                val = val.replace('"','')
+                                self.addProperties(node,val)
         # now we should have all our nodes
         # TODO - we need to add a check to verify all the nodes did import
         self.lux.setProperties(setstring)
@@ -1635,6 +1647,30 @@ class SceneGraph():
         for node in self.nodes:
             out += node.getPropertyString() + '\n'
         return out
+    
+    # this will return all the names of nodes that are linke together
+    def getNodeTree(self,name,tree=[]):
+        # get all the names of the node linked together
+        for node in self.nodes:
+            if node.name == name:
+                if name not in tree:
+                    tree.append(name)
+                    names = node.getLinkedNodeNames()
+                    for name in names:
+                        if name not in tree:
+                            self.getNodeTree(name,tree)
+         
+    def getNodeSceneString(self,name):
+        out=''
+        nodetree=[]
+        self.getNodeTree(name,nodetree)
+
+        for nname in nodetree:
+            for node in self.nodes:
+                if node.name == nname:
+                    out += node.getPropertyString() + '\n'
+        return out
+
 
 
 class LuxWidget(QWidget):
@@ -3198,6 +3234,8 @@ class SceneLayout(QDockWidget):
         self.addBtn = QPushButton("+")
         self.removeBtn = QPushButton("-")
         self.renameBtn = QPushButton("rename")
+        self.exportBtn = QPushButton("export")
+
 
         self.tabs.addTab(self.cameras,"C")
         self.tabs.addTab(self.objects,"O")
@@ -3217,7 +3255,8 @@ class SceneLayout(QDockWidget):
         frame.setLayout(vbox)
         vbox.addWidget(self.tabs)
         vbox.addLayout(hbox)
-
+        vbox.addWidget(self.exportBtn)
+ 
         self.setWidget(frame)
 
         self.addNodeDialog = AddNodeDialog(self.getTabName(self.tabs.currentIndex()),self.lux)
@@ -3234,6 +3273,7 @@ class SceneLayout(QDockWidget):
         self.renameBtn.clicked.connect(self.rename)
         self.addBtn.clicked.connect(self.add)
         self.removeBtn.clicked.connect(self.remove)
+        self.exportBtn.clicked.connect(self.export)
         self.addNodeDialog.nodeAdded.connect(self.addNode)
         self.renameNodeDialog.nodeRenamed.connect(self.renameNode)
         
@@ -3276,6 +3316,13 @@ class SceneLayout(QDockWidget):
     def rename(self):
         self.renameNodeDialog.setCurrentName(self.selectedName)
         self.renameNodeDialog.exec()
+
+    def export(self):
+        filename = QFileDialog.getSaveFileName(None,"Export Scene File",".","Scene File (*.scn)")
+        out = self.lux.sg.getNodeSceneString(self.selectedName)
+        file = open(filename[0],'w')
+        file.write(out)
+        file.close()
  
     def renameNode(self,cname,nname):
         self.lux.sg.renameNode(cname,nname)
@@ -3650,7 +3697,40 @@ class FileNewAction(QAction):
         self.lux.sg.clearScene()
         self.lux.updateScene.emit()
 
- 
+class OpenSceneAction(QAction):
+
+    def __init__(self,lux,parent):
+        super().__init__("Open Scene",parent)
+        self.triggered.connect(self.doit)
+        self.lux = lux
+
+    def doit(self):
+        self.lux.sg.clearScene()
+        self.lux.updateScene.emit()
+        filename = QFileDialog.getOpenFileName(None,"Open Scene File",".","Scene Files (*.scn)")
+        if filename == "":
+            return
+        file = open(filename[0],'r')
+        self.lux.sg.parseSceneFile(file.readlines())
+        file.close()
+        self.lux.updateScene.emit()
+
+class SaveSceneAction(QAction):
+
+    def __init__(self,lux,parent):
+        super().__init__("Save Scene",parent)
+        self.triggered.connect(self.doit)
+        self.lux = lux
+
+    def doit(self):
+        filename = QFileDialog.getSaveFileName(None,"Save Scene File",".","Scene Files (*.scn)")
+        out = self.lux.sg.getSceneString()
+        file = open(filename[0],'w')
+        file.write(out)
+        file.close()
+
+
+
 class AddMeshAction(QAction):
 
     def __init__(self,lux,parent):
@@ -3704,7 +3784,7 @@ class ImportMenu(QMenu):
 
     def __init__(self,lux,parent):
         super().__init__("Import",parent)
-        self.addAction(ImportSceneAction(lux,self))
+        self.addAction(ImportSceneItemsAction(lux,self))
         #self.addAction(ImportPlyAction(lux,self))
 
 class ExportMenu(QMenu):
@@ -3712,13 +3792,14 @@ class ExportMenu(QMenu):
     def __init__(self,lux,parent):
         super().__init__("Export",parent)
         self.addAction(ExportRenderAction(lux,self))
-        self.addAction(ExportSceneAction(lux,self))
+        #self.addAction(ExportSceneItemsAction(lux,self))
+
 
 # IMPORT ACTIONS
-class ImportSceneAction(QAction):
+class ImportSceneItemsAction(QAction):
 
     def __init__(self,lux,parent):
-        super().__init__("Scene",parent)
+        super().__init__("Scene Items",parent)
         self.triggered.connect(self.doit)
         self.lux = lux
 
@@ -3728,6 +3809,7 @@ class ImportSceneAction(QAction):
         self.lux.sg.parseSceneFile(file.readlines())
         file.close()
         self.lux.updateScene.emit()
+
 
 class ImportPlyAction(QAction):
 
@@ -3741,6 +3823,7 @@ class ImportPlyAction(QAction):
 
 
 # EXPORT ACTIONS 
+
 class ExportRenderAction(QAction):
 
     def __init__(self,lux,parent):
@@ -3755,10 +3838,11 @@ class ExportRenderAction(QAction):
         file.write(out)
         file.close()
 
-class ExportSceneAction(QAction):
+
+class ExportSceneItemsAction(QAction):
 
     def __init__(self,lux,parent):
-        super().__init__("Scene",parent)
+        super().__init__("Scene Items",parent)
         self.triggered.connect(self.doit)
         self.lux = lux
 
@@ -3770,11 +3854,14 @@ class ExportSceneAction(QAction):
         file.close()
 
 
+
 class FileMenu(QMenu):
 
     def __init__(self,lux,name):
         super().__init__(name)
         self.addAction(FileNewAction(lux,self))
+        self.addAction(OpenSceneAction(lux,self))
+        self.addAction(SaveSceneAction(lux,self))
         self.addAction(AddMeshAction(lux,self))
         self.addSeparator()
         self.addMenu(ImportMenu(lux,self))
