@@ -1680,14 +1680,14 @@ class LuxWidget(QWidget):
     def __init__(self,width,height):
         super().__init__()
         self.sg = SceneGraph()
-        self.setFixedWidth(self.sg.lux.getWidth())
-        self.setFixedHeight(self.sg.lux.getHeight())
+        #self.setFixedWidth(self.sg.lux.getWidth())
+        #self.setFixedHeight(self.sg.lux.getHeight())
         self.enableCameraRotate = False
         self.enableCameraZoom = False
         self.enableCameraMove = False
         self.mouseX = 0.0
         self.mouseY = 0.0
- 
+
     def paintEvent(self,e):
         qp = QPainter()
         qp.begin(self)
@@ -3905,6 +3905,12 @@ class MainWindow(QMainWindow):
         self.thread = QThread()
         self.lux = LuxWidget(1200,800)        
 
+        self.scrollarea = QScrollArea()
+        self.scrollarea.setWidgetResizable(1)
+        self.scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scrollarea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.scrollarea.setWidget(self.lux)
+
         # Create UI widgets 
         self.sceneLayout = SceneLayout(self.lux)
         self.attributeEditor = NodeEditor(self.lux)
@@ -3925,9 +3931,11 @@ class MainWindow(QMainWindow):
         palette = QPalette()
         palette.setColor(QPalette.Background,QColor(0,0,0))
         luxframe.setPalette(palette)
-
-        luxvbox.addWidget(self.lux,Qt.AlignCenter)
-
+        
+        luxvbox.addWidget(self.scrollarea,Qt.AlignCenter)
+        luxvbox.setContentsMargins(0,0,0,0)
+        luxvbox.setSpacing(0)
+ 
         self.menu = MainMenu(self.lux)
         self.setMenuBar(self.menu)
 
