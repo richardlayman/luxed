@@ -3914,12 +3914,6 @@ class MainWindow(QMainWindow):
         self.thread = QThread()
         self.lux = LuxWidget(1200,800)        
 
-        self.scrollarea = QScrollArea()
-        self.scrollarea.setWidgetResizable(1)
-        self.scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scrollarea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
-        self.scrollarea.setWidget(self.lux)
-
         # Create UI widgets 
         self.sceneLayout = SceneLayout(self.lux)
         self.attributeEditor = NodeEditor(self.lux)
@@ -3932,6 +3926,10 @@ class MainWindow(QMainWindow):
         luxframe = QFrame()
         luxframe.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
         luxvbox = QHBoxLayout()
+        luxvbox.addWidget(self.lux,Qt.AlignCenter)
+        luxvbox.setContentsMargins(0,0,0,0)
+        luxvbox.setSpacing(0)
+ 
         timeeditor = TimeEditor(self.lux)
 
         self.toolbar.addAction(self.renderAct)
@@ -3940,17 +3938,19 @@ class MainWindow(QMainWindow):
         palette = QPalette()
         palette.setColor(QPalette.Background,QColor(0,0,0))
         luxframe.setPalette(palette)
-        
-        luxvbox.addWidget(self.scrollarea,Qt.AlignCenter)
-        luxvbox.setContentsMargins(0,0,0,0)
-        luxvbox.setSpacing(0)
  
+        self.scrollarea = QScrollArea()
+        self.scrollarea.setWidgetResizable(1)
+        self.scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scrollarea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.scrollarea.setWidget(luxframe)
+       
         self.menu = MainMenu(self.lux)
         self.setMenuBar(self.menu)
 
         # Layout UI widgets
         vbox = QVBoxLayout()
-        vbox.addWidget(luxframe,Qt.AlignCenter)
+        vbox.addWidget(self.scrollarea,Qt.AlignCenter)
         vbox.addWidget(timeeditor)
         self.setCentralWidget(frame)
         self.addDockWidget(Qt.RightDockWidgetArea, self.sceneLayout);
