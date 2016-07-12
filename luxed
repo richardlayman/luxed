@@ -1386,7 +1386,16 @@ class SceneGraph():
                  propstring += node.getPropertyString()
             elif node.ntype == 'biaspath' and enginenode.props[0].value[0] == 'BIASPATHCPU':
                  propstring += node.getPropertyString()
-
+            elif node.ntype == 'bidir' and enginenode.props[0].value[0] == 'BIDIRCPU':
+                 propstring += node.getPropertyString()
+            elif node.ntype == 'pathocl' and enginenode.props[0].value[0] == 'PATHOCL':
+                 propstring += node.getPropertyString()
+            elif node.ntype == 'rtpath' and enginenode.props[0].value[0] == 'RTPATHOCL':
+                 propstring += node.getPropertyString()
+            elif node.ntype == 'biaspathocl' and enginenode.props[0].value[0] == 'BIASPATHOCL':
+                 propstring += node.getPropertyString()
+            elif node.ntype == 'rtbiaspathocl' and enginenode.props[0].value[0] == 'RTBIASPATHOCL':
+                 propstring += node.getPropertyString()
 
         # SAMPLER
         samplernode = None
