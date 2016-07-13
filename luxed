@@ -37,6 +37,9 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 # PROPERTIES CONTAINERS
 
+# FILM
+FilmType = ['RGB','RGBA','RGB_TONEMAPPED','RGBA_TONEMAPPED','ALPHA','DEPTH','POSITION','GEOMETRY_NORMAL','SHADING_NORMAL','MATERIAL_ID','DIRECT_DIFFUSE','DIRECT_GLOSSY','EMISSION','INDIRECT_DIFFUSE','INDIRECT_GLOSSY','INDIRECT_SPECULAR','MATERIAL_ID_MASK','DIRECT_SHADOW_MASK','INDIRECT_SHADOW_MASK','RADIANCE_GROUP','UV','RAYCOUNT','RAYCOUNT','BY_MATERIAL_ID','IRRADIANCE','OBJECT_ID','OBJECT_ID_MASK','BY_OBJECT_ID']
+
 # SHAPES 
 ShapesType = ['mesh']
 # MATERIALS
@@ -1089,6 +1092,12 @@ class SceneGraph():
         #self.render = RenderProps()
         self.rendernodes = []
         self.nodes = []
+        self.films = []
+
+        # default film
+        self.films.append({'name':'image','type':0})
+        self.films.append({'name':'depth','type':5})
+
 
         # default camera
         '''
@@ -3384,7 +3393,28 @@ class SceneLayout(QDockWidget):
 
 
 # FILM EDITOR 
+class FilmLayer(QWidget):
+    def __init__(self,name):
+        super().__init__()
+        self.setFixedHeight(30)
+        self.filmtype = QComboBox()
+        for ft in FilmType:
+            self.filmtype.addItem(ft)
+        self.name = QLineEdit(name)
+        self.name.setMinimumWidth(100)
+        self.removeBtn = QPushButton("X")
+        self.removeBtn.setFixedWidth(30)
+ 
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.name)
+        hbox.addWidget(self.filmtype)
+        hbox.addWidget(self.removeBtn)
+        hbox.setContentsMargins(0,0,0,0)
+        hbox.setSpacing(0)
+ 
+        self.setLayout(hbox)
 
+ 
 class FilmEditor(QDockWidget):
 
     def __init__(self,lux):
@@ -3392,6 +3422,37 @@ class FilmEditor(QDockWidget):
         self.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
         self.lux = lux
         self.setWindowTitle("Film")
+
+        self.addBtn = QPushButton("add")
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.addBtn)
+        hbox.setContentsMargins(0,0,0,0)
+        hbox.setSpacing(0)
+ 
+        self.channelBox = QVBoxLayout()
+        self.channelBox.setContentsMargins(0,0,0,0)
+        self.channelBox.setSpacing(0)
+ 
+        self.vbox = QVBoxLayout()
+        self.vbox.addLayout(hbox)
+        self.vbox.addLayout(self.channelBox)
+        self.vbox.addStretch()
+        self.vbox.setContentsMargins(0,0,0,0)
+        self.vbox.setSpacing(0)
+        
+        self.frame = QFrame()
+        self.frame.setLayout(self.vbox)
+        self.scrollarea = QScrollArea(self)
+        self.scrollarea.setWidgetResizable(1)
+        self.scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scrollarea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.scrollarea.setWidget(self.frame)
+        self.setWidget(self.scrollarea)
+
+
+        # testing
+        self.channelBox.addWidget(FilmLayer("imageone"))
+        self.channelBox.addWidget(FilmLayer("imagetwo"))
 
 
 # RENDER SETTINGS
