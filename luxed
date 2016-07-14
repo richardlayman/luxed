@@ -38,7 +38,10 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 # PROPERTIES CONTAINERS
 
 # FILM
-FilmType = ['RGB','RGBA','RGB_TONEMAPPED','RGBA_TONEMAPPED','ALPHA','DEPTH','POSITION','GEOMETRY_NORMAL','SHADING_NORMAL','MATERIAL_ID','DIRECT_DIFFUSE','DIRECT_GLOSSY','EMISSION','INDIRECT_DIFFUSE','INDIRECT_GLOSSY','INDIRECT_SPECULAR','MATERIAL_ID_MASK','DIRECT_SHADOW_MASK','INDIRECT_SHADOW_MASK','RADIANCE_GROUP','UV','RAYCOUNT','RAYCOUNT','BY_MATERIAL_ID','IRRADIANCE','OBJECT_ID','OBJECT_ID_MASK','BY_OBJECT_ID']
+FilmOutputType = ['RGB','RGBA','RGB_TONEMAPPED','RGBA_TONEMAPPED','ALPHA','DEPTH','POSITION','GEOMETRY_NORMAL','SHADING_NORMAL','MATERIAL_ID','DIRECT_DIFFUSE','DIRECT_GLOSSY','EMISSION','INDIRECT_DIFFUSE','INDIRECT_GLOSSY','INDIRECT_SPECULAR','MATERIAL_ID_MASK','DIRECT_SHADOW_MASK','INDIRECT_SHADOW_MASK','RADIANCE_GROUP','UV','RAYCOUNT','RAYCOUNT','BY_MATERIAL_ID','IRRADIANCE','OBJECT_ID','OBJECT_ID_MASK','BY_OBJECT_ID']
+FilmImagePipelineType = ['TONEMAP_LINEAR','TONEMAP_REINHARD02','TONEMAP_AUTOLINEAR','TONEMAP_LUXLINEAR','NOP','GAMMA_CORRECTION','OUTPUT_SWITCHER','GAUSSIANFILTER_3x3','CAMERA_RESPONSE_FUNC','BACKGROUND_IMG','BLOOM','VEGNETTING','COLOR_ABERRATION']
+FilmImagePipelineChannelType = ['RADIANCE_PER_PIXEL_NORMALIZED','RADIANCE_PER_SCREEN_NORMALIZED','ALPHA','RGB_TONEMAPPED','DEPTH','POSITION','GEOMETRY_NORMAL','SHADING_NORMAL','MATERIAL_ID','DIRECT_DIFFUSE','DIRECT_GLOSSY','EMISSION','INDIRECT_DIFFUSE','INDIRECT_SPECULAR','MATERIAL_ID_MASK','DIRECT_SHADOW_MASK','INDIRECT_SHADOW_MASK','UV','RAYCOUNT','BY_MATERIAL_ID','IRRADIANCE','OBJECT_ID','OBJECT_ID_MASK','BY_OBJECT_ID']
+
 
 # SHAPES 
 ShapesType = ['mesh']
@@ -202,6 +205,10 @@ class Property:
     def getCallString(self):
         if self.nname is None or self.ntype is None:
             return ''
+        elif self.ntype is 'output':
+            return "film.output.%s"%self.vname
+        elif self.ntype is 'imagepipeline':
+            return "film.imagepipeline.%s"%self.vname
         elif self.ntype is 'camera':
             return "scene.camera.%s"%self.vname
         elif self.ntype is 'shapes':
@@ -237,7 +244,11 @@ class Property:
 
         print("ADDING PROP %s"%self.value[0])
 
-        if self.ntype == 'camera':
+        if self.ntype == 'output':
+            self.initOutputProperties()
+        elif self.ntype == 'pipeline':
+            self.initPipelineProperties()
+        elif self.ntype == 'camera':
             self.initCameraProperties()
         elif self.ntype == 'shapes':
             self.initShapesProperties()
@@ -249,6 +260,49 @@ class Property:
             self.initLightsProperties()
         elif self.ntype == 'volumes':
             self.initVolumesProperties()
+
+    def initOutputProperties(self):
+        node.props.append(Property('output',self.nname,'index','int',None,None,None,0,""))
+        node.props.append(Property('output',self.nname,'filename','file',None,None,None,['image.png'],""))
+
+
+    def initPipelineProperties(self):
+        if self.value[0] == 'TONEMAP_LINEAR':
+            self.props.append(Property('imagepipeline',self.nname,'scale','float',None,None,None,1.0,""))
+        elif self.value[0] == 'TONEMAP_REINHARD02':
+            self.props.append(Property('imagepipeline',self.nname,'prescale','float',None,None,None,1.0,""))
+            self.props.append(Property('imagepipeline',self.nname,'postscale','float',None,None,None,1.2,""))
+            self.props.append(Property('imagepipeline',self.nname,'burn','float',None,None,None,3.75,""))
+        elif self.value[0] == 'TONEMAP_AUTOLINEAR':
+            pass
+        elif self.value[0] == 'TONEMAP_LUXLINEAR':
+            self.props.append(Property('imagepipeline',self.nname,'sensitivity','float',None,None,None,100.0,""))
+            self.props.append(Property('imagepipeline',self.nname,'exposure','float',None,None,None,0.001,""))
+            self.props.append(Property('imagepipeline',self.nname,'fstop','float',None,None,None,2.8,""))
+        elif self.value[0] == 'NOP':
+            pass
+        elif self.value[0] == 'GAMMA_CORRECTION':
+            self.props.append(Property('imagepipeline',self.nname,'value','float',None,None,None,2.2,""))
+            self.props.append(Property('imagepipeline',self.nname,'table.size','int',None,0,None,4096,""))
+        elif self.value[0] == 'OUTPUT_SWITCHER':
+            self.props.append(Property('imagepipeline',self.nname,'channel','option',None,None,None,['DEPTH'],"",FilmImagePipelineChannelType))
+            self.props.append(Property('imagepipeline',self.nname,'index','int',None,0,None,0,""))
+        elif self.value[0] == 'GAUSSIANFILTER_3x3':
+            self.props.append(Property('imagepipeline',self.nname,'weight','float',None,None,None,0.15,""))
+        elif self.value[0] == 'CAMERA_RESPONSE_FUNC':
+            self.props.append(Property('imagepipeline',self.nname,'name','string',None,None,None,['Advantix_100CD'],""))
+        elif self.value[0] == 'BACKGROUND_IMG':
+            self.props.append(Property('imagepipeline',self.nname,'file','float',None,None,None,['image.png'],""))
+            self.props.append(Property('imagepipeline',self.nname,'gamma','float',None,None,None,1.0,""))
+            self.props.append(Property('imagepipeline',self.nname,'scale','string',None,None,None,['auto'],""))
+        elif self.value[0] == 'BLOOM':
+            self.props.append(Property('imagepipeline',self.nname,'radius','float',None,None,None,0.07,""))
+            self.props.append(Property('imagepipeline',self.nname,'weight','float',None,None,None,0.25,""))
+        elif self.value[0] == 'VEGNETTING':
+            self.props.append(Property('imagepipeline',self.nname,'scale','float',None,None,None,0.4,""))
+        elif self.value[0] == 'COLOR_ABERRATION':
+            self.props.append(Property('imagepipeline',self.nname,'amount','float',None,None,None,0.005,""))
+
 
     def initCameraProperties(self):
         node.props.append(Property('camera',name,'lookat.orig','point',None,None,None,[0,1,-1],""))
@@ -1080,6 +1134,7 @@ class Lux(QThread):
                         for v in val:
                             prop.value.append(float(v))
                 prop.enabled = 1
+
 
 # SCENEGRAPH
 
@@ -3398,7 +3453,7 @@ class FilmLayer(QWidget):
         super().__init__()
         self.setFixedHeight(30)
         self.filmtype = QComboBox()
-        for ft in FilmType:
+        for ft in FilmOutputType:
             self.filmtype.addItem(ft)
         self.name = QLineEdit(name)
         self.name.setMinimumWidth(100)
