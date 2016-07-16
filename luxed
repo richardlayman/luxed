@@ -1147,7 +1147,6 @@ class SceneGraph():
         #self.render = RenderProps()
         self.rendernodes = []
         self.filmoutputs = []
-        self.filmimagepipelines = []
         self.nodes = []
 
 
@@ -1330,14 +1329,10 @@ class SceneGraph():
 
         # FILM OUTPUT
         output = Node('0','outputs')
-        self.addProperties(output,'RGB_TONEMAPPED')
-        self.filmoutputs.append(output)
-
-        # FILM OUTPUT
         imagepipeline = Node('0.0','imagepipelines')
+        self.addProperties(output,'RGB_TONEMAPPED')
         self.addProperties(imagepipeline,'TONEMAP_LINEAR')
-        self.filmimagepipelines.append(imagepipeline)
-
+        self.filmoutputs.append({'output':output,'imagepipelines':[imagepipeline]})
 
         # ADD TO RENDERNODES
  
@@ -1363,6 +1358,18 @@ class SceneGraph():
         self.rendernodes.append(filterblackmanharris)
         # film
         self.rendernodes.append(film)
+
+    def getFilmOutputCount(self):
+        return len(self.filmoutputs)
+
+    def getFilmOutputs(self):
+        return self.filmoutputs
+
+    def getFilmOutput(self,oid):
+        return self.filmoutputs[oid]['output']
+
+    def getFilmImagePipelines(self,oid):
+        return self.filmoutputs[oid]['imagepipelines']
 
     def start(self):
         self.lux.startRendering() 
@@ -1490,10 +1497,9 @@ class SceneGraph():
                 propstring += node.getPropertyString()
 
         for node in self.filmoutputs:
-            propstring += node.getPropertyString()
-
-        for node in self.filmimagepipelines:
-            propstring += node.getPropertyString()
+            propstring += node['output'].getPropertyString()
+            for ip in node['imagepipelines']:
+                propstring += ip.getPropertyString()
 
         return propstring
 
@@ -3479,27 +3485,123 @@ class SceneLayout(QDockWidget):
         self.nodeSelected.emit(item.text())
 
 
-# FILM EDITOR 
-class FilmLayer(QWidget):
-    def __init__(self,name):
+# FILM EDITOR
+class FilmImagePipelineWidget(QFrame):
+    def __init__(self,ipid,node,sg):
         super().__init__()
-        self.setFixedHeight(30)
-        self.filmtype = QComboBox()
-        for ft in FilmOutputType:
-            self.filmtype.addItem(ft)
-        self.name = QLineEdit(name)
-        self.name.setMinimumWidth(100)
+        self.ipid = ipid
+        self.node = node
+        self.sg = sg
+        #self.setFixedHeight(30)
+        self.imagepipelinetype = QComboBox()
+        self.palette = QPalette()
+        self.palette.setColor(QPalette.Button,QColor(0,0,255))
+        self.imagepipelinetype.setPalette(self.palette)
+
+        for ft in FilmImagePipelineType:
+            self.imagepipelinetype.addItem(ft)
+
+        self.name = QLabel("%s"%ipid)
+        self.name.setMinimumWidth(20)
+
         self.removeBtn = QPushButton("X")
         self.removeBtn.setFixedWidth(30)
+        self.removeBtn.setToolTip("remove layer")
  
         hbox = QHBoxLayout()
+        hbox.addStretch()
         hbox.addWidget(self.name)
-        hbox.addWidget(self.filmtype)
+        hbox.addWidget(self.imagepipelinetype)
         hbox.addWidget(self.removeBtn)
         hbox.setContentsMargins(0,0,0,0)
         hbox.setSpacing(0)
  
         self.setLayout(hbox)
+
+        self.removeBtn.clicked.connect(self.remove)
+        
+        self.load()
+
+    def load(self):
+        iptype = self.node.getProperty('type').value[0]
+        cipid = 0
+        for ip in FilmImagePipelineType:
+            if ip == iptype:
+                self.imagepipelinetype.setCurrentIndex(cipid)
+            else:
+                cipid+=1
+
+    def remove(self):
+        pass
+
+ 
+class FilmLayer(QFrame):
+    def __init__(self,oid,sg):
+        super().__init__()
+        self.oid = oid
+        self.sg = sg
+        self.setFixedHeight(30)
+        self.filmtype = QComboBox()
+        self.palette = QPalette()
+        self.palette.setColor(QPalette.Button,QColor(0,255,0))
+        self.filmtype.setPalette(self.palette)
+
+        for ft in FilmOutputType:
+            self.filmtype.addItem(ft)
+
+        self.name = QLabel("%s"%oid)
+        self.name.setMinimumWidth(20)
+
+        self.removeBtn = QPushButton("X")
+        self.removeBtn.setFixedWidth(30)
+        self.removeBtn.setToolTip("remove layer")
+        self.addBtn = QPushButton("+")
+        self.addBtn.setFixedWidth(30)
+        self.addBtn.setToolTip("add image pipeline")
+ 
+        hbox = QHBoxLayout()
+        hbox.addStretch()
+        hbox.addWidget(self.name)
+        hbox.addWidget(self.filmtype)
+        hbox.addWidget(self.removeBtn)
+        hbox.setContentsMargins(0,0,0,0)
+        hbox.setSpacing(0)
+
+        self.imagepipelines = QVBoxLayout()
+ 
+        vbox = QVBoxLayout()
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+        vbox.addLayout(hbox)
+        vbox.addLayout(self.imagepipelines) 
+        self.setLayout(vbox)
+
+        self.removeBtn.clicked.connect(self.remove)
+        self.addBtn.clicked.connect(self.add)
+
+        self.load()
+
+    def load(self):
+        self.name.setText("%s"%self.oid)
+        output = self.sg.getFilmOutput(self.oid)
+        imagepipelines = self.sg.getFilmImagePipelines(self.oid)
+        otype = output.getProperty('type').value[0]
+        otid = 0
+        for o in FilmOutputType:
+            if o ==  otype:
+                self.filmtype.setCurrentIndex(otid)
+                ipid = 0
+                for ip in imagepipelines:
+                    self.imagepipelines.addWidget(FilmImagePipelineWidget(ipid,ip,self.sg))
+                    ipid+=1
+            else:
+                otid+=1
+
+    def remove(self):
+        pass
+
+    def add(self):
+        pass
 
  
 class FilmEditor(QDockWidget):
@@ -3536,11 +3638,13 @@ class FilmEditor(QDockWidget):
         self.scrollarea.setWidget(self.frame)
         self.setWidget(self.scrollarea)
 
+        self.load()
 
-        # testing
-        self.channelBox.addWidget(FilmLayer("imageone"))
-        self.channelBox.addWidget(FilmLayer("imagetwo"))
-
+    def load(self):
+        oid = 0
+        for output in self.lux.sg.getFilmOutputs():
+            self.channelBox.addWidget(FilmLayer(oid,self.lux.sg))
+            oid+=1
 
 # RENDER SETTINGS
 
