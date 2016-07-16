@@ -39,7 +39,7 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 
 # FILM
 FilmOutputType = ['RGB','RGBA','RGB_TONEMAPPED','RGBA_TONEMAPPED','ALPHA','DEPTH','POSITION','GEOMETRY_NORMAL','SHADING_NORMAL','MATERIAL_ID','DIRECT_DIFFUSE','DIRECT_GLOSSY','EMISSION','INDIRECT_DIFFUSE','INDIRECT_GLOSSY','INDIRECT_SPECULAR','MATERIAL_ID_MASK','DIRECT_SHADOW_MASK','INDIRECT_SHADOW_MASK','RADIANCE_GROUP','UV','RAYCOUNT','RAYCOUNT','BY_MATERIAL_ID','IRRADIANCE','OBJECT_ID','OBJECT_ID_MASK','BY_OBJECT_ID']
-FilmImagePipelineType = ['TONEMAP_LINEAR','TONEMAP_REINHARD02','TONEMAP_AUTOLINEAR','TONEMAP_LUXLINEAR','NOP','GAMMA_CORRECTION','OUTPUT_SWITCHER','GAUSSIANFILTER_3x3','CAMERA_RESPONSE_FUNC','BACKGROUND_IMG','BLOOM','VEGNETTING','COLOR_ABERRATION']
+FilmImagePipelineType = ['TONEMAP_LINEAR','TONEMAP_REINHARD02','TONEMAP_AUTOLINEAR','TONEMAP_LUXLINEAR','NOP','GAMMA_CORRECTION','OUTPUT_SWITCHER','GAUSSIANFILTER_3x3','CAMERA_RESPONSE_FUNC','BACKGROUND_IMG','BLOOM','VIGNETTING','COLOR_ABERRATION']
 FilmImagePipelineChannelType = ['RADIANCE_PER_PIXEL_NORMALIZED','RADIANCE_PER_SCREEN_NORMALIZED','ALPHA','RGB_TONEMAPPED','DEPTH','POSITION','GEOMETRY_NORMAL','SHADING_NORMAL','MATERIAL_ID','DIRECT_DIFFUSE','DIRECT_GLOSSY','EMISSION','INDIRECT_DIFFUSE','INDIRECT_SPECULAR','MATERIAL_ID_MASK','DIRECT_SHADOW_MASK','INDIRECT_SHADOW_MASK','UV','RAYCOUNT','BY_MATERIAL_ID','IRRADIANCE','OBJECT_ID','OBJECT_ID_MASK','BY_OBJECT_ID']
 
 
@@ -298,7 +298,7 @@ class Property:
         elif self.value[0] == 'BLOOM':
             self.props.append(Property('imagepipelines',self.nname,'radius','float',None,None,None,0.07,""))
             self.props.append(Property('imagepipelines',self.nname,'weight','float',None,None,None,0.25,""))
-        elif self.value[0] == 'VEGNETTING':
+        elif self.value[0] == 'VIGNETTING':
             self.props.append(Property('imagepipelines',self.nname,'scale','float',None,None,None,0.4,""))
         elif self.value[0] == 'COLOR_ABERRATION':
             self.props.append(Property('imagepipelines',self.nname,'amount','float',None,None,None,0.005,""))
@@ -1527,7 +1527,7 @@ class SceneGraph():
         node.name = newname
         self.nodes.append(node)
  
-    def addNode(self,name,ntype,subtype):
+    def addNode(self,name,ntype,subtype,section='scene'):
         node = None
 
         for n in self.nodes:
@@ -1536,15 +1536,21 @@ class SceneGraph():
                 n.clearProperties()
                 self.addProperties(n,subtype)
                 node = n
-                self.lux.setSceneProperties(node.getPropertyString())
+                if section == 'scene':
+                    self.lux.setSceneProperties(node.getPropertyString())
+                else:
+                    self.lux.setRenderProperties(node.getPropertyString())
             elif n.name == name:    
                 print("node with name already exist but not of the same type")
 
         if node is None:
             name = self.getUniqueName(name)
-            node = Node(name,ntype)
+            node = Node(name,ntype,section)
             self.addProperties(node,subtype)
-            self.lux.setSceneProperties(node.getPropertyString())
+            if section == 'scene':
+                self.lux.setSceneProperties(node.getPropertyString())
+            else:
+                self.lux.setRenderProperties(node.getPropertyString())
             if ntype == 'outputs' or ntype == 'imagepipelines':
                 self.rendernodes.append(node)
             else:
@@ -1656,11 +1662,17 @@ class SceneGraph():
                                 self.addProperties(node,val)
         # now we should have all our nodes
         # TODO - we need to add a check to verify all the nodes did import
-        self.lux.setSceneProperties(setstring)
+        if node.section == 'scene':
+            self.lux.setSceneProperties(setstring)
+        else:
+            self.lux.setRenderProperties(setstring)
         for n in nodes:
             #print("add node %s to the sg"%n.name)
             self.lux.fillInProperties(n)
-            self.lux.setSceneProperties(n.getPropertyString())
+            if node.section == 'scene':
+                self.lux.setSceneProperties(n.getPropertyString())
+            else:
+                self.lux.setRenderProperties(n.getPropertyString())
             self.nodes.append(n)
 
         return True
@@ -3131,7 +3143,7 @@ class NodeAttributeLoader(QWidget):
         for prop in props:
             if prop.vname == 'type':
                 self.subtype = prop.value[0]
-        self.node = self.lux.sg.addNode(self.node.name,self.node.ntype,self.subtype)
+        self.node = self.lux.sg.addNode(self.node.name,self.node.ntype,self.subtype,self.node.section)
         self.updateNode()
         self.load(self.node)
 
@@ -3526,6 +3538,7 @@ class FilmImagePipelineWidget(QFrame):
         self.load()
 
     def load(self):
+        self.name.setText(self.node.name)
         iptype = self.node.getProperty('type').value[0]
         cipid = 0
         for ip in FilmImagePipelineType:
@@ -3588,6 +3601,7 @@ class FilmLayer(QFrame):
     def load(self):
         self.name.setText("%s"%self.oid)
         output = self.lux.sg.getFilmOutput(self.oid)
+        self.name.setText(output.name)
         imagepipelines = self.lux.sg.getFilmImagePipelines(self.oid)
         otype = output.getProperty('type').value[0]
         otid = 0
@@ -3595,8 +3609,8 @@ class FilmLayer(QFrame):
             if o ==  otype:
                 self.filmtype.setCurrentIndex(otid)
                 ipid = 0
-                for ip in imagepipelines:
-                    self.imagepipelines.addWidget(FilmImagePipelineWidget(ipid,ip,self.lux))
+                for node in imagepipelines:
+                    self.imagepipelines.addWidget(FilmImagePipelineWidget(ipid,node,self.lux))
                     ipid+=1
             else:
                 otid+=1
