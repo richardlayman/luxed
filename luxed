@@ -246,7 +246,7 @@ class Property:
 
         if self.ntype == 'outputs':
             self.initOutputsProperties()
-        elif self.ntype == 'pipelines':
+        elif self.ntype == 'imagepipelines':
             self.initPipelinesProperties()
         elif self.ntype == 'camera':
             self.initCameraProperties()
@@ -776,9 +776,10 @@ class Property:
 # NODE
 class Node:
 
-    def __init__(self,name=None,ntype=None):
+    def __init__(self,name=None,ntype=None,section='scene'):
         self.name = name
         self.ntype = ntype # 'camera','lights','textures','materials','objects','shapes','volumes' 
+        self.section = section # Is this node for the scene or render section: 'scene' or 'render' 
         self.props = []
 
     def clear(self):
@@ -802,13 +803,6 @@ class Node:
             outprop = prop.getProperty(name)
             if outprop is not None:
                 return outprop 
-            '''
-            if name == prop.vname:
-                print("found prop %s"%name)
-                return prop
-            else:
-                if prop.getProperty(name).vname
-            '''
         return None
 
     def getProperties(self):
@@ -943,25 +937,23 @@ class Lux(QThread):
     # When the AE is first loaded it will load the properties for lux and then this method will get called
     # for each property.
     # It will ask lux if the property exists and add it if it doesn't.   
-    '''
-    def verifyProperty(self,name,prop):
-        if self.scnprops.IsDefined(name) is False:
-            print(name + " is missing. Adding it")
-            if prop.type == 'string' or prop.type == 'link' or prop.type == 'option':
-                self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
-            if prop.type == 'bool' or prop.type == 'int' or prop.type == 'u_int':
-                self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
-            if prop.type == 'float' or prop.type == 'double' or prop.type == 'u_longlong' or prop.type == 'spectrum':
-                self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
-            if prop.type == 'uv':
-                self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]]))
-            if prop.type == 'point':
-                self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
-            if prop.type == 'vector':
-                self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]],prop.value[2]))
-            if prop.type == 'texture':
-                self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
-    '''
+    #def verifyProperty(self,name,prop):
+    #    if self.scnprops.IsDefined(name) is False:
+    #        print(name + " is missing. Adding it")
+    #        if prop.type == 'string' or prop.type == 'link' or prop.type == 'option':
+    #            self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
+    #        if prop.type == 'bool' or prop.type == 'int' or prop.type == 'u_int':
+    #            self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
+    #        if prop.type == 'float' or prop.type == 'double' or prop.type == 'u_longlong' or prop.type == 'spectrum':
+    #            self.scnprops.Set(pyluxcore.Property(name, [prop.value]))
+    #        if prop.type == 'uv':
+    #            self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]]))
+    #        if prop.type == 'point':
+    #            self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
+    #        if prop.type == 'vector':
+    #            self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1]],prop.value[2]))
+    #        if prop.type == 'texture':
+    #            self.scnprops.Set(pyluxcore.Property(name, [prop.value[0],prop.value[1],prop.value[2]]))
 
     def changeSize(self,width,height):
         print("CHANGE SIZE")
@@ -981,7 +973,7 @@ class Lux(QThread):
         self.session = pyluxcore.RenderSession(self.config)
         self.session.Start()
 
-    def setProperties(self,propstring):
+    def setSceneProperties(self,propstring):
         self.session.BeginSceneEdit()
         try:
             self.scene.Parse(self.sceneprops.SetFromString(propstring))
@@ -991,8 +983,8 @@ class Lux(QThread):
             pass 
         self.session.EndSceneEdit()
         self.writeImage()
-   
-    def setRenderSettings(self,propstring):
+ 
+    def setRenderProperties(self,propstring):
         # Stop the rendering
         self.session.Stop()
         self.session = None
@@ -1165,7 +1157,7 @@ class SceneGraph():
         '''
 
         self.initRenderNodes()
-        #self.lux.setRenderSettings(self.render.getPropertyString)
+        #self.lux.setRenderProperties(self.render.getPropertyString)
 
     def initRenderNodes(self):
         # render engine
@@ -1328,8 +1320,8 @@ class SceneGraph():
 
 
         # FILM OUTPUT
-        output = Node('0','outputs')
-        imagepipeline = Node('0.0','imagepipelines')
+        output = Node('0','outputs','render')
+        imagepipeline = Node('0.0','imagepipelines','render')
         self.addProperties(output,'RGB_TONEMAPPED')
         self.addProperties(imagepipeline,'TONEMAP_LINEAR')
         self.filmoutputs.append({'output':output,'imagepipelines':[imagepipeline]})
@@ -1503,12 +1495,15 @@ class SceneGraph():
 
         return propstring
 
-    def setRenderSettings(self):
-        self.lux.setRenderSettings(self.getRenderSettings())
+    def setRenderProperties(self):
+        self.lux.setRenderProperties(self.getRenderSettings())
 
     def updateNode(self,node):
-        self.lux.setProperties(node.getPropertyString())
-
+        if node.section == 'scene':
+            self.lux.setSceneProperties(node.getPropertyString())
+        else:
+            self.lux.setRenderProperties(node.getPropertyString())
+ 
     def updateAllNodes(self):
         for node in self.nodes:
             self.updateNode(node)
@@ -1541,7 +1536,7 @@ class SceneGraph():
                 n.clearProperties()
                 self.addProperties(n,subtype)
                 node = n
-                self.lux.setProperties(node.getPropertyString())
+                self.lux.setSceneProperties(node.getPropertyString())
             elif n.name == name:    
                 print("node with name already exist but not of the same type")
 
@@ -1549,7 +1544,7 @@ class SceneGraph():
             name = self.getUniqueName(name)
             node = Node(name,ntype)
             self.addProperties(node,subtype)
-            self.lux.setProperties(node.getPropertyString())
+            self.lux.setSceneProperties(node.getPropertyString())
             if ntype == 'outputs' or ntype == 'imagepipelines':
                 self.rendernodes.append(node)
             else:
@@ -1661,11 +1656,11 @@ class SceneGraph():
                                 self.addProperties(node,val)
         # now we should have all our nodes
         # TODO - we need to add a check to verify all the nodes did import
-        self.lux.setProperties(setstring)
+        self.lux.setSceneProperties(setstring)
         for n in nodes:
             #print("add node %s to the sg"%n.name)
             self.lux.fillInProperties(n)
-            self.lux.setProperties(n.getPropertyString())
+            self.lux.setSceneProperties(n.getPropertyString())
             self.nodes.append(n)
 
         return True
@@ -1836,8 +1831,8 @@ class LuxWidget(QWidget):
     def getTriCount(self):
         return self.sg.lux.getTriCount()
 
-    def setRenderSettings(self):
-        self.sg.setRenderSettings()
+    def setRenderProperties(self):
+        self.sg.setRenderProperties()
         self.setFixedWidth(self.sg.lux.getWidth())
         self.setFixedHeight(self.sg.lux.getHeight())
 
@@ -3196,7 +3191,7 @@ class NodeEditor(QDockWidget):
         pass
         #self.node = self.attributes.node
         #self.attributes.load(self.node)
-        #self.lux.sg.lux.setProperties(self.node.getPropertyString())
+        #self.lux.sg.lux.setSceneProperties(self.node.getPropertyString())
         #self.nodeChanged.emit()
  
 
@@ -3487,11 +3482,11 @@ class SceneLayout(QDockWidget):
 
 # FILM EDITOR
 class FilmImagePipelineWidget(QFrame):
-    def __init__(self,ipid,node,sg):
+    def __init__(self,ipid,node,lux):
         super().__init__()
         self.ipid = ipid
         self.node = node
-        self.sg = sg
+        self.lux = lux 
         #self.setFixedHeight(30)
         self.imagepipelinetype = QComboBox()
         self.palette = QPalette()
@@ -3508,6 +3503,8 @@ class FilmImagePipelineWidget(QFrame):
         self.removeBtn.setFixedWidth(30)
         self.removeBtn.setToolTip("remove layer")
  
+        self.attributeLoader = NodeAttributeLoader(self.lux,self.node)
+
         hbox = QHBoxLayout()
         hbox.addStretch()
         hbox.addWidget(self.name)
@@ -3515,8 +3512,14 @@ class FilmImagePipelineWidget(QFrame):
         hbox.addWidget(self.removeBtn)
         hbox.setContentsMargins(0,0,0,0)
         hbox.setSpacing(0)
- 
-        self.setLayout(hbox)
+
+        vbox = QVBoxLayout()
+        vbox.addLayout(hbox)
+        vbox.addWidget(self.attributeLoader)
+        vbox.setContentsMargins(0,0,0,0)
+        vbox.setSpacing(0)
+
+        self.setLayout(vbox)
 
         self.removeBtn.clicked.connect(self.remove)
         
@@ -3530,17 +3533,18 @@ class FilmImagePipelineWidget(QFrame):
                 self.imagepipelinetype.setCurrentIndex(cipid)
             else:
                 cipid+=1
+        self.attributeLoader.load(self.node)
 
     def remove(self):
         pass
 
  
 class FilmLayer(QFrame):
-    def __init__(self,oid,sg):
+    def __init__(self,oid,lux):
         super().__init__()
         self.oid = oid
-        self.sg = sg
-        self.setFixedHeight(30)
+        self.lux = lux 
+        #self.setFixedHeight(30)
         self.filmtype = QComboBox()
         self.palette = QPalette()
         self.palette.setColor(QPalette.Button,QColor(0,255,0))
@@ -3583,8 +3587,8 @@ class FilmLayer(QFrame):
 
     def load(self):
         self.name.setText("%s"%self.oid)
-        output = self.sg.getFilmOutput(self.oid)
-        imagepipelines = self.sg.getFilmImagePipelines(self.oid)
+        output = self.lux.sg.getFilmOutput(self.oid)
+        imagepipelines = self.lux.sg.getFilmImagePipelines(self.oid)
         otype = output.getProperty('type').value[0]
         otid = 0
         for o in FilmOutputType:
@@ -3592,7 +3596,7 @@ class FilmLayer(QFrame):
                 self.filmtype.setCurrentIndex(otid)
                 ipid = 0
                 for ip in imagepipelines:
-                    self.imagepipelines.addWidget(FilmImagePipelineWidget(ipid,ip,self.sg))
+                    self.imagepipelines.addWidget(FilmImagePipelineWidget(ipid,ip,self.lux))
                     ipid+=1
             else:
                 otid+=1
@@ -3643,7 +3647,7 @@ class FilmEditor(QDockWidget):
     def load(self):
         oid = 0
         for output in self.lux.sg.getFilmOutputs():
-            self.channelBox.addWidget(FilmLayer(oid,self.lux.sg))
+            self.channelBox.addWidget(FilmLayer(oid,self.lux))
             oid+=1
 
 # RENDER SETTINGS
@@ -3900,7 +3904,7 @@ class RenderSettings(QDockWidget):
 
     def updateSettings(self):
         print("Updating Render Settings")
-        self.lux.setRenderSettings()
+        self.lux.setRenderProperties()
 
 class TimeEditor(QWidget):
     frameChanged = pyqtSignal(['int'])
@@ -4240,7 +4244,7 @@ class MainWindow(QMainWindow):
         # Create a default material
         #matstring = "scene.materials.luxed_default_mat.type = \"matte\"\n"
         #matstring += "scene.materials.luxed_default_mat.kd = 1 1 1\n"
-        #self.lux.sg.lux.setProperties(matstring)
+        #self.lux.sg.lux.setSceneProperties(matstring)
 
         self.attributeEditor.nodeChanged.connect(self.updateSceneLayout)
         self.lux.updateScene.connect(self.updateScene)
