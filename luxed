@@ -979,7 +979,12 @@ class Lux(QThread):
             self.scene.Parse(self.sceneprops.SetFromString(propstring))
             print("setProperty() PASSED!!!!!!\n[START]\n%s[END]"%propstring)
         except RuntimeError:
-            print("setProperty() FAILED!!!!!!\n[START]\n%s[END]"%propstring)
+            msg = "setProperty() FAILED!!!!!!\n[START]\n%s[END]"%propstring
+ 
+            file = open('~/luxed.log','w')
+            file.write(msg)
+            file.close()
+            print(msg)
             pass 
         self.session.EndSceneEdit()
         self.writeImage()
