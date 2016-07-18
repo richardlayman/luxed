@@ -1767,9 +1767,45 @@ class SceneGraph():
  
     def getSceneString(self):
         out = ''
+
+        # we're going to cleanup the nodes so that everything will be exported in sections and in proper order
+        camout = ''
+        objout = ''
+        shpout = ''
+        matheadout = ''
+        mattailout = ''
+        texheadout = ''
+        textailout = ''
+        litout = ''
+        volout = ''
+
         for node in self.nodes:
-            out += node.getPropertyString() + '\n'
-        return out
+            if node.ntype == 'camera':
+                camout += node.getPropertyString() + '\n'
+            elif node.ntype == 'objects':
+                objout += node.getPropertyString() + '\n'
+            elif node.ntype == 'shapes':
+                shpout += node.getPropertyString() + '\n'
+            elif node.ntype == 'materials':
+                # this is a temp fix for the issue of they mix type failing if names not set before use
+                if node.getProperty('type').value[0] == 'mix':
+                    mattailout += node.getPropertyString() + '\n'
+                else:
+                    matheadout += node.getPropertyString() + '\n'
+            elif node.ntype == 'textures':
+                # this is a temp fix for the issue of they mix type failing if names not set before use
+                if node.getProperty('type').value[0] == 'mix':
+                    textailout += node.getPropertyString() + '\n'
+                else:
+                    texheadout += node.getPropertyString() + '\n'
+            elif node.ntype == 'lights':
+                litout += node.getPropertyString() + '\n'
+            elif node.ntype == 'volumes':
+                volout += node.getPropertyString() + '\n'
+            elif node.ntype == 'shapes':
+                shpout += node.getPropertyString() + '\n'
+            
+        return camout + '\n' + volout + '\n' + litout + '\n' + texheadout + '\n' + textailout + '\n' + matheadout + '\n'+ mattailout + '\n' + shpout + '\n' + objout + '\n'
     
     # this will return all the names of nodes that are linke together
     def getNodeTree(self,name,tree=[]):
