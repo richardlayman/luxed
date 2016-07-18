@@ -981,7 +981,7 @@ class Lux(QThread):
         except RuntimeError:
             msg = "setProperty() FAILED!!!!!!\n[START]\n%s[END]"%propstring
  
-            file = open('luxed.log','wa')
+            file = open('luxed.log','a')
             file.write(msg)
             file.close()
             print(msg)
