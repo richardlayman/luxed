@@ -13,6 +13,11 @@ Installation
 ---------------
 LuxEd is a single python file that you can run straight from the folder. You will need to have the LuxRays 1.6, Python 3.5, Qt 5.6 and PyQt5 installed. You might be able to get by with lower versions of Python and Qt but you should have the latest LuxRays since the API is changing constantly. LuxEd was developed and tested on Linux but should work fine on any other operating systems.
 
+Creating New Scenes
+---------------
+![LuxEd](https://raw.githubusercontent.com/richardlayman/luxed/master/fan.png)
+When you first start the application, the scene is totally blank. You can quickly add ply meshes using File - Add Mesh  which will import all selected ply meshes and create their respective objects, shapes and materials. You will still need to add a camera and volume before the scene is ready to render. All materials look for a volume named 'default\_volume' so you'll need to make at least one volume with that name. Of course you'll need to set the emission on a shape, or add a light, before the scene will show up.
+
 Currently Supported Features
 ---------------
 - File IO
@@ -45,8 +50,49 @@ Currently Supported Features
   * BLACKMANHARRIS
 - Light Strategy
   * TODO
-- Film
-  * TODO
+- Film Output (can not change yet; can only use RGB\_TONEMAPPED currently)
+  * RGB
+  * RGBA
+  * RGB\_TONEMAPPED
+  * RGBA\_TONEMAPPED
+  * ALPHA
+  * DEPTH
+  * POSITION
+  * GEOMETRY\_NORMAL
+  * SHADING\_NORMAL
+  * MATERIAL\_ID
+  * DIRECT\_DIFFUSE
+  * DIRECT\_GLOSSY
+  * EMISSION
+  * INDIRECT\_DIFFUSE
+  * INDIRECT\_GLOSSY
+  * INDIRECT\_SPECULAR
+  * MATERIAL\_ID\_MASK
+  * DIRECT\_SHADOW\_MASK
+  * INDIRECT\_SHADOW\_MASK
+  * RADIANCE\_GROUP
+  * UV
+  * RAYCOUNT
+  * RAYCOUNT
+  * BY\_MATERIAL\_ID
+  * IRRADIANCE
+  * OBJECT\_ID
+  * OBJECT\_ID\_MASK
+  * BY\_OBJECT\_ID
+- Film ImagePipeline (currently only one pipeline, can't add or remove yet)
+  * TONEMAP\_LINEAR
+  * TONEMAP\_REINHARD02
+  * TONEMAP\_AUTOLINEAR
+  * TONEMAP\_LUXLINEAR
+  * NOP
+  * GAMMA\_CORRECTION
+  * OUTPUT\_SWITCHER
+  * GAUSSIANFILTER\_3x3
+  * CAMERA\_RESPONSE\_FUNC
+  * BACKGROUND\_IMG
+  * BLOOM
+  * VIGNETTING
+  * COLOR\_ABERRATION
 - Camera
 - Objects
 - Shapes
