@@ -38,7 +38,7 @@ from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, 
 # PROPERTIES CONTAINERS
 
 # FILM
-FilmOutputType = ['RGB','RGBA','RGB_TONEMAPPED','RGBA_TONEMAPPED','ALPHA','DEPTH','POSITION','GEOMETRY_NORMAL','SHADING_NORMAL','MATERIAL_ID','DIRECT_DIFFUSE','DIRECT_GLOSSY','EMISSION','INDIRECT_DIFFUSE','INDIRECT_GLOSSY','INDIRECT_SPECULAR','MATERIAL_ID_MASK','DIRECT_SHADOW_MASK','INDIRECT_SHADOW_MASK','RADIANCE_GROUP','UV','RAYCOUNT','RAYCOUNT','BY_MATERIAL_ID','IRRADIANCE','OBJECT_ID','OBJECT_ID_MASK','BY_OBJECT_ID']
+FilmOutputType = ['RGB','RGBA','RGB_TONEMAPPED','RGBA_TONEMAPPED','ALPHA','DEPTH','POSITION','GEOMETRY_NORMAL','SHADING_NORMAL','MATERIAL_ID','DIRECT_DIFFUSE','DIRECT_GLOSSY','EMISSION','INDIRECT_DIFFUSE','INDIRECT_GLOSSY','INDIRECT_SPECULAR','MATERIAL_ID_MASK','DIRECT_SHADOW_MASK','INDIRECT_SHADOW_MASK','RADIANCE_GROUP','UV','RAYCOUNT','BY_MATERIAL_ID','IRRADIANCE','OBJECT_ID','OBJECT_ID_MASK','BY_OBJECT_ID']
 FilmImagePipelineType = ['TONEMAP_LINEAR','TONEMAP_REINHARD02','TONEMAP_AUTOLINEAR','TONEMAP_LUXLINEAR','NOP','GAMMA_CORRECTION','OUTPUT_SWITCHER','GAUSSIANFILTER_3x3','CAMERA_RESPONSE_FUNC','BACKGROUND_IMG','BLOOM','VIGNETTING','COLOR_ABERRATION']
 FilmImagePipelineChannelType = ['RADIANCE_PER_PIXEL_NORMALIZED','RADIANCE_PER_SCREEN_NORMALIZED','ALPHA','RGB_TONEMAPPED','DEPTH','POSITION','GEOMETRY_NORMAL','SHADING_NORMAL','MATERIAL_ID','DIRECT_DIFFUSE','DIRECT_GLOSSY','EMISSION','INDIRECT_DIFFUSE','INDIRECT_SPECULAR','MATERIAL_ID_MASK','DIRECT_SHADOW_MASK','INDIRECT_SHADOW_MASK','UV','RAYCOUNT','BY_MATERIAL_ID','IRRADIANCE','OBJECT_ID','OBJECT_ID_MASK','BY_OBJECT_ID']
 
@@ -271,7 +271,7 @@ class Property:
             self.props.append(Property('imagepipelines',self.nname,'scale','float',None,None,None,1.0,""))
         elif self.value[0] == 'TONEMAP_REINHARD02':
             self.props.append(Property('imagepipelines',self.nname,'prescale','float',None,None,None,1.0,""))
-            self.props.append(Property('imagepipeline',self.nname,'postscale','float',None,None,None,1.2,""))
+            self.props.append(Property('imagepipelines',self.nname,'postscale','float',None,None,None,1.2,""))
             self.props.append(Property('imagepipelines',self.nname,'burn','float',None,None,None,3.75,""))
         elif self.value[0] == 'TONEMAP_AUTOLINEAR':
             pass
@@ -1328,7 +1328,7 @@ class SceneGraph():
         output = Node('0','outputs','render')
         imagepipeline = Node('0.0','imagepipelines','render')
         self.addProperties(output,'RGB_TONEMAPPED')
-        self.addProperties(imagepipeline,'TONEMAP_LINEAR')
+        self.addProperties(imagepipeline,'TONEMAP_AUTOLINEAR')
         self.filmoutputs.append({'output':output,'imagepipelines':[imagepipeline]})
 
         # ADD TO RENDERNODES
@@ -1365,8 +1365,41 @@ class SceneGraph():
     def getFilmOutput(self,oid):
         return self.filmoutputs[oid]['output']
 
+    def getFilmOutputFileName(self,oid):
+        return self.filmoutputs[oid]['output'].getProperty('filename').value[0]
+
     def getFilmImagePipelines(self,oid):
         return self.filmoutputs[oid]['imagepipelines']
+
+    def setFilmType(self,oid,otype):
+        if oid > self.getFilmOutputCount():
+            return False
+        else:
+            output = self.getFilmOutput(oid)
+            output.getProperty('type').value[0] = otype
+            output.getProperty('index').value = oid
+            # clear out the pipeline since various pipelines don't support certain outputs
+            imagepipelines = self.getFilmImagePipelines(oid)
+            imagepipelines = []
+            # add default pipelines
+            ipname = '%d.0'%oid
+            if ( otype == 'RGB_TONEMAPPED' or
+                    otype == 'RGBA_TONEMAPPED' or
+                    otype == 'ALPHA' ):
+                filename = 'image-%s.png'%oid
+                output.getProperty('filename').value[0] = filename
+                imagepipeline = Node(ipname,'imagepipelines','render')
+                self.addProperties(imagepipeline,'TONEMAP_AUTOLINEAR')
+                imagepipelines.append(imagepipeline)
+            else: # HDR
+                filename = 'image-%s.hdr'%oid
+                output.getProperty('filename').value[0] = filename
+
+            self.updateNode(output)
+            for ip in imagepipelines:
+                self.updateNode(ip)
+
+        return True
 
     def start(self):
         self.lux.startRendering() 
@@ -1846,6 +1879,7 @@ class LuxWidget(QWidget):
         self.enableCameraMove = False
         self.mouseX = 0.0
         self.mouseY = 0.0
+        self.filename = 'image-0.png'
 
     def paintEvent(self,e):
         qp = QPainter()
@@ -1855,7 +1889,7 @@ class LuxWidget(QWidget):
 
     def drawWidget(self,qp):
         rect = QRect(0,0,self.width(),self.height())
-        image = QImage("image.png")
+        image = QImage(self.filename)
         qp.drawImage(rect,image)
 
     def changeSize(self,width,height):
@@ -3045,6 +3079,8 @@ class FileAttribute(QWidget):
             filename = QFileDialog.getOpenFileName(self,"Open IES Profile",".","IES Files (*.ies)")
         elif self.prop.ntype == 'textures' and self.prop.vname == 'file':
             filename = QFileDialog.getOpenFileName(self,"Open Image File",".","Image Files (*.png)")
+        elif self.prop.ntype == 'outputs' and self.prop.vname == 'filename':
+            filename = QFileDialog.getOpenFileName(self,"Open Image File",".","Image Files (*.png)")
         self.value.setText(filename[0])
         self.prop.value[0] = self.value.text()
         self.valueChanged.emit()
@@ -3541,13 +3577,13 @@ class FilmImagePipelineWidget(QFrame):
         self.node = node
         self.lux = lux 
         #self.setFixedHeight(30)
-        self.imagepipelinetype = QComboBox()
-        self.palette = QPalette()
-        self.palette.setColor(QPalette.Button,QColor(0,0,255))
-        self.imagepipelinetype.setPalette(self.palette)
+        #self.imagepipelinetype = QComboBox()
+        #self.palette = QPalette()
+        #self.palette.setColor(QPalette.Button,QColor(0,0,255))
+        #self.imagepipelinetype.setPalette(self.palette)
 
-        for ft in FilmImagePipelineType:
-            self.imagepipelinetype.addItem(ft)
+        #for ft in FilmImagePipelineType:
+        #    self.imagepipelinetype.addItem(ft)
 
         self.name = QLabel("%s"%ipid)
         self.name.setMinimumWidth(20)
@@ -3561,7 +3597,7 @@ class FilmImagePipelineWidget(QFrame):
         hbox = QHBoxLayout()
         hbox.addStretch()
         hbox.addWidget(self.name)
-        hbox.addWidget(self.imagepipelinetype)
+        #hbox.addWidget(self.imagepipelinetype)
         hbox.addWidget(self.removeBtn)
         hbox.setContentsMargins(0,0,0,0)
         hbox.setSpacing(0)
@@ -3582,11 +3618,11 @@ class FilmImagePipelineWidget(QFrame):
         self.name.setText(self.node.name)
         iptype = self.node.getProperty('type').value[0]
         cipid = 0
-        for ip in FilmImagePipelineType:
-            if ip == iptype:
-                self.imagepipelinetype.setCurrentIndex(cipid)
-            else:
-                cipid+=1
+        #for ip in FilmImagePipelineType:
+        #    if ip == iptype:
+        #        self.imagepipelinetype.setCurrentIndex(cipid)
+        #    else:
+        #        cipid+=1
         self.attributeLoader.load(self.node)
 
     def remove(self):
@@ -3594,12 +3630,15 @@ class FilmImagePipelineWidget(QFrame):
 
  
 class FilmLayer(QFrame):
+    imagenameChanged = pyqtSignal(['int','QString'])
+
     def __init__(self,oid,lux):
         super().__init__()
         self.oid = oid
         self.lux = lux 
         #self.setFixedHeight(30)
         self.filmtype = QComboBox()
+        self.filmname= QLabel('filename: image-0.png')
         self.palette = QPalette()
         self.palette.setColor(QPalette.Button,QColor(0,255,0))
         self.filmtype.setPalette(self.palette)
@@ -3625,15 +3664,24 @@ class FilmLayer(QFrame):
         hbox.setContentsMargins(0,0,0,0)
         hbox.setSpacing(0)
 
+        #fhbox = QHBoxLayout()
+        #fhbox.addStretch()
+        #fhbox.addWidget(self.filmlabel)
+        #fhbox.addWidget(self.filmname)
+        #fhbox.setContentsMargins(0,0,0,0)
+        #fhbox.setSpacing(0)
+
         self.imagepipelines = QVBoxLayout()
  
         vbox = QVBoxLayout()
         vbox.setContentsMargins(0,0,0,0)
         vbox.setSpacing(0)
         vbox.addLayout(hbox)
+        vbox.addWidget(self.filmname)
         vbox.addLayout(self.imagepipelines) 
         self.setLayout(vbox)
 
+        self.filmtype.currentIndexChanged.connect(self.typeChanged)
         self.removeBtn.clicked.connect(self.remove)
         self.addBtn.clicked.connect(self.add)
 
@@ -3656,6 +3704,11 @@ class FilmLayer(QFrame):
             else:
                 otid+=1
 
+    def typeChanged(self,index):
+        self.lux.sg.setFilmType(self.oid,FilmOutputType[index])
+        #self.load()
+        self.imagenameChanged.emit(0,self.lux.sg.getFilmOutputFileName(0))
+
     def remove(self):
         pass
 
@@ -3664,6 +3717,7 @@ class FilmLayer(QFrame):
 
  
 class FilmEditor(QDockWidget):
+    imagenameChanged = pyqtSignal(['int','QString'])
 
     def __init__(self,lux):
         super().__init__()
@@ -3671,7 +3725,7 @@ class FilmEditor(QDockWidget):
         self.lux = lux
         self.setWindowTitle("Film")
 
-        self.addBtn = QPushButton("add")
+        self.addBtn = QPushButton("Add Output")
         hbox = QHBoxLayout()
         hbox.addWidget(self.addBtn)
         hbox.setContentsMargins(0,0,0,0)
@@ -3702,8 +3756,14 @@ class FilmEditor(QDockWidget):
     def load(self):
         oid = 0
         for output in self.lux.sg.getFilmOutputs():
-            self.channelBox.addWidget(FilmLayer(oid,self.lux))
+            film = FilmLayer(oid,self.lux)
+            self.channelBox.addWidget(film)
+            film.imagenameChanged.connect(self.filenameChanged)
             oid+=1
+
+    def filenameChanged(self,oid,name):
+        self.imagenameChanged.emit(oid,name)
+
 
 # RENDER SETTINGS
 
@@ -4284,7 +4344,7 @@ class MainWindow(QMainWindow):
         # Connections setup
         self.sceneLayout.nodeSelected.connect(self.nodeSelected)
         self.sceneLayout.nodeRemoved.connect(self.nodeRemoved)
-
+        self.filmEditor.imagenameChanged.connect(self.imageFileNameChanged)
         self.show()
 
         self.sceneLayout.updateTabs()
@@ -4334,6 +4394,9 @@ class MainWindow(QMainWindow):
     def updateScene(self):
         self.sceneLayout.updateTabs()
         #self.attributeEditor.clear()
+
+    def imageFileNameChanged(self,oid,name):
+        self.lux.filename = name
 
 if __name__ == '__main__':
     
