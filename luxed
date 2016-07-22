@@ -1325,11 +1325,12 @@ class SceneGraph():
 
 
         # FILM OUTPUT
-        output = Node('0','outputs','render')
-        imagepipeline = Node('0.0','imagepipelines','render')
-        self.addProperties(output,'RGB_TONEMAPPED')
-        self.addProperties(imagepipeline,'TONEMAP_AUTOLINEAR')
-        self.filmoutputs.append({'output':output,'imagepipelines':[imagepipeline]})
+        self.addFilmOutput()
+        #output = Node('0','outputs','render')
+        #imagepipeline = Node('0.0','imagepipelines','render')
+        #self.addProperties(output,'RGB_TONEMAPPED')
+        #self.addProperties(imagepipeline,'TONEMAP_AUTOLINEAR')
+        #self.filmoutputs.append({'output':output,'imagepipelines':[imagepipeline]})
 
         # ADD TO RENDERNODES
  
@@ -1355,6 +1356,17 @@ class SceneGraph():
         self.rendernodes.append(filterblackmanharris)
         # film
         self.rendernodes.append(film)
+
+    def addFilmOutput(self):
+        oid = '%d'%len(self.filmoutputs)
+        ipid = '%d.0'%len(self.filmoutputs)
+        output = Node(oid,'outputs','render')
+        imagepipeline = Node(ipid,'imagepipelines','render')
+        self.addProperties(output,'RGB_TONEMAPPED')
+        self.addProperties(imagepipeline,'TONEMAP_AUTOLINEAR')
+        self.filmoutputs.append({'output':output,'imagepipelines':[imagepipeline]})
+        self.updateNode(output)
+        self.updateNode(imagepipeline)
 
     def getFilmOutputCount(self):
         return len(self.filmoutputs)
@@ -3638,7 +3650,7 @@ class FilmLayer(QFrame):
         self.lux = lux 
         #self.setFixedHeight(30)
         self.filmtype = QComboBox()
-        self.filmname= QLabel('filename: image-0.png')
+        self.filmname= QLabel('filename: image-%s.png'%self.oid)
         self.palette = QPalette()
         self.palette.setColor(QPalette.Button,QColor(0,255,0))
         self.filmtype.setPalette(self.palette)
@@ -3707,7 +3719,7 @@ class FilmLayer(QFrame):
     def typeChanged(self,index):
         self.lux.sg.setFilmType(self.oid,FilmOutputType[index])
         #self.load()
-        self.imagenameChanged.emit(0,self.lux.sg.getFilmOutputFileName(0))
+        self.imagenameChanged.emit(self.oid,self.lux.sg.getFilmOutputFileName(self.oid))
 
     def remove(self):
         pass
@@ -3751,10 +3763,13 @@ class FilmEditor(QDockWidget):
         self.scrollarea.setWidget(self.frame)
         self.setWidget(self.scrollarea)
 
+        self.addBtn.clicked.connect(self.addOutput)
+
         self.load()
 
     def load(self):
         oid = 0
+        self.clearPanel()
         for output in self.lux.sg.getFilmOutputs():
             film = FilmLayer(oid,self.lux)
             self.channelBox.addWidget(film)
@@ -3763,6 +3778,20 @@ class FilmEditor(QDockWidget):
 
     def filenameChanged(self,oid,name):
         self.imagenameChanged.emit(oid,name)
+
+    def clearPanel(self):
+        for i in reversed(range(self.channelBox.count())):
+            item = self.channelBox.itemAt(i)
+            widget = self.channelBox.itemAt(i).widget()
+            self.channelBox.removeItem(item)
+            self.channelBox.removeWidget(widget)
+            widget.hide()
+            self.channelBox.update()
+        self.channelBox.invalidate()
+
+    def addOutput(self):
+        self.lux.sg.addFilmOutput()
+        self.load() 
 
 
 # RENDER SETTINGS
