@@ -1367,6 +1367,11 @@ class SceneGraph():
         self.filmoutputs.append({'output':output,'imagepipelines':[imagepipeline]})
         self.updateNode(output)
         self.updateNode(imagepipeline)
+        renderout = output.getPropertyString()
+        renderout += imagepipeline.getPropertyString()
+
+        self.lux.setRenderProperties(renderout)
+        self.lux.writeImage()
 
     def getFilmOutputCount(self):
         return len(self.filmoutputs)
@@ -1397,20 +1402,21 @@ class SceneGraph():
             ipname = '%d.0'%oid
             if ( otype == 'RGB_TONEMAPPED' or
                     otype == 'RGBA_TONEMAPPED' or
-                    otype == 'ALPHA' ):
+                    otype == 'ALPHA' or
+                    otype == 'UV' ):
                 filename = 'image-%s.png'%oid
                 output.getProperty('filename').value[0] = filename
                 imagepipeline = Node(ipname,'imagepipelines','render')
                 self.addProperties(imagepipeline,'TONEMAP_AUTOLINEAR')
                 imagepipelines.append(imagepipeline)
             else: # HDR
-                filename = 'image-%s.hdr'%oid
+                filename = 'image-%s.exr'%oid
                 output.getProperty('filename').value[0] = filename
 
             self.updateNode(output)
             for ip in imagepipelines:
                 self.updateNode(ip)
-
+        
         return True
 
     def start(self):
@@ -3643,6 +3649,7 @@ class FilmImagePipelineWidget(QFrame):
  
 class FilmLayer(QFrame):
     imagenameChanged = pyqtSignal(['int','QString'])
+    outputSelected = pyqtSignal(['int'])
 
     def __init__(self,oid,lux):
         super().__init__()
@@ -3651,10 +3658,16 @@ class FilmLayer(QFrame):
         #self.setFixedHeight(30)
         self.filmtype = QComboBox()
         self.filmname= QLabel('filename: image-%s.png'%self.oid)
-        self.palette = QPalette()
-        self.palette.setColor(QPalette.Button,QColor(0,255,0))
-        self.filmtype.setPalette(self.palette)
-
+        self.ftpalette = QPalette()
+        self.ftpalette.setColor(QPalette.Button,QColor(0,255,0))
+        self.filmtype.setPalette(self.ftpalette)
+        self.lpalette = QPalette()
+        self.lpalette.setColor(QPalette.Window,QColor(255,0,255))
+        self.setPalette(self.lpalette)
+        self.setFrameStyle(QFrame.StyledPanel|QFrame.Panel)
+        self.setLineWidth(2)
+        self.setAutoFillBackground(True)
+ 
         for ft in FilmOutputType:
             self.filmtype.addItem(ft)
 
@@ -3676,13 +3689,6 @@ class FilmLayer(QFrame):
         hbox.setContentsMargins(0,0,0,0)
         hbox.setSpacing(0)
 
-        #fhbox = QHBoxLayout()
-        #fhbox.addStretch()
-        #fhbox.addWidget(self.filmlabel)
-        #fhbox.addWidget(self.filmname)
-        #fhbox.setContentsMargins(0,0,0,0)
-        #fhbox.setSpacing(0)
-
         self.imagepipelines = QVBoxLayout()
  
         vbox = QVBoxLayout()
@@ -3699,6 +3705,18 @@ class FilmLayer(QFrame):
 
         self.load()
 
+    def mousePressEvent(self,event):
+        self.imagenameChanged.emit(self.oid,self.lux.sg.getFilmOutputFileName(self.oid))
+        self.outputSelected.emit(self.oid)
+
+    def setSelected(self,state):
+        if(state):
+            self.lpalette.setColor(QPalette.Window,QColor(255,0,255))
+            self.setPalette(self.lpalette)
+        else: 
+            self.lpalette.setColor(QPalette.Window,QColor(100,100,100))
+            self.setPalette(self.lpalette)
+  
     def load(self):
         self.name.setText("%s"%self.oid)
         output = self.lux.sg.getFilmOutput(self.oid)
@@ -3772,9 +3790,20 @@ class FilmEditor(QDockWidget):
         self.clearPanel()
         for output in self.lux.sg.getFilmOutputs():
             film = FilmLayer(oid,self.lux)
+            film.outputSelected.connect(self.selectLayer)
             self.channelBox.addWidget(film)
             film.imagenameChanged.connect(self.filenameChanged)
             oid+=1
+
+        self.selectLayer(oid-1)
+
+    def selectLayer(self,oid):
+        for i in reversed(range(self.channelBox.count())):
+            widget = self.channelBox.itemAt(i).widget()
+            if widget.oid == oid:
+                widget.setSelected(True)
+            else:
+                widget.setSelected(False)
 
     def filenameChanged(self,oid,name):
         self.imagenameChanged.emit(oid,name)
@@ -4426,6 +4455,7 @@ class MainWindow(QMainWindow):
 
     def imageFileNameChanged(self,oid,name):
         self.lux.filename = name
+        self.lux.setRenderProperties()
 
 if __name__ == '__main__':
     
