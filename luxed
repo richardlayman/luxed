@@ -4505,13 +4505,11 @@ class MainWindow(QMainWindow):
             i+=1
 
         self.status.clearMessage()
-        '''
         self.status.showMessage(("[Elapsed time: %3d/5sec][Samples %4d][Avg. samples/sec %3.2fM on %.1fK tris]" % (
-                self.lux.getTime(),
-                self.lux.getPass(),
-                (self.lux.getSpp() / 1000000.0),
-                (self.lux.getTriCount() / 1000.0))))
-        '''
+                self.sg.lux.getTime(),
+                self.sg.lux.getPass(),
+                (self.sg.lux.getSpp() / 1000000.0),
+                (self.sg.lux.getTriCount() / 1000.0))))
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:
