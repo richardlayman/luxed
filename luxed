@@ -1937,6 +1937,11 @@ class LuxWidget(QWidget):
     def getTriCount(self):
         return self.sg.lux.getTriCount()
 
+    def setRenderResolution(self,width,height):
+        self.sg.setRenderProperties()
+        self.setFixedWidth(self.sg.lux.getWidth())
+        self.setFixedHeight(self.sg.lux.getHeight())
+
     def setRenderProperties(self):
         self.sg.setRenderProperties()
         self.setFixedWidth(self.sg.lux.getWidth())
@@ -3828,6 +3833,7 @@ class FilmEditor(QDockWidget):
 
 class RenderSettings(QDockWidget):
     objectSelected = pyqtSignal(['QString'])
+    filmResolutionChanged = pyqtSignal(['int','int'])
 
     def __init__(self,sg):
         super().__init__()
@@ -3899,13 +3905,19 @@ class RenderSettings(QDockWidget):
         self.scrollarea.setWidget(self.frame)
         self.setWidget(self.scrollarea)
 
-        self.renderWidth.valueChanged.connect(self.updateSettings)
-        self.renderHeight.valueChanged.connect(self.updateSettings)
+        self.renderWidth.valueChanged.connect(self.changeResolution)
+        self.renderHeight.valueChanged.connect(self.changeResolution)
 
         self.updateEngine()
         self.updateSampler()
         self.updateFilter()
 
+    def changeResolution(self):
+        self.sg.setRenderProperties()
+        width = self.renderWidth.prop.value 
+        height = self.renderHeight.prop.value
+        self.filmResolutionChanged.emit(width,height)
+ 
     def clearRenderEnginePanel(self):
         for i in reversed(range(self.enginevbox.count())):
             item = self.enginevbox.itemAt(i)
@@ -4451,14 +4463,24 @@ class MainWindow(QMainWindow):
         self.menu.updateScene.connect(self.updateScene)
         self.attributeEditor.nodeChanged.connect(self.updateSceneLayout)
         #self.lux.updateScene.connect(self.updateScene)
-
+        self.renderSettings.filmResolutionChanged.connect(self.changeFilmResolution)
         self.buildTabs()
+
+    def changeFilmResolution(self,width,height):
+        i = 0
+        while i < self.sg.getFilmOutputCount():
+            vp = self.viewport.widget(i).layout().itemAt(0).widget()
+            if vp is not None:
+                vp.setRenderResolution(width,height)
+            i+=1
 
     def buildTabs(self):
         i = 0
         self.viewport.clear()
         while i < self.sg.getFilmOutputCount():
+            imagefilename = self.sg.getFilmOutputFileName(i)
             vp = LuxWidget(self.sg,1200,800)
+            vp.filename = imagefilename
             luxvbox = QHBoxLayout()
             luxvbox.addWidget(vp,Qt.AlignCenter)
             luxvbox.setContentsMargins(0,0,0,0)
@@ -4468,7 +4490,7 @@ class MainWindow(QMainWindow):
             scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             scrollarea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
             scrollarea.setLayout(luxvbox)
-            self.viewport.addTab(scrollarea,self.sg.getFilmOutputFileName(i))
+            self.viewport.addTab(scrollarea,imagefilename)
             i+=1
         self.viewport.setCurrentIndex(self.coid)
  
