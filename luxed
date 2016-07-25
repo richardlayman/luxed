@@ -1887,11 +1887,12 @@ class LuxWidget(QWidget):
     nodeAdded = pyqtSignal()
     updateScene = pyqtSignal()
 
-    def __init__(self,width,height):
+    def __init__(self,sg,width,height):
         super().__init__()
-        self.sg = SceneGraph()
-        #self.setFixedWidth(self.sg.lux.getWidth())
-        #self.setFixedHeight(self.sg.lux.getHeight())
+        self.sg = sg
+        self.setFixedWidth(self.sg.lux.getWidth())
+        self.setFixedHeight(self.sg.lux.getHeight())
+
         self.enableCameraRotate = False
         self.enableCameraZoom = False
         self.enableCameraMove = False
@@ -2007,9 +2008,9 @@ class ColorWidget(QFrame):
 class LinkDialog(QDialog):
     linkSelected = pyqtSignal(['QString'])
 
-    def __init__(self,lux,ltype):
+    def __init__(self,sg,ltype):
         super().__init__()
-        self.lux = lux
+        self.sg = sg 
         self.list = QListWidget() 
         self.link = ""
 
@@ -2019,22 +2020,22 @@ class LinkDialog(QDialog):
 
         if(ltype == 'shapes'):
             self.list.clear()
-            for t in self.lux.sg.getNames('shapes'):
+            for t in self.sg.getNames('shapes'):
                 self.list.addItem(t)
 
         if(ltype == 'materials'):
             self.list.clear()
-            for t in self.lux.sg.getNames('materials'):
+            for t in self.sg.getNames('materials'):
                 self.list.addItem(t)
 
         if(ltype == 'textures'):
             self.list.clear()
-            for t in self.lux.sg.getNames('textures'):
+            for t in self.sg.getNames('textures'):
                 self.list.addItem(t)
 
         if(ltype == 'volumes'):
             self.list.clear()
-            for t in self.lux.sg.getNames('volumes'):
+            for t in self.sg.getNames('volumes'):
                 self.list.addItem(t)
 
         self.show()
@@ -2050,9 +2051,9 @@ class LinkDialog(QDialog):
 class SpectrumAttribute(QWidget):
     valueChanged = pyqtSignal()
 
-    def __init__(self,prop,lux):
+    def __init__(self,prop,sg):
         super().__init__()
-        self.lux = lux
+        self.sg = sg 
         self.prop = prop
         self.label = QLabel(self.prop.vname)
         self.colorValue = ColorWidget()
@@ -2109,13 +2110,13 @@ class SpectrumAttribute(QWidget):
 
         if prop.ntype == 'materials':
             if 'vol' in prop.vname:
-                self.link = LinkDialog(self.lux,'volumes')
+                self.link = LinkDialog(self.sg,'volumes')
             else:
-                self.link = LinkDialog(self.lux,'textures')
+                self.link = LinkDialog(self.sg,'textures')
         if prop.ntype == 'textures':
-            self.link = LinkDialog(self.lux,'textures')
+            self.link = LinkDialog(self.sg,'textures')
         if prop.ntype == 'objects':
-            self.link = LinkDialog(self.lux,'materials')
+            self.link = LinkDialog(self.sg,'materials')
 
         self.setToolTip(self.prop.desc)
  
@@ -2312,9 +2313,9 @@ class SpectrumAttribute(QWidget):
 class TextureAttribute(QWidget):
     valueChanged = pyqtSignal()
 
-    def __init__(self,prop,lux):
+    def __init__(self,prop,sg):
         super().__init__()
-        self.lux = lux
+        self.sg = sg 
         self.prop = prop
         self.label = QLabel(self.prop.vname)
         self.colorValue = ColorWidget()
@@ -2371,13 +2372,13 @@ class TextureAttribute(QWidget):
 
         if prop.ntype == 'materials':
             if 'vol' in prop.vname:
-                self.link = LinkDialog(self.lux,'volumes')
+                self.link = LinkDialog(self.sg,'volumes')
             else:
-                self.link = LinkDialog(self.lux,'textures')
+                self.link = LinkDialog(self.sg,'textures')
         if prop.ntype == 'textures':
-            self.link = LinkDialog(self.lux,'textures')
+            self.link = LinkDialog(self.sg,'textures')
         if prop.ntype == 'objects':
-            self.link = LinkDialog(self.lux,'materials')
+            self.link = LinkDialog(self.sg,'materials')
 
         self.setToolTip(self.prop.desc)
  
@@ -2992,10 +2993,10 @@ class StringAttribute(QWidget):
 class LinkAttribute(QWidget):
     valueChanged = pyqtSignal()
 
-    def __init__(self,prop,lux):
+    def __init__(self,prop,sg):
         super().__init__()
         self.prop = prop
-        self.lux = lux
+        self.sg = sg 
         self.label = QLabel(self.prop.vname)
         self.value = QPushButton()
         self.value.setFixedWidth(180)
@@ -3005,16 +3006,16 @@ class LinkAttribute(QWidget):
 
         if prop.ntype == 'materials':
             if 'vol' in prop.vname:
-                self.link = LinkDialog(self.lux,'volumes')
+                self.link = LinkDialog(self.sg,'volumes')
             else:
-                self.link = LinkDialog(self.lux,'textures')
+                self.link = LinkDialog(self.sg,'textures')
         if prop.ntype == 'textures':
-            self.link = LinkDialog(self.lux,'textures')
+            self.link = LinkDialog(self.sg,'textures')
         if prop.ntype == 'objects':
             if 'material' in prop.vname:
-                self.link = LinkDialog(self.lux,'materials')
+                self.link = LinkDialog(self.sg,'materials')
             else:
-                self.link = LinkDialog(self.lux,'shapes')
+                self.link = LinkDialog(self.sg,'shapes')
 
         self.setToolTip(self.prop.desc)
        
@@ -3122,12 +3123,12 @@ class FileAttribute(QWidget):
 class NodeAttributeLoader(QWidget):
     attributeChanged = pyqtSignal()
 
-    def __init__(self,lux,node):
+    def __init__(self,sg,node):
         super().__init__()
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(0,0,0,0)
         self.vbox.setSpacing(0)
-        self.lux = lux
+        self.sg = sg 
         self.setLayout(self.vbox)
         self.node = None
 
@@ -3164,7 +3165,7 @@ class NodeAttributeLoader(QWidget):
                     attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)
             elif prop.vtype is 'link':
-                attribute = LinkAttribute(prop,self.lux)
+                attribute = LinkAttribute(prop,self.sg)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)
             elif prop.vtype is 'string':
@@ -3217,18 +3218,18 @@ class NodeAttributeLoader(QWidget):
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
             elif prop.vtype is 'texture':
-                attribute = TextureAttribute(prop,self.lux)
+                attribute = TextureAttribute(prop,self.sg)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
             elif prop.vtype is 'spectrum':
-                attribute = SpectrumAttribute(prop,self.lux)
+                attribute = SpectrumAttribute(prop,self.sg)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
  
     def updateNode(self):
         name = self.node.name
         ntype = self.node.ntype
-        self.lux.sg.updateNode(self.node)
+        self.sg.updateNode(self.node)
         #self.node = self.lux.sg.addNode(name,ntype,self.subtype)
         #self.load(self.node)
 
@@ -3238,7 +3239,7 @@ class NodeAttributeLoader(QWidget):
         for prop in props:
             if prop.vname == 'type':
                 self.subtype = prop.value[0]
-        self.node = self.lux.sg.addNode(self.node.name,self.node.ntype,self.subtype,self.node.section)
+        self.node = self.sg.addNode(self.node.name,self.node.ntype,self.subtype,self.node.section)
         self.updateNode()
         self.load(self.node)
 
@@ -3247,10 +3248,10 @@ class NodeAttributeLoader(QWidget):
 class NodeEditor(QDockWidget):
     nodeChanged = pyqtSignal()
 
-    def __init__(self,lux):
+    def __init__(self,sg):
         super().__init__()
         self.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
-        self.lux = lux
+        self.sg = sg
         self.setWindowTitle("Node Editor")
         self.label = QLabel("----")
         self.label.setFont(QFont("Sans",12))
@@ -3259,7 +3260,7 @@ class NodeEditor(QDockWidget):
         palette = QPalette()
         palette.setColor(QPalette.Base,QColor(1,0,0))
         self.label.setPalette(palette)
-        self.attributes = NodeAttributeLoader(self.lux,None)
+        self.attributes = NodeAttributeLoader(self.sg,None)
         self.node = None
 
         frame = QFrame()
@@ -3280,13 +3281,13 @@ class NodeEditor(QDockWidget):
 
     def load(self):
         print("load()")
-        self.node = self.lux.sg.getNode(name)
+        self.node = self.sg.getNode(name)
         self.attributes.load(self.node)
 
     def setEditor(self,name):
         print("setEditor()")
         self.label.setText(name)
-        self.node = self.lux.sg.getNode(name)
+        self.node = self.sg.getNode(name)
         self.attributes.load(self.node)
 
     def clear(self):
@@ -3345,9 +3346,9 @@ class RenameNodeDialog(QDialog):
 class AddNodeDialog(QDialog):
     nodeAdded = pyqtSignal(['QString','QString','QString'])
 
-    def __init__(self,ntype,lux):
+    def __init__(self,ntype,sg):
         super().__init__()
-        self.lux = lux
+        self.sg = sg 
         #self.setFixedWidth(400)
         #self.setFixedHeight(400)
         self.setWindowTitle("Add Node")
@@ -3416,7 +3417,6 @@ class AddNodeDialog(QDialog):
             for v in VolumesType:
                 self.vtype.addItem(v)
 
-
     def setNode(self):
         self.nodeAdded.emit(self.name.text(),self.ntype,self.vtype.currentText())
         self.hide()
@@ -3428,10 +3428,10 @@ class SceneLayout(QDockWidget):
     nodeSelected = pyqtSignal(['QString'])
     nodeRemoved = pyqtSignal()
  
-    def __init__(self,lux):
+    def __init__(self,sg):
         super().__init__()
         self.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
-        self.lux = lux
+        self.sg = sg 
         self.setWindowTitle("Scene Layout")
         self.selectedName = None
         
@@ -3472,7 +3472,7 @@ class SceneLayout(QDockWidget):
  
         self.setWidget(frame)
 
-        self.addNodeDialog = AddNodeDialog(self.getTabName(self.tabs.currentIndex()),self.lux)
+        self.addNodeDialog = AddNodeDialog(self.getTabName(self.tabs.currentIndex()),self.sg)
         self.renameNodeDialog = RenameNodeDialog()
 
         self.cameras.itemClicked.connect(self.nodeChanged)
@@ -3521,7 +3521,7 @@ class SceneLayout(QDockWidget):
         self.updateTabs()
 
     def remove(self):
-        self.lux.sg.removeNode(self.selectedName)
+        self.sg.removeNode(self.selectedName)
         self.selectedName = None
         self.updateTabs()
         self.nodeRemoved.emit()
@@ -3538,7 +3538,7 @@ class SceneLayout(QDockWidget):
         file.close()
  
     def renameNode(self,cname,nname):
-        self.lux.sg.renameNode(cname,nname)
+        self.sg.renameNode(cname,nname)
         self.selectedName = nname
         self.updateTabs()
         self.nodeRemoved.emit() 
@@ -3549,37 +3549,37 @@ class SceneLayout(QDockWidget):
 
         # Cameras
         self.cameras.clear()
-        for c in self.lux.sg.getNames('camera'):
+        for c in self.sg.getNames('camera'):
             self.cameras.addItem(c)
 
         # Objects
         self.objects.clear()
-        for o in self.lux.sg.getNames('objects'):
+        for o in self.sg.getNames('objects'):
             self.objects.addItem(o)
 
         # Shapes
         self.shapes.clear()
-        for s in self.lux.sg.getNames('shapes'):
+        for s in self.sg.getNames('shapes'):
             self.shapes.addItem(s)
 
         # Materials
         self.materials.clear()
-        for m in self.lux.sg.getNames('materials'):
+        for m in self.sg.getNames('materials'):
             self.materials.addItem(m)
 
         # Textures 
         self.textures.clear()
-        for t in self.lux.sg.getNames('textures'):
+        for t in self.sg.getNames('textures'):
             self.textures.addItem(t)
 
         # Lights 
         self.lights.clear()
-        for l in self.lux.sg.getNames('lights'):
+        for l in self.sg.getNames('lights'):
             self.lights.addItem(l)
 
         # Volumes 
         self.volumes.clear()
-        for v in self.lux.sg.getNames('volumes'):
+        for v in self.sg.getNames('volumes'):
             self.volumes.addItem(v)
 
     def nodeChanged(self,item):
@@ -3589,11 +3589,11 @@ class SceneLayout(QDockWidget):
 
 # FILM EDITOR
 class FilmImagePipelineWidget(QFrame):
-    def __init__(self,ipid,node,lux):
+    def __init__(self,ipid,node,sg):
         super().__init__()
         self.ipid = ipid
         self.node = node
-        self.lux = lux 
+        self.sg = sg 
         #self.setFixedHeight(30)
         #self.imagepipelinetype = QComboBox()
         #self.palette = QPalette()
@@ -3610,7 +3610,7 @@ class FilmImagePipelineWidget(QFrame):
         self.removeBtn.setFixedWidth(30)
         self.removeBtn.setToolTip("remove layer")
  
-        self.attributeLoader = NodeAttributeLoader(self.lux,self.node)
+        self.attributeLoader = NodeAttributeLoader(self.sg,self.node)
 
         hbox = QHBoxLayout()
         hbox.addStretch()
@@ -3651,10 +3651,10 @@ class FilmLayer(QFrame):
     imagenameChanged = pyqtSignal(['int','QString'])
     outputSelected = pyqtSignal(['int'])
 
-    def __init__(self,oid,lux):
+    def __init__(self,oid,sg):
         super().__init__()
         self.oid = oid
-        self.lux = lux 
+        self.sg = sg 
         #self.setFixedHeight(30)
         self.filmtype = QComboBox()
         self.filmname= QLabel('filename: image-%s.png'%self.oid)
@@ -3706,7 +3706,7 @@ class FilmLayer(QFrame):
         self.load()
 
     def mousePressEvent(self,event):
-        self.imagenameChanged.emit(self.oid,self.lux.sg.getFilmOutputFileName(self.oid))
+        self.imagenameChanged.emit(self.oid,self.sg.getFilmOutputFileName(self.oid))
         self.outputSelected.emit(self.oid)
 
     def setSelected(self,state):
@@ -3719,9 +3719,9 @@ class FilmLayer(QFrame):
   
     def load(self):
         self.name.setText("%s"%self.oid)
-        output = self.lux.sg.getFilmOutput(self.oid)
+        output = self.sg.getFilmOutput(self.oid)
         self.name.setText(output.name)
-        imagepipelines = self.lux.sg.getFilmImagePipelines(self.oid)
+        imagepipelines = self.sg.getFilmImagePipelines(self.oid)
         otype = output.getProperty('type').value[0]
         otid = 0
         for o in FilmOutputType:
@@ -3729,15 +3729,15 @@ class FilmLayer(QFrame):
                 self.filmtype.setCurrentIndex(otid)
                 ipid = 0
                 for node in imagepipelines:
-                    self.imagepipelines.addWidget(FilmImagePipelineWidget(ipid,node,self.lux))
+                    self.imagepipelines.addWidget(FilmImagePipelineWidget(ipid,node,self.sg))
                     ipid+=1
             else:
                 otid+=1
 
     def typeChanged(self,index):
-        self.lux.sg.setFilmType(self.oid,FilmOutputType[index])
+        self.sg.setFilmType(self.oid,FilmOutputType[index])
         #self.load()
-        self.imagenameChanged.emit(self.oid,self.lux.sg.getFilmOutputFileName(self.oid))
+        self.imagenameChanged.emit(self.oid,self.sg.getFilmOutputFileName(self.oid))
 
     def remove(self):
         pass
@@ -3748,11 +3748,12 @@ class FilmLayer(QFrame):
  
 class FilmEditor(QDockWidget):
     imagenameChanged = pyqtSignal(['int','QString'])
+    outputChanged = pyqtSignal()
 
-    def __init__(self,lux):
+    def __init__(self,sg):
         super().__init__()
         self.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
-        self.lux = lux
+        self.sg = sg 
         self.setWindowTitle("Film")
 
         self.addBtn = QPushButton("Add Output")
@@ -3788,8 +3789,8 @@ class FilmEditor(QDockWidget):
     def load(self):
         oid = 0
         self.clearPanel()
-        for output in self.lux.sg.getFilmOutputs():
-            film = FilmLayer(oid,self.lux)
+        for output in self.sg.getFilmOutputs():
+            film = FilmLayer(oid,self.sg)
             film.outputSelected.connect(self.selectLayer)
             self.channelBox.addWidget(film)
             film.imagenameChanged.connect(self.filenameChanged)
@@ -3819,23 +3820,23 @@ class FilmEditor(QDockWidget):
         self.channelBox.invalidate()
 
     def addOutput(self):
-        self.lux.sg.addFilmOutput()
+        self.sg.addFilmOutput()
         self.load() 
-
+        self.outputChanged.emit()
 
 # RENDER SETTINGS
 
 class RenderSettings(QDockWidget):
     objectSelected = pyqtSignal(['QString'])
 
-    def __init__(self,lux):
+    def __init__(self,sg):
         super().__init__()
         self.setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
-        self.lux = lux
+        self.sg = sg 
         self.setWindowTitle("Render Settings")
         #self.setFixedWidth(420)
 
-        self.props = self.lux.sg.lux.getRenderSettings()
+        self.props = self.sg.lux.getRenderSettings()
 
         self.preset = QComboBox()
         self.preset.addItem("custom")
@@ -3859,8 +3860,8 @@ class RenderSettings(QDockWidget):
 
         self.frame = QFrame()
 
-        self.renderWidth = IntAttribute(self.lux.sg.getRenderProperty('film','width'))
-        self.renderHeight = IntAttribute(self.lux.sg.getRenderProperty('film','height'))
+        self.renderWidth = IntAttribute(self.sg.getRenderProperty('film','width'))
+        self.renderHeight = IntAttribute(self.sg.getRenderProperty('film','height'))
 
         # Engine 
         self.engine = QGroupBox('engine')
@@ -3905,7 +3906,6 @@ class RenderSettings(QDockWidget):
         self.updateSampler()
         self.updateFilter()
 
-
     def clearRenderEnginePanel(self):
         for i in reversed(range(self.enginevbox.count())):
             item = self.enginevbox.itemAt(i)
@@ -3939,26 +3939,26 @@ class RenderSettings(QDockWidget):
     def updateEngine(self):
         self.clearRenderEnginePanel()
 
-        engineType = OptionAttribute(self.lux.sg.getRenderProperty('renderengine','type'),['PATHCPU','BIASPATHCPU','BIDIRCPU','PATHOCL','RTPATHOCL','BIASPATHOCL','RTBIASPATHOCL'])
+        engineType = OptionAttribute(self.sg.getRenderProperty('renderengine','type'),['PATHCPU','BIASPATHCPU','BIDIRCPU','PATHOCL','RTPATHOCL','BIASPATHOCL','RTBIASPATHOCL'])
         engineType.valueChanged.connect(self.updateEngine)
         self.enginevbox.addWidget(engineType)
 
         node = None
 
         if engineType.getValue() == 'PATHCPU':
-            node = self.lux.sg.getRenderNode('path')
+            node = self.sg.getRenderNode('path')
         elif engineType.getValue() == 'BIASPATHCPU':
-            node = self.lux.sg.getRenderNode('biaspath')
+            node = self.sg.getRenderNode('biaspath')
         elif engineType.getValue() == 'BIDIRCPU':
-            node = self.lux.sg.getRenderNode('bidir')
+            node = self.sg.getRenderNode('bidir')
         elif engineType.getValue() == 'PATHOCL':
-            node = self.lux.sg.getRenderNode('pathocl')
+            node = self.sg.getRenderNode('pathocl')
         elif engineType.getValue() == 'RTPATHOCL':
-            node = self.lux.sg.getRenderNode('rtpath')
+            node = self.sg.getRenderNode('rtpath')
         elif engineType.getValue() == 'BIASPATHOCL':
-            node = self.lux.sg.getRenderNode('biaspathocl')
+            node = self.sg.getRenderNode('biaspathocl')
         elif engineType.getValue() == 'RTBIASPATHOCL':
-            node = self.lux.sg.getRenderNode('rtbiaspathocl')
+            node = self.sg.getRenderNode('rtbiaspathocl')
 
         if node is None:
             return 
@@ -3998,14 +3998,14 @@ class RenderSettings(QDockWidget):
     def updateSampler(self):
         self.clearRenderSamplerPanel()
 
-        samplerType = OptionAttribute(self.lux.sg.getRenderProperty('sampler','type'),['SOBOL','METROPOLIS','RANDOM'])
+        samplerType = OptionAttribute(self.sg.getRenderProperty('sampler','type'),['SOBOL','METROPOLIS','RANDOM'])
         samplerType.valueChanged.connect(self.updateSampler)
         self.samplervbox.addWidget(samplerType)
 
         node = None
 
         if samplerType.getValue() == 'METROPOLIS':
-            node = self.lux.sg.getRenderNode('sampler.metropolis')
+            node = self.sg.getRenderNode('sampler.metropolis')
 
         if node is None:
             return 
@@ -4034,22 +4034,22 @@ class RenderSettings(QDockWidget):
     def updateFilter(self):
         self.clearRenderFilterPanel()
 
-        filterType = OptionAttribute(self.lux.sg.getRenderProperty('filter','type'),['NONE','BOX','GAUSSIAN','MITCHELL','MITCHELL_SS','BLACKMANHARRIS'])
+        filterType = OptionAttribute(self.sg.getRenderProperty('filter','type'),['NONE','BOX','GAUSSIAN','MITCHELL','MITCHELL_SS','BLACKMANHARRIS'])
         filterType.valueChanged.connect(self.updateFilter)
         self.filtervbox.addWidget(filterType)
 
         node = None
 
         if filterType.getValue() == 'BOX':
-            node = self.lux.sg.getRenderNode('filterbox')
+            node = self.sg.getRenderNode('filterbox')
         elif filterType.getValue() == 'GAUSSIAN':
-            node = self.lux.sg.getRenderNode('filtergaussian')
+            node = self.sg.getRenderNode('filtergaussian')
         elif filterType.getValue() == 'MITCHELL':
-            node = self.lux.sg.getRenderNode('filtermitchell')
+            node = self.sg.getRenderNode('filtermitchell')
         elif filterType.getValue() == 'MITCHELL_SS':
-            node = self.lux.sg.getRenderNode('filtermitchellss')
+            node = self.sg.getRenderNode('filtermitchellss')
         elif filterType.getValue() == 'BLACKMANHARRIS':
-            node = self.lux.sg.getRenderNode('filterblackmanharris')
+            node = self.sg.getRenderNode('filterblackmanharris')
 
         if node is None:
             return 
@@ -4077,12 +4077,12 @@ class RenderSettings(QDockWidget):
 
     def updateSettings(self):
         print("Updating Render Settings")
-        self.lux.setRenderProperties()
+        self.sg.setRenderProperties()
 
 class TimeEditor(QWidget):
     frameChanged = pyqtSignal(['int'])
 
-    def __init__(self,lux):
+    def __init__(self,sg):
         super().__init__()
         self.sframe = QLineEdit()
         self.eframe = QLineEdit()
@@ -4125,44 +4125,48 @@ class TimeEditor(QWidget):
 
 # FILE ACTIONS
 class FileNewAction(QAction):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("New",parent)
         self.triggered.connect(self.doit)
-        self.lux = lux
+        self.sg = sg 
 
     def doit(self):
-        self.lux.sg.clearScene()
-        self.lux.updateScene.emit()
+        self.sg.clearScene()
+        self.updateScene.emit()
 
 class OpenSceneAction(QAction):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Open Scene",parent)
         self.triggered.connect(self.doit)
-        self.lux = lux
+        self.sg = sg 
 
     def doit(self):
-        self.lux.sg.clearScene()
-        self.lux.updateScene.emit()
+        self.sg.clearScene()
+        self.updateScene.emit()
         filename = QFileDialog.getOpenFileName(None,"Open Scene File",".","Scene Files (*.scn)")
         if filename == "":
             return
         file = open(filename[0],'r')
-        self.lux.sg.parseSceneFile(file.readlines())
+        self.sg.parseSceneFile(file.readlines())
         file.close()
-        self.lux.updateScene.emit()
+        self.updateScene.emit()
+
 
 class SaveSceneAction(QAction):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Save Scene",parent)
         self.triggered.connect(self.doit)
-        self.lux = lux
+        self.sg = sg 
 
     def doit(self):
         filename = QFileDialog.getSaveFileName(None,"Save Scene File",".","Scene Files (*.scn)")
-        out = self.lux.sg.getSceneString()
+        out = self.sg.getSceneString()
         file = open(filename[0],'w')
         file.write(out)
         file.close()
@@ -4170,11 +4174,12 @@ class SaveSceneAction(QAction):
 
 
 class AddMeshAction(QAction):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Add Mesh",parent)
         self.triggered.connect(self.doit)
-        self.lux = lux
+        self.sg = sg 
 
     def doit(self):
         filenames = QFileDialog.getOpenFileNames(None,"Select Ply Files",".","Ply Files (*.ply)")
@@ -4189,143 +4194,184 @@ class AddMeshAction(QAction):
             if nodename == '':
                 return
             # create material
-            mat = self.lux.sg.addNode(nodename+"_mat",'materials','matte')
+            mat = self.sg.addNode(nodename+"_mat",'materials','matte')
             # create shape
-            self.lux.sg.updateNode(mat) 
-            shp = self.lux.sg.addNode(nodename+"_shp",'shapes','mesh')
+            self.sg.updateNode(mat) 
+            shp = self.sg.addNode(nodename+"_shp",'shapes','mesh')
             prop = shp.getProperty('ply')
             prop.value[0] = line
-            self.lux.sg.updateNode(shp) 
-            obj = self.lux.sg.addNode(nodename+"_obj",'objects','')
+            self.sg.updateNode(shp) 
+            obj = self.sg.addNode(nodename+"_obj",'objects','')
             prop = obj.getProperty('material')
             prop.value[0] = nodename+'_mat'
             prop = obj.getProperty('shape')
             prop.value[0] = nodename+'_shp'
-            self.lux.sg.updateNode(obj) 
+            self.sg.updateNode(obj) 
 
-        self.lux.updateScene.emit()
+        self.updateScene.emit()
 
        
 class FileExitAction(QAction):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Exit",parent)
         self.triggered.connect(self.doit)
-        self.lux = lux
+        self.sg = sg 
 
     def doit(self):
-        self.lux.stopRendering()
+        self.sg.stop()
         app.quit()
 
  
 class ImportMenu(QMenu):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Import",parent)
-        self.addAction(ImportSceneItemsAction(lux,self))
-        #self.addAction(ImportPlyAction(lux,self))
+        importSceneAction = ImportSceneItemsAction(sg,self)
+        self.addAction(importSceneAction)
+        importSceneAction.updateScene.connect(self.update)
+
+    def update(self):
+        self.updateScene.emit()
+
 
 class ExportMenu(QMenu):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Export",parent)
-        self.addAction(ExportRenderAction(lux,self))
-        #self.addAction(ExportSceneItemsAction(lux,self))
+        exportRenderAction = ExportRenderAction(sg,self)
+        self.addAction(exportRenderAction)
+        exportRenderAction.updateScene.connect(self.update)
+
+    def update(self):
+        self.updateScene.emit()
 
 
 # IMPORT ACTIONS
 class ImportSceneItemsAction(QAction):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Scene Items",parent)
         self.triggered.connect(self.doit)
-        self.lux = lux
+        self.sg = sg 
 
     def doit(self):
         filename = QFileDialog.getOpenFileName(None,"Import Scene File",".","Scene Files (*.scn)")
         file = open(filename[0],'r')
-        self.lux.sg.parseSceneFile(file.readlines())
+        self.sg.parseSceneFile(file.readlines())
         file.close()
-        self.lux.updateScene.emit()
+        self.updateScene.emit()
 
 
 class ImportPlyAction(QAction):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Ply",parent)
         self.triggered.connect(self.doit)
-        self.lux = lux
+        self.sg = sg 
 
     def doit(self):
         print("Ply")
+        #self.updateScene.emit()
 
 
 # EXPORT ACTIONS 
 
 class ExportRenderAction(QAction):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Render",parent)
         self.triggered.connect(self.doit)
-        self.lux = lux
+        self.sg = sg 
 
     def doit(self):
         filename = QFileDialog.getSaveFileName(None,"Export Render Configuration",".","Config Files (*.cfg)")
-        out = self.lux.sg.getRenderSettings()
+        out = self.sg.getRenderSettings()
         file = open(filename[0],'w')
         file.write(out)
         file.close()
 
 
 class ExportSceneItemsAction(QAction):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__("Scene Items",parent)
         self.triggered.connect(self.doit)
-        self.lux = lux
+        self.sg = sg 
 
     def doit(self):
         filename = QFileDialog.getSaveFileName(None,"Export Scene File",".","Scene Files (*.scn)")
-        out = self.lux.sg.getSceneString()
+        out = self.sg.getSceneString()
         file = open(filename[0],'w')
         file.write(out)
         file.close()
 
 
-
 class FileMenu(QMenu):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux,name):
-        super().__init__(name)
-        self.addAction(FileNewAction(lux,self))
-        self.addAction(OpenSceneAction(lux,self))
-        self.addAction(SaveSceneAction(lux,self))
-        self.addAction(AddMeshAction(lux,self))
+    def __init__(self,sg,name,parent):
+        super().__init__(name,parent)
+        fileNewAction = FileNewAction(sg,self)
+        openSceneAction = OpenSceneAction(sg,self)
+        saveSceneAction = SaveSceneAction(sg,self)
+        addMeshAction = AddMeshAction(sg,self)
+        importMenu = ImportMenu(sg,self)
+        exportMenu = ExportMenu(sg,self)
+        fileExitAction = FileExitAction(sg,self)
+
+        self.addAction(fileNewAction)
+        self.addAction(openSceneAction)
+        self.addAction(saveSceneAction)
+        self.addAction(addMeshAction)
         self.addSeparator()
-        self.addMenu(ImportMenu(lux,self))
-        self.addMenu(ExportMenu(lux,self))
+        self.addMenu(importMenu)
+        self.addMenu(exportMenu)
         self.addSeparator()
-        self.addAction(FileExitAction(lux,self))
- 
+        self.addAction(fileExitAction)
+
+        fileNewAction.updateScene.connect(self.update)
+        openSceneAction.updateScene.connect(self.update)
+        saveSceneAction.updateScene.connect(self.update)
+        addMeshAction.updateScene.connect(self.update)
+        importMenu.updateScene.connect(self.update)
+        exportMenu.updateScene.connect(self.update)
+        fileExitAction.updateScene.connect(self.update)
+
+    def update(self):
+        self.updateScene.emit()
+
 
 class MainMenu(QMenuBar):
+    updateScene = pyqtSignal()
 
-    def __init__(self,lux):
+    def __init__(self,sg):
         super().__init__()
-        self.fileMenu = FileMenu(lux,"File")
+        fileMenu = FileMenu(sg,"File",self)
+        self.addMenu(fileMenu)
+        fileMenu.updateScene.connect(self.update)
 
-        self.addMenu(self.fileMenu)
+    def update(self):
+        self.updateScene.emit()
 
- 
+
+
 # MAIN WINDOW
 
 class RenderingAction(QAction):
 
-    def __init__(self,lux,parent):
+    def __init__(self,sg,parent):
         super().__init__('Paused',parent)
-        self.lux = lux
+        self.sg = sg 
         self.triggered.connect(self.doit)
-        self.lux.sg.stop()
+        self.sg.stop()
 
     def doit(self):
         if self.text() == 'Paused':
@@ -4341,45 +4387,28 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.thread = QThread()
-        self.lux = LuxWidget(1200,800)        
+        self.sg = SceneGraph()
+        self.viewport = QTabWidget()
+        self.coid = 0
+
+        self.menu = MainMenu(self.sg)
+        self.setMenuBar(self.menu)
 
         # Create UI widgets 
-        self.sceneLayout = SceneLayout(self.lux)
-        self.attributeEditor = NodeEditor(self.lux)
-        self.renderSettings = RenderSettings(self.lux)
-        self.filmEditor = FilmEditor(self.lux)
-        self.toolbar = self.addToolBar("tools")
-        self.renderAct = RenderingAction(self.lux,self) 
+        self.sceneLayout = SceneLayout(self.sg)
+        self.attributeEditor = NodeEditor(self.sg)
+        self.renderSettings = RenderSettings(self.sg)
+        self.filmEditor = FilmEditor(self.sg)
+        #self.toolbar = self.addToolBar("tools")
+        self.renderAct = RenderingAction(self.sg,self) 
         self.status = QStatusBar()
         frame = QFrame()
-        luxframe = QFrame()
-        luxframe.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
-        luxvbox = QHBoxLayout()
-        luxvbox.addWidget(self.lux,Qt.AlignCenter)
-        luxvbox.setContentsMargins(0,0,0,0)
-        luxvbox.setSpacing(0)
  
-        timeeditor = TimeEditor(self.lux)
-
-        self.toolbar.addAction(self.renderAct)
-        luxframe.setLayout(luxvbox)
-        luxframe.setAutoFillBackground(1)
-        palette = QPalette()
-        palette.setColor(QPalette.Background,QColor(0,0,0))
-        luxframe.setPalette(palette)
- 
-        self.scrollarea = QScrollArea()
-        self.scrollarea.setWidgetResizable(1)
-        self.scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scrollarea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
-        self.scrollarea.setWidget(luxframe)
-       
-        self.menu = MainMenu(self.lux)
-        self.setMenuBar(self.menu)
+        timeeditor = TimeEditor(self.sg)
 
         # Layout UI widgets
         vbox = QVBoxLayout()
-        vbox.addWidget(self.scrollarea,Qt.AlignCenter)
+        vbox.addWidget(self.viewport,Qt.AlignCenter)
         vbox.addWidget(timeeditor)
         self.setCentralWidget(frame)
         self.addDockWidget(Qt.RightDockWidgetArea, self.sceneLayout);
@@ -4398,11 +4427,11 @@ class MainWindow(QMainWindow):
         frame.setLayout(vbox)
         self.setWindowTitle('LuxEd')
 
-
         # Connections setup
         self.sceneLayout.nodeSelected.connect(self.nodeSelected)
         self.sceneLayout.nodeRemoved.connect(self.nodeRemoved)
         self.filmEditor.imagenameChanged.connect(self.imageFileNameChanged)
+        self.filmEditor.outputChanged.connect(self.buildTabs)
         self.show()
 
         self.sceneLayout.updateTabs()
@@ -4412,30 +4441,59 @@ class MainWindow(QMainWindow):
         t.start(1000)
 
         # Start the render
-        self.lux.startRendering()
+        self.sg.start()
 
         # Create a default material
         #matstring = "scene.materials.luxed_default_mat.type = \"matte\"\n"
         #matstring += "scene.materials.luxed_default_mat.kd = 1 1 1\n"
         #self.lux.sg.lux.setSceneProperties(matstring)
 
+        self.menu.updateScene.connect(self.updateScene)
         self.attributeEditor.nodeChanged.connect(self.updateSceneLayout)
-        self.lux.updateScene.connect(self.updateScene)
+        #self.lux.updateScene.connect(self.updateScene)
 
+        self.buildTabs()
+
+    def buildTabs(self):
+        i = 0
+        self.viewport.clear()
+        while i < self.sg.getFilmOutputCount():
+            vp = LuxWidget(self.sg,1200,800)
+            luxvbox = QHBoxLayout()
+            luxvbox.addWidget(vp,Qt.AlignCenter)
+            luxvbox.setContentsMargins(0,0,0,0)
+            luxvbox.setSpacing(0)
+            scrollarea = QScrollArea()
+            scrollarea.setWidgetResizable(1)
+            scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            scrollarea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+            scrollarea.setLayout(luxvbox)
+            self.viewport.addTab(scrollarea,self.sg.getFilmOutputFileName(i))
+            i+=1
+        self.viewport.setCurrentIndex(self.coid)
+ 
     def updateLux(self):
-        self.lux.sg.write()
-        self.lux.repaint()
+        self.sg.write()
+        # UPDATE THE TABS HERE
+        i = 0
+        while i < self.sg.getFilmOutputCount():
+            vp = self.viewport.widget(i).layout().itemAt(0).widget()
+            if vp is not None:
+                vp.repaint()
+            i+=1
+
         self.status.clearMessage()
+        '''
         self.status.showMessage(("[Elapsed time: %3d/5sec][Samples %4d][Avg. samples/sec %3.2fM on %.1fK tris]" % (
                 self.lux.getTime(),
                 self.lux.getPass(),
                 (self.lux.getSpp() / 1000000.0),
                 (self.lux.getTriCount() / 1000.0))))
-
+        '''
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:
-            self.lux.stopRendering()
+            self.sg.stop()
             self.close()
 
     def nodeSelected(self,item):
@@ -4454,8 +4512,10 @@ class MainWindow(QMainWindow):
         #self.attributeEditor.clear()
 
     def imageFileNameChanged(self,oid,name):
-        self.lux.filename = name
-        self.lux.setRenderProperties()
+        pass
+        # UPDATE THE VIEWPORT TABS HERE
+        #self.lux.filename = name
+        #self.lux.setRenderProperties()
 
 if __name__ == '__main__':
     
