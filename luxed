@@ -3383,7 +3383,7 @@ class AddNodeDialog(QDialog):
 
     def checkName(self,name):
         print("checkName")
-        unique = self.lux.sg.isUniqueName(name)
+        unique = self.sg.isUniqueName(name)
         if unique:
             print("name unique")
             color = QColor(0,255,0)
