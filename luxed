@@ -3181,7 +3181,7 @@ class NodeAttributeLoader(QWidget):
                     self.subtype = prop.value[0]
                     self.vbox.addWidget(attribute)
                 elif 'material' in prop.vname:
-                    matlist = self.lux.sg.getNames('materials')
+                    matlist = self.sg.getNames('materials')
                     attribute = OptionAttribute(prop,matlist)
                     attribute.valueChanged.connect(self.updateNode)
                     self.vbox.addWidget(attribute)
@@ -3499,7 +3499,7 @@ class SceneLayout(QDockWidget):
 
     def addNode(self,name,ntype,vtype):
         print("%s, %s, %s node to add"%(name,ntype,vtype))
-        self.lux.sg.addNode(name,ntype,vtype)
+        self.sg.addNode(name,ntype,vtype)
         self.updateTabs()
 
     def getTabName(self,i):
@@ -3537,7 +3537,7 @@ class SceneLayout(QDockWidget):
 
     def export(self):
         filename = QFileDialog.getSaveFileName(None,"Export Scene File",".","Scene File (*.scn)")
-        out = self.lux.sg.getNodeSceneString(self.selectedName)
+        out = self.sg.getNodeSceneString(self.selectedName)
         file = open(filename[0],'w')
         file.write(out)
         file.close()
