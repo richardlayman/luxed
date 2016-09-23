@@ -68,6 +68,7 @@ LightsType = ['sun','sky','sky2','infinite','point','mappoint','spot','projectio
 # VOLUMES
 VolumesType = ['clear','homogeneous','heterogeneous']
 
+
 class Property:
     
     def __init__(self, ntype, nname, vname, vtype, luxprop, vmin, vmax, vdefault, desc="", types=[], enabled=1):
@@ -85,23 +86,41 @@ class Property:
         self.desc = desc
         self.types = types
         self.luxprop = luxprop
+        self.cframe = 1
         self.props = [] # children properties
         if len(types) > 0:
             self.initProperties() # fill in the child properties
 
-    def isValueAnimated(self):
+    def isAnimatedValue(self):
         if len(self.animvalues) is 0:
             return False
         else:
             return True
 
-    def setAnimationValue(self, time, val):
+    def setAnimationValue(self,frame,val):
         # insert the animation value in the proper location in the animvalues array
         if len(self.animvalues) is 0:
-            self.animvalues.append({'time':time,'value':val})
+            self.animvalues.append({'frame':frame,'value':val})
+        else:
+            maxi = 0
+            i = 0
+            for value in self.animvalues:
+                if value['frame'] > frame:
+                    maxi = i
+                i+=1
+            if maxi == 0:
+                self.animvalues.append({'frame':frame,'value':val})
+            if maxi > 0:
+                self.animvalues.insert(maxi,{'frame':frame,'value':val})
+                
 
-    def setValue(self, val):
+    def setValue(self,val):
         self.value = val
+
+    def setCurrentFrame(self,frame):
+        self.cframe = frame
+        for prop in self.props:
+            prop.setCurrentFrame(frame)
 
     def getValue(self):
         return self.value
@@ -111,6 +130,19 @@ class Property:
             return 0
         else:
             return self.animvalues[i]
+
+    def getFrameValue(self,frame):
+        for frame in self.animvalues:
+            if frame['frame'] == frame:
+                return frame['value']
+        return self.value
+
+    def getCurrentValue(self):
+        print("getCurrentValue for cframe %d when animvalues size is %d for node: %s, value: %s"%(self.cframe-1,len(self.animvalues),self.nname,self.vname))
+        if self.isAnimatedValue():
+            return self.animvalues[self.cframe-1]['value']
+        else:
+            return self.value
 
     def getLinkedNodeNames(self):
         names = []
@@ -187,9 +219,11 @@ class Property:
         if self.vtype == 'uv':
             out = "%s = %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]))
         if self.vtype == 'point':
-            out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
+            val = self.getCurrentValue()
+            out = "%s = %f %f %f" % (self.getCallString(), float(val[0]), float(val[1]), float(val[2]))
         if self.vtype == 'vector':
-            out = "%s = %f %f %f" % (self.getCallString(), float(self.value[0]), float(self.value[1]), float(self.value[2]))
+            val = self.getCurrentValue()
+            out = "%s = %f %f %f" % (self.getCallString(), float(val[0]), float(val[1]), float(val[2]))
         if self.vtype == 'texture':
             print("PROPERTY VALUE")
             print(type(self.value[0]))
@@ -805,6 +839,10 @@ class Node:
         self.ntype = None
         self.props = []
 
+    def setCurrentFrame(self,frame):
+        for prop in self.props:
+            prop.setCurrentFrame(frame)
+
     def addProperty(self,prop):
         self.props.append(prop)
 
@@ -1167,7 +1205,7 @@ class SceneGraph():
         # animation values
         # start frame is always 1
         self.eframe = 240 
-        self.cframe = 1
+        self.cframe = 1 
         self.fps = 24
 
         # default camera
@@ -1585,6 +1623,7 @@ class SceneGraph():
  
     def updateAllNodes(self):
         for node in self.nodes:
+            node.setCurrentFrame(self.cframe)
             self.updateNode(node)
 
     def getNode(self, name):
@@ -1728,8 +1767,8 @@ class SceneGraph():
             return False 
 
         # get the camera props
-        proplookatorig = camera.getProperty('lookat.orig') # currently not used put will still set to 0
-        proplookattarget = camera.getProperty('lookat.target')
+        proplookatorig = camera.getProperty('lookat.orig')
+        proplookattarget = camera.getProperty('lookat.target') # currently not used put will still set to 0
         propup = camera.getProperty('up') # currently not used
         propcliphither = camera.getProperty('cliphither')
         propclipyon = camera.getProperty('clipyon')
@@ -1835,13 +1874,16 @@ class SceneGraph():
                 return False
             print("parsed: time:%s tx:%s ty:%s tz:%s rx:%s ry:%s rz:%s fov:%s near:%s far:%s"%(time,tx,ty,tz,rx,ry,rz,fov,near,far))
             # load all the values
-            proplookatorig.setAnimationValue(time,[0,0,0])
-            proplookattarget.setAnimationValue(time,[tx,ty,tz])
-            propcliphither.setAnimationValue(time,near)
-            propclipyon.setAnimationValue(time,far)
-            propfov.setAnimationValue(time,fov)
+            proplookatorig.setAnimationValue(self.cframe,[tx,ty,tz])
+            proplookattarget.setAnimationValue(self.cframe,[0,0,0])
+            propcliphither.setAnimationValue(self.cframe,near)
+            propclipyon.setAnimationValue(self.cframe,far)
+            propfov.setAnimationValue(self.cframe,fov)
+            self.cframe += 1
 
-
+        self.cframe = 1 
+        self.lux.setSceneProperties(camera.getPropertyString())
+ 
     def parseSceneFile(self,lines):
         # cleanup
         setstring = ''
@@ -2859,8 +2901,9 @@ class BoolAttribute(QWidget):
 class IntAttribute(QWidget):
     valueChanged = pyqtSignal()
 
-    def __init__(self,prop):
+    def __init__(self,prop,sg):
         super().__init__()
+        self.sg = sg
         self.prop = prop
         self.label = QLabel(self.prop.vname)
         self.value = QLineEdit()
@@ -3031,8 +3074,9 @@ class PointAttribute(QWidget):
     valueChanged = pyqtSignal()
 
 
-    def __init__(self,prop):
+    def __init__(self,prop,sg):
         super().__init__()
+        self.sg = sg
         self.prop = prop
         self.label = QLabel(self.prop.vname)
         self.xvalue = QLineEdit()
@@ -3083,7 +3127,11 @@ class PointAttribute(QWidget):
         self.valueChanged.emit()
 
     def getValue(self):
-        return [float(self.prop.value[0]), float(self.prop.value[1]), float(self.prop.value[2])]
+        if prop.isAnimatedValue():
+            value = prop.getFrameValue(self.sg.cframe)
+            return value
+        else:
+            return [float(self.prop.value[0]), float(self.prop.value[1]), float(self.prop.value[2])]
 
     def setValue(self,val):
         self.prop.value = val
@@ -3357,7 +3405,7 @@ class NodeAttributeLoader(QWidget):
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
             elif prop.vtype is 'int':
-                attribute = IntAttribute(prop)
+                attribute = IntAttribute(prop,self.sg)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
             elif prop.vtype is 'float':
@@ -3369,11 +3417,11 @@ class NodeAttributeLoader(QWidget):
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
             elif prop.vtype is 'point':
-                attribute = PointAttribute(prop)
+                attribute = PointAttribute(prop,self.sg)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
             elif prop.vtype is 'vector':
-                attribute = PointAttribute(prop)
+                attribute = PointAttribute(prop,self.sg)
                 attribute.valueChanged.connect(self.updateNode)
                 self.vbox.addWidget(attribute)        
             elif prop.vtype is 'texture':
@@ -4020,8 +4068,8 @@ class RenderSettings(QDockWidget):
 
         self.frame = QFrame()
 
-        self.renderWidth = IntAttribute(self.sg.getRenderProperty('film','width'))
-        self.renderHeight = IntAttribute(self.sg.getRenderProperty('film','height'))
+        self.renderWidth = IntAttribute(self.sg.getRenderProperty('film','width'),self.sg)
+        self.renderHeight = IntAttribute(self.sg.getRenderProperty('film','height'),self.sg)
 
         # Engine 
         self.engine = QGroupBox('engine')
@@ -4142,7 +4190,7 @@ class RenderSettings(QDockWidget):
                     attribute.valueChanged.connect(self.updateSettings)
                     self.enginevbox.addWidget(attribute)
             if prop.vtype is 'int':
-                attribute = IntAttribute(prop)
+                attribute = IntAttribute(prop,self.sg)
                 attribute.valueChanged.connect(self.updateSettings)
                 self.enginevbox.addWidget(attribute)        
             if prop.vtype is 'float':
@@ -4189,7 +4237,7 @@ class RenderSettings(QDockWidget):
                     attribute.valueChanged.connect(self.updateSettings)
                     self.samplervbox.addWidget(attribute)
             if prop.vtype is 'int':
-                attribute = IntAttribute(prop)
+                attribute = IntAttribute(prop,self.sg)
                 attribute.valueChanged.connect(self.updateSettings)
                 self.samplervbox.addWidget(attribute)        
             if prop.vtype is 'float':
@@ -4233,7 +4281,7 @@ class RenderSettings(QDockWidget):
                     attribute.valueChanged.connect(self.updateSettings)
                     self.filtervbox.addWidget(attribute)
             if prop.vtype is 'int':
-                attribute = IntAttribute(prop)
+                attribute = IntAttribute(prop,self.sg)
                 attribute.valueChanged.connect(self.updateSettings)
                 self.filtervbox.addWidget(attribute)        
             if prop.vtype is 'float':
@@ -4246,7 +4294,7 @@ class RenderSettings(QDockWidget):
         self.sg.setRenderProperties()
 
 class TimeEditor(QWidget):
-    frameChanged = pyqtSignal(['int'])
+    #frameChanged = pyqtSignal(['int'])
 
     def __init__(self,sg):
         super().__init__()
@@ -4265,7 +4313,7 @@ class TimeEditor(QWidget):
  
         self.sframe.setText('1')
         self.eframe.setText("%d"%sg.eframe)
-        self.cframe.setText('1')
+        self.cframe.setText('%d'%1)
 
         self.cframe.setFont(QFont("Sans",12))
         self.cframe.setAlignment(Qt.AlignCenter)
@@ -4281,16 +4329,19 @@ class TimeEditor(QWidget):
 
         self.slider.setMinimum(int(self.sframe.text()))
         self.slider.setMaximum(int(self.eframe.text()))
-        self.slider.valueChanged.connect(self.setCurrentFrame)
+        self.slider.sliderReleased.connect(self.setCurrentFrame)
 
     def reloadFrames(self):
-        self.eframe.setText("%d"%self.sg.eframe)
+        self.eframe.setText('%d'%self.sg.eframe)
         self.slider.setMaximum(int(self.eframe.text()))
-        self.cframe.setText('1')
+        self.cframe.setText('%d'%self.sg.cframe)
 
-    def setCurrentFrame(self,val):
-        self.cframe.setText("%d"%val)
-        self.frameChanged.emit(val)
+    def setCurrentFrame(self):
+        self.cframe.setText("%d"%self.slider.value())
+        self.sg.cframe = self.slider.value()
+        print("CURRENT FRAME SET TO %d"%self.sg.cframe)
+        self.sg.updateAllNodes()
+        #self.frameChanged.emit(val)
 
 
 # MAIN MENU
