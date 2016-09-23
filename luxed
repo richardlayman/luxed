@@ -77,7 +77,8 @@ class Property:
         # file, option and link are all types not in lux but created to make it easier on luxed - they are all 'strings' in lux
         self.vtype = vtype # bool, int, u_int, float, double, u_longlong, string, file, option, link, texture, uv, vector, normal, point, matrix4x4, spectrum
         self.value = vdefault
-        self.default = vdefault 
+        self.default = vdefault
+        self.animvalues = [] # this stores multiple values for animations 
         self.min = vmin 
         self.max = vmax 
         self.enabled = enabled
@@ -87,12 +88,29 @@ class Property:
         self.props = [] # children properties
         if len(types) > 0:
             self.initProperties() # fill in the child properties
- 
+
+    def isValueAnimated(self):
+        if len(self.animvalues) is 0:
+            return False
+        else:
+            return True
+
+    def setAnimationValue(self, time, val):
+        # insert the animation value in the proper location in the animvalues array
+        if len(self.animvalues) is 0:
+            self.animvalues.append({'time':time,'value':val})
+
     def setValue(self, val):
         self.value = val
 
     def getValue(self):
         return self.value
+
+    def getAnimatedValue(self,i):
+        if i >= len(self.animvalues):
+            return 0
+        else:
+            return self.animvalues[i]
 
     def getLinkedNodeNames(self):
         names = []
@@ -1146,6 +1164,11 @@ class SceneGraph():
         self.filmoutputs = []
         self.nodes = []
 
+        # animation values
+        # start frame is always 1
+        self.eframe = 240 
+        self.cframe = 1
+        self.fps = 24
 
         # default camera
         '''
@@ -1641,6 +1664,16 @@ class SceneGraph():
             self.nodes.append(volume)
         '''
 
+    def getCameraNode(self,name=''):
+        camera = None
+        for n in self.nodes:
+            # don't delete the camera
+            if n.name == name and n.ntype == 'camera':
+                return n
+            elif n.ntype == 'camera':
+                camera = n
+        return camera
+ 
     # This will parse a input string like 'scene.materials.my_material.kd'
     # and out the string type('object'), name('my_material') and value type('kd')
     def getNodeInfoFromString(self,prefix):
@@ -1687,6 +1720,127 @@ class SceneGraph():
         '''
         #print("out: %s,%s,%s"%(ntype,name,vname))
         return ntype,name,vname
+
+    def parseCameraDataFile(self,lines):
+        # get camera
+        camera = self.getCameraNode()
+        if camera is None:
+            return False 
+
+        # get the camera props
+        proplookatorig = camera.getProperty('lookat.orig') # currently not used put will still set to 0
+        proplookattarget = camera.getProperty('lookat.target')
+        propup = camera.getProperty('up') # currently not used
+        propcliphither = camera.getProperty('cliphither')
+        propclipyon = camera.getProperty('clipyon')
+        proplensradius = camera.getProperty('lensradius') # currently not used
+        propfocaldistance = camera.getProperty('focaldistance') # currently not used
+        propfov = camera.getProperty('fieldofview')
+
+        # PARSE FILE
+
+        version = lines[0].strip()
+        if(version==''):
+            return False
+        header = lines[1].strip()
+        if(header==''):
+            return False
+
+        # stime
+        ei = header.index(',')
+        stime = float(header[0:ei].strip())
+        if(stime==''):
+                return False
+ 
+        # etime 
+        si = ei+1
+        ei = si + header[si:].index(',')
+        etime = float(header[si:ei].strip())
+        if(etime==''):
+            return False
+  
+        # fps 
+        fps = int(header[ei+1:].strip())
+        if(fps==''):
+            return False
+
+        # TODO - since feather is currently exporting times in floats, I have to convert it over to msec
+        self.eframe = int((etime-stime) * fps)
+        self.fps = fps
+        self.cframe = 1 
+
+        print(version)
+        print("HEADER - stime:%s etime%s fps%s"%(stime,etime,fps))
+
+        # load animation values
+        for line in lines[2:]:
+            line = line.strip()
+            print(line)
+            # time
+            ei = line.index(',')
+            time = line[0:ei].strip()
+            if(time==''):
+                return False
+            # tx
+            si = ei+1
+            ei = si + line[si:].index(',')
+            tx = line[si:ei].strip()
+            if(tx==''):
+                return False
+            # ty
+            si = ei+1
+            ei = si + line[si:].index(',')
+            ty = line[si:ei].strip()
+            if(ty==''):
+                return False
+            # tz
+            si = ei+1
+            ei = si + line[si:].index(',')
+            tz = line[si:ei].strip()
+            if(tz==''):
+                return False
+            # rx
+            si = ei+1
+            ei = si + line[si:].index(',')
+            rx = line[si:ei].strip()
+            if(rx==''):
+                return False
+            # ry
+            si = ei+1
+            ei = si + line[si:].index(',')
+            ry = line[si:ei].strip()
+            if(ry==''):
+                return False
+            # rz
+            si = ei+1
+            ei = si + line[si:].index(',')
+            rz = line[si:ei].strip()
+            if(rz==''):
+                return False
+            # fov 
+            si = ei+1
+            ei = si + line[si:].index(',')
+            fov = line[si:ei].strip()
+            if(fov==''):
+                return False
+            # near 
+            si = ei+1
+            ei = si + line[si:].index(',')
+            near = line[si:ei].strip()
+            if(near==''):
+                return False
+            # far 
+            far = line[ei+1:].strip()
+            if(far==''):
+                return False
+            print("parsed: time:%s tx:%s ty:%s tz:%s rx:%s ry:%s rz:%s fov:%s near:%s far:%s"%(time,tx,ty,tz,rx,ry,rz,fov,near,far))
+            # load all the values
+            proplookatorig.setAnimationValue(time,[0,0,0])
+            proplookattarget.setAnimationValue(time,[tx,ty,tz])
+            propcliphither.setAnimationValue(time,near)
+            propclipyon.setAnimationValue(time,far)
+            propfov.setAnimationValue(time,fov)
+
 
     def parseSceneFile(self,lines):
         # cleanup
@@ -4096,6 +4250,7 @@ class TimeEditor(QWidget):
 
     def __init__(self,sg):
         super().__init__()
+        self.sg = sg
         self.sframe = QLineEdit()
         self.eframe = QLineEdit()
         self.cframe = QLabel()
@@ -4109,7 +4264,7 @@ class TimeEditor(QWidget):
         self.eframe.setValidator(self.framevalidator)
  
         self.sframe.setText('1')
-        self.eframe.setText('24')
+        self.eframe.setText("%d"%sg.eframe)
         self.cframe.setText('1')
 
         self.cframe.setFont(QFont("Sans",12))
@@ -4127,6 +4282,11 @@ class TimeEditor(QWidget):
         self.slider.setMinimum(int(self.sframe.text()))
         self.slider.setMaximum(int(self.eframe.text()))
         self.slider.valueChanged.connect(self.setCurrentFrame)
+
+    def reloadFrames(self):
+        self.eframe.setText("%d"%self.sg.eframe)
+        self.slider.setMaximum(int(self.eframe.text()))
+        self.cframe.setText('1')
 
     def setCurrentFrame(self,val):
         self.cframe.setText("%d"%val)
@@ -4242,8 +4402,11 @@ class ImportMenu(QMenu):
     def __init__(self,sg,parent):
         super().__init__("Import",parent)
         importSceneAction = ImportSceneItemsAction(sg,self)
+        importCameraDataAction = ImportCameraDataAction(sg,self)
         self.addAction(importSceneAction)
+        self.addAction(importCameraDataAction)
         importSceneAction.updateScene.connect(self.update)
+        importCameraDataAction.updateScene.connect(self.update)
 
     def update(self):
         self.updateScene.emit()
@@ -4290,6 +4453,23 @@ class ImportPlyAction(QAction):
     def doit(self):
         print("Ply")
         #self.updateScene.emit()
+
+
+class ImportCameraDataAction(QAction):
+    updateScene = pyqtSignal()
+
+    def __init__(self,sg,parent):
+        super().__init__("Camera Data",parent)
+        self.triggered.connect(self.doit)
+        self.sg = sg 
+
+    def doit(self):
+        print("Importing Camera Data")
+        filename = QFileDialog.getOpenFileName(None,"Import Camera Data File",".","Camera Data Files (*.cam)")
+        file = open(filename[0],'r')
+        self.sg.parseCameraDataFile(file.readlines())
+        file.close()
+        self.updateScene.emit()
 
 
 # EXPORT ACTIONS 
@@ -4416,12 +4596,12 @@ class MainWindow(QMainWindow):
         self.status = QStatusBar()
         frame = QFrame()
  
-        timeeditor = TimeEditor(self.sg)
+        self.timeEditor = TimeEditor(self.sg)
 
         # Layout UI widgets
         vbox = QVBoxLayout()
         vbox.addWidget(self.viewport,Qt.AlignCenter)
-        vbox.addWidget(timeeditor)
+        vbox.addWidget(self.timeEditor)
         self.setCentralWidget(frame)
         self.addDockWidget(Qt.RightDockWidgetArea, self.sceneLayout);
         self.addDockWidget(Qt.RightDockWidgetArea, self.attributeEditor);
@@ -4528,6 +4708,7 @@ class MainWindow(QMainWindow):
         self.sceneLayout.updateTabs()
 
     def updateScene(self):
+        self.timeEditor.reloadFrames()
         self.sceneLayout.updateTabs()
         #self.attributeEditor.clear()
 
