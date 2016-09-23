@@ -16,7 +16,7 @@ LuxEd is a single python file that you can run straight from the folder. You wil
 Creating New Scenes
 ---------------
 ![LuxEd](https://raw.githubusercontent.com/richardlayman/luxed/master/fan.png)
-When you first start the application, the scene is totally blank. You can quickly add ply meshes using File - Add Mesh  which will import all selected ply meshes and create their respective objects, shapes and materials. You will still need to add a camera and volume before the scene is ready to render. All materials look for a volume named 'default\_volume' so you'll need to make at least one volume with that name. Of course you'll need to set the emission on a shape, or add a light, before the scene will show up.
+When you first start the application, the scene is totally blank. You can quickly add ply meshes using File - Add Mesh  which will import all selected ply meshes and create their respective objects, shapes and materials. You will still need to add a camera and volume before the scene is ready to render. All materials look for a volume named 'default\_volume' so you'll need to make at least one volume with that name and it should be done before you load the meshes since I've found that the renderer will sometimes fail if the material are created without this volume. Of course you'll need to set the emission on a shape, or add a light, before the scene will show up.
 
 Currently Supported Features
 ---------------
@@ -26,6 +26,7 @@ Currently Supported Features
   * Save Scene
   * Add Mesh
   * Import Scene Item
+  * Import Camera Data
   * Export Render Config
   * Export Scene Item
 - Render Settings
@@ -174,6 +175,7 @@ Currently Supported Features
   * Export Node will export the node's properties, including all the properties of node's linked to it, to a scene file
   * Can change the rotation and field-of-view of the viewport camera with the mouse
   * Load multiple ply meshes that will get automatically setup with object, shape and material properties
+  * Camera's can be animated by loading camera data, look at the camera\_data.cam file as an example.
 
 Known Issues
 ---------------
