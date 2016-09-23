@@ -1817,59 +1817,59 @@ class SceneGraph():
             print(line)
             # time
             ei = line.index(',')
-            time = line[0:ei].strip()
+            time = float(line[0:ei].strip())
             if(time==''):
                 return False
             # tx
             si = ei+1
             ei = si + line[si:].index(',')
-            tx = line[si:ei].strip()
+            tx = float(line[si:ei].strip())
             if(tx==''):
                 return False
             # ty
             si = ei+1
             ei = si + line[si:].index(',')
-            ty = line[si:ei].strip()
+            ty = float(line[si:ei].strip())
             if(ty==''):
                 return False
             # tz
             si = ei+1
             ei = si + line[si:].index(',')
-            tz = line[si:ei].strip()
+            tz = float(line[si:ei].strip())
             if(tz==''):
                 return False
             # rx
             si = ei+1
             ei = si + line[si:].index(',')
-            rx = line[si:ei].strip()
+            rx = float(line[si:ei].strip())
             if(rx==''):
                 return False
             # ry
             si = ei+1
             ei = si + line[si:].index(',')
-            ry = line[si:ei].strip()
+            ry = float(line[si:ei].strip())
             if(ry==''):
                 return False
             # rz
             si = ei+1
             ei = si + line[si:].index(',')
-            rz = line[si:ei].strip()
+            rz = float(line[si:ei].strip())
             if(rz==''):
                 return False
             # fov 
             si = ei+1
             ei = si + line[si:].index(',')
-            fov = line[si:ei].strip()
+            fov = float(line[si:ei].strip())
             if(fov==''):
                 return False
             # near 
             si = ei+1
             ei = si + line[si:].index(',')
-            near = line[si:ei].strip()
+            near = float(line[si:ei].strip())
             if(near==''):
                 return False
             # far 
-            far = line[ei+1:].strip()
+            far = float(line[ei+1:].strip())
             if(far==''):
                 return False
             print("parsed: time:%s tx:%s ty:%s tz:%s rx:%s ry:%s rz:%s fov:%s near:%s far:%s"%(time,tx,ty,tz,rx,ry,rz,fov,near,far))
@@ -3094,10 +3094,13 @@ class PointAttribute(QWidget):
         self.xvalue.setValidator(self.validator)
         self.yvalue.setValidator(self.validator)
         self.zvalue.setValidator(self.validator)
- 
-        self.xvalue.setText("%.4f"%self.prop.value[0])
-        self.yvalue.setText("%.4f"%self.prop.value[1])
-        self.zvalue.setText("%.4f"%self.prop.value[2])
+
+        value = self.prop.getCurrentValue() 
+        self.xvalue.setText("%.4f"%value[0])
+        self.yvalue.setText("%.4f"%value[1])
+        self.zvalue.setText("%.4f"%value[2])
+
+        self.setupWidget()
 
         self.setToolTip(self.prop.desc)
        
@@ -3117,39 +3120,76 @@ class PointAttribute(QWidget):
         self.yvalue.editingFinished.connect(self.changed)
         self.zvalue.editingFinished.connect(self.changed)
 
+    def setupWidget(self):
+        if self.prop.isAnimatedValue():
+            self.xvalue.setReadOnly(True)
+            self.yvalue.setReadOnly(True)
+            self.zvalue.setReadOnly(True)
+        else:
+            self.xvalue.setReadOnly(False)
+            self.yvalue.setReadOnly(False)
+            self.zvalue.setReadOnly(False)
+
+        if self.prop.isAnimatedValue():
+            color = QColor(255,255,0)
+        else:
+            color = QColor(255,255,255)
+        self.xvalue.setAutoFillBackground(1)
+        self.yvalue.setAutoFillBackground(1)
+        self.zvalue.setAutoFillBackground(1)
+        palette = QPalette()
+        palette.setColor(QPalette.Base,color)
+        self.xvalue.setPalette(palette)
+        self.yvalue.setPalette(palette)
+        self.zvalue.setPalette(palette)
+        
     def enabled(self):
         return self.label.isEnabled()
 
+
     def changed(self):
+        # do not allow the value to be manually changed if it's animated,
+        # this will later be done through a keyframe editor
+        if self.prop.isAnimatedValue():
+            return
+
         self.prop.value[0] = float(self.xvalue.text())
         self.prop.value[1] = float(self.yvalue.text())
         self.prop.value[2] = float(self.zvalue.text())
         self.valueChanged.emit()
 
     def getValue(self):
-        if prop.isAnimatedValue():
-            value = prop.getFrameValue(self.sg.cframe)
+        if self.prop.isAnimatedValue():
+            value = self.prop.getCurrentValue()
             return value
         else:
             return [float(self.prop.value[0]), float(self.prop.value[1]), float(self.prop.value[2])]
 
     def setValue(self,val):
-        self.prop.value = val
-        self.xvalue.setText("%.4f"%val[0])
-        self.yvalue.setText("%.4f"%val[1])
-        self.zvalue.setText("%.4f"%val[2])
+        # if the prop is animated, we'll reset the value back to it's animated value
+        if self.prop.isAnimatedValue():
+            value = self.prop.getCurrentValue()
+        else: 
+            self.prop.value = val
+            value = val
+
+        self.xvalue.setText("%.4f"%value[0])
+        self.yvalue.setText("%.4f"%value[1])
+        self.zvalue.setText("%.4f"%value[2])
 
     def loadProperty(self):
-        self.xvalue.setText(self.prop.value[0])
-        self.yvalue.setText(self.prop.value[1])
-        self.zvalue.setText(self.prop.value[2])
+        value = self.prop.getCurrentValue()
+        self.xvalue.setText(value[0])
+        self.yvalue.setText(value[1])
+        self.zvalue.setText(value[2])
 
     def setProperty(self,prop):
         self.prop = prop
-        self.xvalue.setText(self.prop.value[0])
-        self.yvalue.setText(self.prop.value[1])
-        self.zvalue.setText(self.prop.value[2])
-
+        value = self.prop.getCurrentValue()
+        self.xvalue.setText(value[0])
+        self.yvalue.setText(value[1])
+        self.zvalue.setText(value[2])
+        self.setupWidget()
 
 # String Attribute
 class StringAttribute(QWidget):
@@ -3486,9 +3526,11 @@ class NodeEditor(QDockWidget):
         #self.attributes.typeChanged.connect(self.nodeUpdate)
 
 
-    def load(self):
+    def load(self,name):
         print("load()")
         self.node = self.sg.getNode(name)
+        if self.node is None:
+            return
         self.attributes.load(self.node)
 
     def setEditor(self,name):
@@ -4294,7 +4336,7 @@ class RenderSettings(QDockWidget):
         self.sg.setRenderProperties()
 
 class TimeEditor(QWidget):
-    #frameChanged = pyqtSignal(['int'])
+    frameChanged = pyqtSignal()
 
     def __init__(self,sg):
         super().__init__()
@@ -4330,6 +4372,7 @@ class TimeEditor(QWidget):
         self.slider.setMinimum(int(self.sframe.text()))
         self.slider.setMaximum(int(self.eframe.text()))
         self.slider.sliderReleased.connect(self.setCurrentFrame)
+        self.slider.valueChanged.connect(self.setDisplayedFrame)
 
     def reloadFrames(self):
         self.eframe.setText('%d'%self.sg.eframe)
@@ -4337,11 +4380,13 @@ class TimeEditor(QWidget):
         self.cframe.setText('%d'%self.sg.cframe)
 
     def setCurrentFrame(self):
-        self.cframe.setText("%d"%self.slider.value())
+        self.cframe.setText('%d'%self.slider.value())
         self.sg.cframe = self.slider.value()
-        print("CURRENT FRAME SET TO %d"%self.sg.cframe)
         self.sg.updateAllNodes()
-        #self.frameChanged.emit(val)
+        self.frameChanged.emit()
+
+    def setDisplayedFrame(self,val):
+        self.cframe.setText('%d'%val)
 
 
 # MAIN MENU
@@ -4636,6 +4681,7 @@ class MainWindow(QMainWindow):
 
         self.menu = MainMenu(self.sg)
         self.setMenuBar(self.menu)
+        self.cnode = "" # this is the currently selected node
 
         # Create UI widgets 
         self.sceneLayout = SceneLayout(self.sg)
@@ -4692,6 +4738,7 @@ class MainWindow(QMainWindow):
         #self.lux.sg.lux.setSceneProperties(matstring)
 
         self.menu.updateScene.connect(self.updateScene)
+        self.timeEditor.frameChanged.connect(self.updateScene)
         self.attributeEditor.nodeChanged.connect(self.updateSceneLayout)
         #self.lux.updateScene.connect(self.updateScene)
         self.renderSettings.filmResolutionChanged.connect(self.changeFilmResolution)
@@ -4750,6 +4797,7 @@ class MainWindow(QMainWindow):
     def nodeSelected(self,item):
         print("Node Selected %s"%item)
         self.attributeEditor.setEditor(item)
+        self.cnode = item
 
     def nodeRemoved(self):
         print("Node Removed")
@@ -4761,7 +4809,7 @@ class MainWindow(QMainWindow):
     def updateScene(self):
         self.timeEditor.reloadFrames()
         self.sceneLayout.updateTabs()
-        #self.attributeEditor.clear()
+        self.attributeEditor.load(self.cnode)
 
     def imageFileNameChanged(self,oid,name):
         pass
