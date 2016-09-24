@@ -4576,8 +4576,11 @@ class ExportMenu(QMenu):
     def __init__(self,sg,parent):
         super().__init__("Export",parent)
         exportRenderAction = ExportRenderAction(sg,self)
+        exportAnimationAction = ExportAnimationAction(sg,self)
         self.addAction(exportRenderAction)
+        self.addAction(exportAnimationAction)
         exportRenderAction.updateScene.connect(self.update)
+        exportAnimationAction.updateScene.connect(self.update)
 
     def update(self):
         self.updateScene.emit()
@@ -4648,6 +4651,31 @@ class ExportRenderAction(QAction):
         file.close()
 
 
+class ExportAnimationAction(QAction):
+    updateScene = pyqtSignal()
+
+    def __init__(self,sg,parent):
+        super().__init__("Scene Animation",parent)
+        self.triggered.connect(self.doit)
+        self.sg = sg 
+
+    def doit(self):
+        filename = QFileDialog.getSaveFileName(None,"Export Scene Animation Files",".","Scene Files (*.scn)")
+        # create a scene file for each frame
+        self.sg.cframe = 1
+        self.sg.updateAllNodes() 
+
+        while self.sg.eframe >= self.sg.cframe:
+            out = self.sg.getSceneString()
+            file = open("%s.%d.scn"%(filename[0],self.sg.cframe),'w')
+            file.write(out)
+            file.close()
+            self.sg.cframe += 1
+            self.sg.updateAllNodes()
+             
+        self.sg.cframe = 1
+        self.updateScene.emit()
+ 
 class ExportSceneItemsAction(QAction):
     updateScene = pyqtSignal()
 
