@@ -1927,7 +1927,21 @@ class SceneGraph():
             self.nodes.append(n)
 
         return True
-  
+ 
+    def loadMeshAnimation(self,path,filename,sframe,eframe):
+        self.cframe = sframe
+        mesh = self.getNode(filename+'_shp')
+        meshprop = mesh.getProperty('ply')
+
+        while self.cframe <= eframe :
+            val = '%s%s.%d.ply'%(path,filename,self.cframe)
+            print(val)
+            meshprop.setAnimationValue(self.cframe,[val])
+            self.cframe += 1
+
+        self.cframe = 1 
+        self.lux.setSceneProperties(mesh.getPropertyString())
+ 
     def addProperties(self,node,subtype):
         if node.ntype == 'outputs':
             self.addOutputProperties(node,subtype)
@@ -4540,6 +4554,115 @@ class AddMeshAction(QAction):
 
         self.updateScene.emit()
 
+# NOTE - currently only animated files formated as 'name.####.ply' can be loaded.
+# I may change this in future if needed, but I think that the above will do fine for now.
+class AddMeshAnimationAction(QAction):
+    updateScene = pyqtSignal()
+
+    def __init__(self,sg,parent):
+        super().__init__("Add Mesh Animation",parent)
+        self.triggered.connect(self.doit)
+        self.sg = sg 
+
+    def doit(self):
+        print("Loading Animated Meshes")
+
+        filenames = QFileDialog.getOpenFileNames(None,"Select Animated Ply Files",".","Ply Files (*.ply)")
+
+        # do nothing if no files were selected
+        if len(filenames[0]) == 0:
+            return
+
+        # get the start and end frame numbers and all the frames between exist
+        sframe = 0
+        eframe = 0
+        filename = ''
+        filepath = ''
+        filenamevalid = False
+        for line in filenames[0]:
+            # name
+            sep = QDir.separator()
+            spos = line.rfind(sep) + 1
+            epos = line.rfind('.ply')
+            framename = line[spos:epos]
+            filepath = line[:spos]
+            spos = 0
+            epos = framename.rfind('.')
+            nodename = framename[spos:epos]
+            if filenamevalid is not True:
+                filename = nodename
+                filenamevalid = True
+            else:
+                if filename != nodename:
+                    print("filenames do not match - animated meshes failed to load.")
+                    return
+            # verify we have a name
+            if filename == '':
+                print("Failed to find file name")
+                return
+            # frame
+            spos = epos+1
+            frame = framename[spos:]
+            # verify we have a frame
+            if frame == '':
+                print("Failed to find frame number")
+                return
+            frame = int(frame)
+            if frame < sframe:
+                sframe = frame
+            if frame > eframe:
+                eframe = frame
+            print("Loading ply mesh:%s frame:%d"%(nodename,frame))
+
+
+        if ((eframe - sframe) + 1) == len(filenames[0]):
+            print("Ply Animation Verified!")
+            shp = self.sg.addNode(filename+"_shp",'shapes','mesh')
+            self.sg.loadMeshAnimation(filepath,filename,sframe,eframe)
+            self.sg.updateNode(shp) 
+            # add the rest of the nodes for the scene
+            # create material
+            mat = self.sg.addNode(filename+"_mat",'materials','matte')
+            # create shape
+            self.sg.updateNode(mat) 
+            obj = self.sg.addNode(filename+"_obj",'objects','')
+            prop = obj.getProperty('material')
+            prop.value[0] = filename+'_mat'
+            prop = obj.getProperty('shape')
+            prop.value[0] = filename+'_shp'
+            self.sg.updateNode(obj) 
+            self.updateScene.emit()
+        else:
+            print("Ply Animation InValid! - not loading files due to missing frame or frames.")
+            return 
+
+        ''' 
+        for line in filenames[0]:
+            # get filename
+            sep = QDir.separator()
+            spos = line.rfind(sep) + 1
+            epos = line.rfind('.ply')
+            nodename = line[spos:epos]
+            if nodename == '':
+                return
+            # create material
+            mat = self.sg.addNode(nodename+"_mat",'materials','matte')
+            # create shape
+            self.sg.updateNode(mat) 
+            shp = self.sg.addNode(nodename+"_shp",'shapes','mesh')
+            prop = shp.getProperty('ply')
+            prop.value[0] = line
+            self.sg.updateNode(shp) 
+            obj = self.sg.addNode(nodename+"_obj",'objects','')
+            prop = obj.getProperty('material')
+            prop.value[0] = nodename+'_mat'
+            prop = obj.getProperty('shape')
+            prop.value[0] = nodename+'_shp'
+            self.sg.updateNode(obj) 
+
+        self.updateScene.emit()
+        '''
+
        
 class FileExitAction(QAction):
     updateScene = pyqtSignal()
@@ -4701,6 +4824,7 @@ class FileMenu(QMenu):
         openSceneAction = OpenSceneAction(sg,self)
         saveSceneAction = SaveSceneAction(sg,self)
         addMeshAction = AddMeshAction(sg,self)
+        addMeshAnimationAction = AddMeshAnimationAction(sg,self)
         importMenu = ImportMenu(sg,self)
         exportMenu = ExportMenu(sg,self)
         fileExitAction = FileExitAction(sg,self)
@@ -4709,6 +4833,7 @@ class FileMenu(QMenu):
         self.addAction(openSceneAction)
         self.addAction(saveSceneAction)
         self.addAction(addMeshAction)
+        self.addAction(addMeshAnimationAction)
         self.addSeparator()
         self.addMenu(importMenu)
         self.addMenu(exportMenu)
@@ -4719,6 +4844,7 @@ class FileMenu(QMenu):
         openSceneAction.updateScene.connect(self.update)
         saveSceneAction.updateScene.connect(self.update)
         addMeshAction.updateScene.connect(self.update)
+        addMeshAnimationAction.updateScene.connect(self.update)
         importMenu.updateScene.connect(self.update)
         exportMenu.updateScene.connect(self.update)
         fileExitAction.updateScene.connect(self.update)
