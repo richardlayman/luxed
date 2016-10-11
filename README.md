@@ -25,7 +25,7 @@ Currently Supported Features
   * Open Scene
   * Save Scene
   * Add Mesh
-  * Add Mesh Animation (your filenames need to be formatted as 'filename.[frame].ply' with no frame buffing - shot.001.ply=BAD, shot.1.ply=GOOD)
+  * Add Mesh Animation (your filenames need to be formatted as 'filename.[frame].ply' with no frame buffering - mesh.001.ply=BAD, mesh.1.ply=GOOD)
   * Import Scene Item
   * Import Camera Data
   * Export Render Config
