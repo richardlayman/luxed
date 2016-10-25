@@ -1279,14 +1279,15 @@ class SceneGraph():
         opencl= Node('opencl','opencl')
         opencl.addProperty(Property('opencl','opencl','platform.index','int',None,None,None,-1,""))
         opencl.addProperty(Property('opencl','opencl','cpu.use','int',None,0,1,0,""))
-        opencl.addProperty(Property('opencl','opencl','gpu.use','int',None,0,1,0,""))
+        opencl.addProperty(Property('opencl','opencl','gpu.use','int',None,0,1,1,""))
         opencl.addProperty(Property('opencl','opencl','cpu.workgroup.size','int',None,0,None,0,""))
-        opencl.addProperty(Property('opencl','opencl','gpu.workgroup.size','int',None,0,None,0,""))
-        opencl.addProperty(Property('opencl','opencl','device.select','string',None,None,None,[''],""))
+        opencl.addProperty(Property('opencl','opencl','gpu.workgroup.size','int',None,0,None,64,""))
+        opencl.addProperty(Property('opencl','opencl','devices.select','string',None,None,None,[''],""))
         # PATHOCL
         pathocl= Node('pathocl','pathocl')
         pathocl.addProperty(Property('pathocl','pathocl','pixelatomics.enable','int',None,0,1,0,""))
-        pathocl.addProperty(Property('opencl','opencl','task.count','string',None,None,None,['Auto'],""))
+        # TODO - why does the below line kill the app
+        #pathocl.addProperty(Property('opencl','opencl','task.count','string',None,None,None,['Auto'],""))
         # add pathcpu attributes
         for prop in path.props:
             pathocl.props.append(prop)
