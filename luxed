@@ -3424,6 +3424,10 @@ class FileAttribute(QWidget):
             filename = QFileDialog.getOpenFileName(self,"Open Image File",".","Image Files (*.png)")
         elif self.prop.ntype == 'outputs' and self.prop.vname == 'filename':
             filename = QFileDialog.getOpenFileName(self,"Open Image File",".","Image Files (*.png)")
+
+        if len(filename[0]) == 0:
+            return
+
         self.value.setText(filename[0])
         self.prop.value[0] = self.value.text()
         self.valueChanged.emit()
@@ -4493,7 +4497,7 @@ class OpenSceneAction(QAction):
         self.sg.clearScene()
         self.updateScene.emit()
         filename = QFileDialog.getOpenFileName(None,"Open Scene File",".","Scene Files (*.scn)")
-        if filename == "":
+        if len(filename[0]) == 0:
             return
         file = open(filename[0],'r')
         self.sg.parseSceneFile(file.readlines())
@@ -4721,6 +4725,10 @@ class ImportSceneItemsAction(QAction):
 
     def doit(self):
         filename = QFileDialog.getOpenFileName(None,"Import Scene File",".","Scene Files (*.scn)")
+
+        if len(filename[0]) == 0:
+            return
+
         file = open(filename[0],'r')
         self.sg.parseSceneFile(file.readlines())
         file.close()
@@ -4751,6 +4759,10 @@ class ImportCameraDataAction(QAction):
     def doit(self):
         print("Importing Camera Data")
         filename = QFileDialog.getOpenFileName(None,"Import Camera Data File",".","Camera Data Files (*.cam)")
+
+        if len(filename[0]) == 0:
+            return
+
         file = open(filename[0],'r')
         self.sg.parseCameraDataFile(file.readlines())
         file.close()
