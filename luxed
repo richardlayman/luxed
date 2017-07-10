@@ -31,7 +31,7 @@ from types import *
 import pyluxcore
 
 from PyQt5.QtCore import pyqtSignal, Qt, QDir, QRect, QThread, QTimer
-from PyQt5.QtWidgets import QMainWindow, QAbstractScrollArea, QScrollArea, QSlider, QCheckBox, QMenuBar, QMenu, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
+from PyQt5.QtWidgets import QMainWindow, QAbstractScrollArea, QScrollArea, QSlider, QCheckBox, QMenuBar, QMenu, QToolBar, QAction, QDialog, QGroupBox, QStackedWidget, QStackedLayout, QGridLayout, QComboBox, QListWidget, QTabWidget, QLineEdit, QStatusBar, QFrame, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QDockWidget, QFileDialog, QColorDialog, QApplication
 from PyQt5.QtGui import QImage, QPalette, QIcon, QPainter, QFont, QColor, QPen, QIntValidator, QDoubleValidator
 
 
@@ -4879,9 +4879,36 @@ class MainMenu(QMenuBar):
         self.updateScene.emit()
 
 
+class ToolBar(QToolBar):
+    
+    def __init__(self,sg):
+        super().__init__()
+        self.addWidget(RenderButton(sg,self))
+
 
 # MAIN WINDOW
 
+class RenderButton(QPushButton):
+
+    def __init__(self,sg,parent):
+        super().__init__('Render',parent)
+        self.sg = sg
+        self.sg.stop()
+        self.setCheckable(True)
+        self.toggled.connect(self.toggleRendering)
+
+    def toggleRendering(self,checked):
+        # checked = 1 rendering
+        # checked = 0 not rendering
+        if checked:
+            print("START RENDERING")
+            #self.sg.start()
+        else:
+            print("STOP RENDERING")
+            #self.sg.stop()
+
+
+'''
 class RenderingAction(QAction):
 
     def __init__(self,sg,parent):
@@ -4897,6 +4924,7 @@ class RenderingAction(QAction):
         else:
             #self.lux.sg.paused(1)
             self.setText('Paused')
+'''
 
  
 class MainWindow(QMainWindow):
@@ -4918,7 +4946,8 @@ class MainWindow(QMainWindow):
         self.renderSettings = RenderSettings(self.sg)
         self.filmEditor = FilmEditor(self.sg)
         #self.toolbar = self.addToolBar("tools")
-        self.renderAct = RenderingAction(self.sg,self) 
+        self.toolbar = ToolBar(self.sg)
+        #self.renderAct = RenderingAction(self.sg,self) 
         self.status = QStatusBar()
         frame = QFrame()
  
@@ -4929,14 +4958,15 @@ class MainWindow(QMainWindow):
         vbox.addWidget(self.viewport,Qt.AlignCenter)
         vbox.addWidget(self.timeEditor)
         self.setCentralWidget(frame)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.sceneLayout);
-        self.addDockWidget(Qt.RightDockWidgetArea, self.attributeEditor);
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.renderSettings);
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.filmEditor);
-        self.tabifyDockWidget(self.sceneLayout, self.attributeEditor);
-        self.tabifyDockWidget(self.renderSettings, self.filmEditor);
-        self.setTabPosition(Qt.LeftDockWidgetArea,QTabWidget.North);
-        self.setTabPosition(Qt.RightDockWidgetArea,QTabWidget.North);
+        self.addToolBar(Qt.TopToolBarArea, self.toolbar)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.sceneLayout)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.attributeEditor)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.renderSettings)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.filmEditor)
+        self.tabifyDockWidget(self.sceneLayout, self.attributeEditor)
+        self.tabifyDockWidget(self.renderSettings, self.filmEditor)
+        self.setTabPosition(Qt.LeftDockWidgetArea,QTabWidget.North)
+        self.setTabPosition(Qt.RightDockWidgetArea,QTabWidget.North)
 
         self.setStatusBar(self.status)
 
