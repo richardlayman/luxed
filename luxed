@@ -1208,7 +1208,6 @@ class SceneGraph():
         self.fps = 24
 
         # default camera
-        '''
         camera = Node('default_camera','camera')
         self.addCameraProperties(camera)
         camera.getProperty('lookat.orig').value = [0.64, 0.27, 0.14]
@@ -1219,7 +1218,6 @@ class SceneGraph():
         volume = Node('default_volume','volumes')
         self.addVolumeProperties(volume,'clear')
         self.nodes.append(volume)
-        '''
 
         self.initRenderNodes()
         #self.lux.setRenderProperties(self.render.getPropertyString)
