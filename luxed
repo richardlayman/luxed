@@ -258,8 +258,8 @@ class Property:
             return ''
         elif self.ntype is 'outputs':
             return "film.outputs.%s.%s"%(self.nname,self.vname)
-        elif self.ntype is 'imagepipelines':
-            return "film.imagepipelines.%s.%s"%(self.nname,self.vname)
+        elif self.ntype is 'imagepipeline':
+            return "film.imagepipeline.%s.%s"%(self.nname,self.vname)
         elif self.ntype is 'camera':
             return "scene.camera.%s"%self.vname
         elif self.ntype is 'shapes':
