@@ -69,6 +69,38 @@ LightsType = ['sun','sky','sky2','infinite','point','mappoint','spot','projectio
 VolumesType = ['clear','homogeneous','heterogeneous']
 
 
+class Key:
+    
+    def __init__(self, value=0, frame=0):
+        self.value = value 
+        self.frame = frame 
+        self.itype = 0
+        self.otype = 0
+
+
+class KeyTrack:
+    
+    def __init__(self, cframe):
+        self.keys = []
+        self.cframe = 0 
+        self.tracktype = 0 # 0=int, 1=float, 2=string
+
+    def getValue(self):
+        if self.keys.size() == 0:
+            return 0 
+        elif self.keys.size() == 1:
+            return self.keys[0].value
+
+    def isKeyed(self):
+        return False
+
+    def addKey(self, value, time):
+        self.key.append(Key(value,time))
+
+    def moveKey(self, cframe, tframe):
+        pass
+
+
 class Property:
     
     def __init__(self, ntype, nname, vname, vtype, luxprop, vmin, vmax, vdefault, desc="", types=[], enabled=1):
@@ -80,6 +112,7 @@ class Property:
         self.value = vdefault
         self.default = vdefault
         self.animvalues = [] # this stores multiple values for animations 
+        self.track = KeyTrack(0)
         self.min = vmin 
         self.max = vmax 
         self.enabled = enabled
@@ -118,6 +151,7 @@ class Property:
         self.value = val
 
     def setCurrentFrame(self,frame):
+        self.track.cframe = frame
         self.cframe = frame
         for prop in self.props:
             prop.setCurrentFrame(frame)
